@@ -262,9 +262,11 @@ async function fetchFieldItem(fieldItemId) {
 
 /** field_item upsert (due_date, memo, status, process_checked, safety_checked) */
 async function upsertFieldItem(payload) {
+  const { id, ...updateFields } = payload;
   const { data, error } = await sb
     .from('field_items')
-    .upsert(payload, { onConflict: 'id' })
+    .update(updateFields)
+    .eq('id', id)
     .select()
     .single();
   if (error) throw error;
