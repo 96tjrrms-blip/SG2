@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>삼천리 안전이행관리 | 인동선 11공구</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- 사이드바 -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>삼천리 안전이행관리</h1>
+    <p>인동선 11공구</p>
+  </div>
+  <nav>
+    <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+      <span class="icon">📊</span> 대시보드
+    </div>
+    <div class="nav-item" data-page="field" onclick="navigate('field')">
+      <span class="icon">🔧</span> 현장관리
+    </div>
+    <div class="nav-item" data-page="alarm" onclick="navigate('alarm')">
+      <span class="icon">🔔</span> 알람
+    </div>
+    <div class="nav-item" data-page="regulation" onclick="navigate('regulation')">
+      <span class="icon">📋</span> 규정집
+    </div>
+  </nav>
+</div>
+
+<!-- 메인 -->
+<div class="main">
+
+  <!-- 대시보드 -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">안전이행관리 대시보드</div>
+    <div class="page-subtitle">인동선 11공구 현황</div>
+
+    <div id="alert-banner" class="alert-banner" style="display:none">
+      ⚠️ <span></span>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card gauge-wrap">
+        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px">전체 공정 진행률</div>
+        <div class="gauge-circle">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10"/>
+            <circle id="gauge-circle-path" cx="60" cy="60" r="52" fill="none" stroke="#0d2b5e" stroke-width="10"
+              stroke-dasharray="326.7" stroke-dashoffset="326.7" stroke-linecap="round"
+              style="transition:stroke-dashoffset 0.5s"/>
+          </svg>
+          <div class="gauge-text">
+            <div class="gauge-pct" id="gauge-pct">0%</div>
+            <div class="gauge-sub" id="gauge-sub">0 / 25 완료</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="site-cards">
+          <div class="site-card" id="site-card-115정거장" onclick="navigate('field')">
+            <h3>115정거장 <span>›</span></h3>
+            <div class="pct">0%</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+            <div class="stats">
+              <span class="stat-done">✓ 0건</span>
+              <span style="color:#9ca3af">|</span>
+              <span style="color:#6b7280">지연</span>
+              <span class="stat-delay">0건</span>
+            </div>
+          </div>
+          <div class="site-card" id="site-card-15환기구" onclick="navigate('field')">
+            <h3>15환기구 <span>›</span></h3>
+            <div class="pct">0%</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+            <div class="stats">
+              <span class="stat-done">✓ 0건</span>
+              <span style="color:#9ca3af">|</span>
+              <span style="color:#6b7280">지연</span>
+              <span class="stat-delay">0건</span>
+            </div>
+          </div>
+          <div class="site-card" id="site-card-16환기구" onclick="navigate('field')">
+            <h3>16환기구 <span>›</span></h3>
+            <div class="pct">0%</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+            <div class="stats">
+              <span class="stat-done">✓ 0건</span>
+              <span style="color:#9ca3af">|</span>
+              <span style="color:#6b7280">지연</span>
+              <span class="stat-delay">0건</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px">최근 SMS 발송 내역</div>
+      <div class="sms-list" id="sms-list">
+        <div style="text-align:center;color:#9ca3af;padding:20px;font-size:13px">발송 내역이 없습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 현장관리 -->
+  <div class="page" id="page-field">
+    <div class="page-title">현장관리</div>
+    <div class="page-subtitle">배관·밸브 항목별 안전이행 현황</div>
+
+    <div class="site-tabs">
+      <button class="site-tab active" data-site="115정거장" onclick="switchSite('115정거장')">115정거장</button>
+      <button class="site-tab" data-site="15환기구" onclick="switchSite('15환기구')">15환기구</button>
+      <button class="site-tab" data-site="16환기구" onclick="switchSite('16환기구')">16환기구</button>
+    </div>
+
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>항목명</th>
+            <th>분류</th>
+            <th>규격</th>
+            <th>시공 예정일</th>
+            <th>상태</th>
+            <th>공정입회</th>
+            <th>안전조치</th>
+          </tr>
+        </thead>
+        <tbody id="field-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- 체크리스트 패널 -->
+    <div class="checklist-panel" id="checklist-panel">
+      <div class="panel-header">
+        <div class="panel-title" id="panel-title"></div>
+        <button class="panel-close" onclick="closePanel()">✕</button>
+      </div>
+
+      <div class="panel-meta">
+        <div class="meta-field">
+          <label class="meta-label">시공 예정일</label>
+          <input type="date" class="meta-input" id="panel-due">
+        </div>
+      </div>
+
+      <div class="checklist-grid">
+        <div>
+          <div class="cl-section-title">공정 입회</div>
+          <div id="process-list"></div>
+        </div>
+        <div>
+          <div class="cl-section-title">안전조치</div>
+          <div id="safety-list"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <div class="cl-section-title">기타 (수기 입력)</div>
+        <div id="custom-list"></div>
+        <div class="add-item-row">
+          <input type="text" class="add-item-input" id="custom-input"
+            placeholder="항목 입력 후 추가 버튼 클릭..."
+            onkeydown="if(event.key==='Enter') addCustomItem()">
+          <button class="add-item-btn" onclick="addCustomItem()">+ 추가</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="meta-label" style="display:block;margin-top:12px;margin-bottom:4px">메모</label>
+        <textarea class="memo-area" id="panel-memo" placeholder="현장 특이사항, 시공사 요청사항 등 자유 입력..."></textarea>
+      </div>
+
+      <div class="panel-footer">
+        <button class="btn btn-secondary" onclick="closePanel()">닫기</button>
+        <button class="btn btn-danger" onclick="sendSMS()">📱 문자 발송</button>
+        <button class="btn btn-primary" onclick="savePanel()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 알람 -->
+  <div class="page" id="page-alarm">
+    <div class="page-title">알람</div>
+    <div class="page-subtitle">기간 초과 및 예정 항목</div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="alarm-section-title">
+        ⚠️ 기간 초과 항목
+        <span class="alarm-badge badge-red" id="delay-count">0건</span>
+      </div>
+      <div id="delay-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="alarm-section-title">
+        🕐 7일 내 예정 항목
+        <span class="alarm-badge badge-amber" id="soon-count">0건</span>
+      </div>
+      <div id="soon-list"></div>
+    </div>
+  </div>
+
+  <!-- 규정집 -->
+  <div class="page" id="page-regulation">
+    <div class="page-title">규정집</div>
+    <div class="page-subtitle">가스안전영향평가서 기반 규정 검색</div>
+
+    <div class="card">
+      <div class="search-bar">
+        <input type="text" class="search-input" id="reg-search"
+          placeholder="규정 검색... (예: 매달기, 이격거리, 침하관측)"
+          oninput="renderRegulation()">
+      </div>
+      <div class="cat-filters">
+        <button class="cat-btn active" data-cat="전체" onclick="setRegCategory('전체')">전체</button>
+        <button class="cat-btn" data-cat="공정입회" onclick="setRegCategory('공정입회')">공정입회</button>
+        <button class="cat-btn" data-cat="안전조치" onclick="setRegCategory('안전조치')">안전조치</button>
+        <button class="cat-btn" data-cat="기타" onclick="setRegCategory('기타')">기타</button>
+      </div>
+      <div id="reg-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
