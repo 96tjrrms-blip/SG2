@@ -1,6 +1,6 @@
 // ===== Supabase 초기화 =====
-const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';   // ← 교체
-const SUPABASE_KEY = 'YOUR_ANON_KEY';                       // ← 교체
+const SUPABASE_URL = 'https://iiefjednuxqgdizcgmzy.supabase.co';   // ← 교체
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpZWZqZWRudXhxZ2RpemNnbXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMjkyMTYsImV4cCI6MjA5NDkwNTIxNn0.bJrayDIgG-ABnWElK9urmpTjhekDzYw-mnEE1sXxcVQ';                       // ← 교체
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===== 현장 목록 (sites 테이블 고정값과 동일) =====
