@@ -142,7 +142,7 @@ async function renderField() {
     const procDone = procItems.filter(i => i.checked).length;
     const safeDone = safeItems.filter(i => i.checked).length;
 
-    let status = '미착수', statusClass = 'status-wait';
+    let status = '미착공', statusClass = 'status-wait';
     if (pct === 100) { status = '완료'; statusClass = 'status-done'; }
     else if (isDelay) { status = '지연'; statusClass = 'status-delay'; }
     else if (pct > 0) { status = '진행중'; statusClass = 'status-progress'; }
