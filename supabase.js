@@ -229,6 +229,42 @@ const REGULATIONS = [
   },
 ];
 
+// ===== Supabase Storage (pipe-photos 버킷) =====
+const PIPE_PHOTO_BUCKET = 'pipe-photos';
+
+async function uploadPipePhoto(segId, file) {
+  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `${segId}/${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, file, {
+    cacheControl: '3600', upsert: false
+  });
+  if (error) throw error;
+  return { path, url: getPipePhotoUrl(path) };
+}
+
+function getPipePhotoUrl(path) {
+  const { data } = sb.storage.from(PIPE_PHOTO_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function listPipePhotos(segId) {
+  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list(segId, {
+    sortBy: { column: 'name', order: 'desc' }
+  });
+  if (error || !data) return [];
+  return data
+    .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
+    .map(f => ({
+      path: `${segId}/${f.name}`,
+      url: getPipePhotoUrl(`${segId}/${f.name}`)
+    }));
+}
+
+async function deletePipePhotoStorage(path) {
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).remove([path]);
+  if (error) throw error;
+}
+
 // ===== DB API 함수 =====
 
 /** sites 테이블에서 { name → id } 맵 반환 */

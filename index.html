@@ -37,73 +37,60 @@
 
   <!-- 대시보드 -->
   <div class="page active" id="page-dashboard">
-    <div class="page-title">공사현황 대시보드</div>
+    <div class="page-title">배관 위치도</div>
     <div class="page-subtitle">인덕원~동탄 복선전철 제11공구</div>
 
-    <div id="alert-banner" class="alert-banner" style="display:none">
-      ⚠️ <span></span>
-    </div>
-
-    <div class="dashboard-grid">
-      <div class="card gauge-wrap">
-        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px">전체 공정 진행률</div>
-        <div class="gauge-circle">
-          <svg width="120" height="120" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10"/>
-            <circle id="gauge-circle-path" cx="60" cy="60" r="52" fill="none" stroke="#0d2b5e" stroke-width="10"
-              stroke-dasharray="326.7" stroke-dashoffset="326.7" stroke-linecap="round"
-              style="transition:stroke-dashoffset 0.5s"/>
-          </svg>
-          <div class="gauge-text">
-            <div class="gauge-pct" id="gauge-pct">0%</div>
-            <div class="gauge-sub" id="gauge-sub">0 / 25 완료</div>
-          </div>
-        </div>
+    <div class="card" style="padding:16px">
+      <div id="map-container" class="map-container">
+        <img id="map-img" src="map.png" alt="위성지도" style="width:100%;display:none">
+        <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;top:0;left:0;width:100%;height:100%"></svg>
+        <div id="pipe-popup" class="pipe-popup" style="display:none"></div>
       </div>
+      <div id="map-no-image" class="map-no-image">
+        map.png 파일을 프로젝트 폴더에 추가하면 배관 위치도가 표시됩니다.
+      </div>
+    </div>
+  </div>
 
-      <div>
-        <div class="site-cards">
-          <div class="site-card" id="site-card-115정거장" onclick="navigate('field')">
-            <h3>115정거장 <span>›</span></h3>
-            <div class="pct">0%</div>
-            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
-            <div class="stats">
-              <span class="stat-done">✓ 0건</span>
-              <span style="color:#9ca3af">|</span>
-              <span style="color:#6b7280">지연</span>
-              <span class="stat-delay">0건</span>
-            </div>
-          </div>
-          <div class="site-card" id="site-card-15환기구" onclick="navigate('field')">
-            <h3>15환기구 <span>›</span></h3>
-            <div class="pct">0%</div>
-            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
-            <div class="stats">
-              <span class="stat-done">✓ 0건</span>
-              <span style="color:#9ca3af">|</span>
-              <span style="color:#6b7280">지연</span>
-              <span class="stat-delay">0건</span>
-            </div>
-          </div>
-          <div class="site-card" id="site-card-16환기구" onclick="navigate('field')">
-            <h3>16환기구 <span>›</span></h3>
-            <div class="pct">0%</div>
-            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
-            <div class="stats">
-              <span class="stat-done">✓ 0건</span>
-              <span style="color:#9ca3af">|</span>
-              <span style="color:#6b7280">지연</span>
-              <span class="stat-delay">0건</span>
-            </div>
-          </div>
+  <!-- 색상 설정 모달 -->
+  <div id="color-modal" class="color-modal" style="display:none">
+    <div class="cm-panel">
+      <div class="cm-header">
+        <span id="cm-title">구간 설정</span>
+        <button id="cm-x" class="cm-close">✕</button>
+      </div>
+      <div class="cm-body">
+        <p class="cm-hint">매달기 완료 구간을 추가하세요 (단위: m)</p>
+        <div id="cm-segs"></div>
+      </div>
+      <div class="cm-footer">
+        <button id="cm-add" class="cm-btn-add">+ 구간 추가</button>
+        <div style="display:flex;gap:8px">
+          <button id="cm-cancel" class="cm-btn-cancel">취소</button>
+          <button id="cm-save"   class="cm-btn-save">저장</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px">최근 SMS 발송 내역</div>
-      <div class="sms-list" id="sms-list">
-        <div style="text-align:center;color:#9ca3af;padding:20px;font-size:13px">발송 내역이 없습니다.</div>
+  <!-- 사진 관리 모달 -->
+  <div id="photo-modal" class="color-modal" style="display:none">
+    <div class="cm-panel pm-panel">
+      <div class="cm-header">
+        <span id="pm-title">사진 관리</span>
+        <button class="cm-close" onclick="closePhotoModal()">✕</button>
+      </div>
+      <div class="pm-body" id="pm-body">
+        <div class="pm-empty">불러오는 중...</div>
+      </div>
+      <div class="pm-footer">
+        <label class="pm-upload-label">
+          📷 사진 추가
+          <input type="file" id="pm-file-input" accept="image/*" multiple
+            style="display:none" onchange="handlePhotoUpload(this)">
+        </label>
+        <button class="cm-btn-cancel" onclick="closePhotoModal()">닫기</button>
       </div>
     </div>
   </div>
@@ -232,6 +219,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
+<script src="mapConfig.js"></script>
+<script src="map.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

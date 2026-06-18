@@ -176,3 +176,235 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
   .site-cards { grid-template-columns: 1fr; }
   .checklist-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== 배관 위치도 ===== */
+.map-container {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0d1117;
+  line-height: 0;
+}
+.map-container img { display: block; }
+.map-no-image {
+  text-align: center; color: #9ca3af;
+  padding: 28px; font-size: 13px;
+}
+
+/* ── 팝업 ── */
+.pipe-popup {
+  position: absolute;
+  z-index: 200;
+  width: 230px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.12);
+  overflow: hidden;
+  pointer-events: auto;
+}
+.pp-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px 8px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.pp-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.pp-name { font-size: 13px; font-weight: 700; flex: 1; color: #111827; }
+.pp-close {
+  background: none; border: none; cursor: pointer;
+  color: #9ca3af; font-size: 14px; line-height: 1; padding: 0 2px;
+}
+.pp-close:hover { color: #374151; }
+.pp-body { padding: 10px 12px; }
+.pp-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: #374151; padding: 5px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.pp-row span:first-child { color: #6b7280; }
+.pp-row span:last-child  { font-weight: 500; }
+.pp-madalki { margin-top: 9px; padding-top: 9px; border-top: 1px solid #f3f4f6; }
+.pp-bar-label {
+  font-size: 11px; color: #6b7280; margin-bottom: 5px;
+  display: flex; align-items: center; gap: 6px;
+}
+.pp-bar-pct { font-weight: 700; color: #0d2b5e; font-size: 12px; }
+.pp-bar {
+  display: flex; height: 10px; border-radius: 5px;
+  overflow: hidden; background: #e5e7eb; margin-bottom: 4px;
+}
+.pp-bar > div { height: 100%; transition: width 0.3s; }
+.pp-bar-sub { font-size: 11px; color: #6b7280; }
+.pp-madalki-unset { display: none; } /* 사진 미리보기로 대체 */
+
+/* 팝업 사진 미리보기 */
+.pp-photo-area {
+  margin-top: 9px; padding-top: 9px; border-top: 1px solid #f3f4f6;
+  cursor: pointer; border-radius: 6px; overflow: hidden;
+}
+.pp-photo-area:hover { opacity: 0.85; }
+.pp-photo-img { width: 100%; height: 110px; object-fit: cover; border-radius: 5px; display: block; }
+.pp-photo-placeholder {
+  height: 70px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #9ca3af; background: #f9fafb; border-radius: 5px;
+  border: 1.5px dashed #d1d5db; gap: 6px;
+}
+
+/* 3버튼 footer */
+.pp-footer-col { display: flex; flex-direction: column; gap: 6px; }
+.pp-footer-row { display: flex; gap: 6px; }
+.pp-btn-photo {
+  width: 100%; background: #374151; color: #fff;
+  border: none; border-radius: 5px; padding: 6px 0;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.pp-btn-photo:hover { background: #1f2937; }
+
+/* 사진 관리 모달 */
+.pm-panel { max-width: 500px; width: 92vw; }
+.pm-body { padding: 12px; max-height: 320px; overflow-y: auto; }
+.pm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pm-photo-item {
+  position: relative; border-radius: 6px; overflow: hidden;
+  border: 2.5px solid transparent;
+}
+.pm-photo-item.pm-rep { border-color: #facc15; }
+.pm-photo-item img {
+  width: 100%; height: 90px; object-fit: cover; display: block; cursor: pointer;
+}
+.pm-photo-actions {
+  position: absolute; top: 4px; right: 4px; display: flex; gap: 3px;
+}
+.pm-btn-rep, .pm-btn-rep-active, .pm-btn-del {
+  width: 22px; height: 22px; border: none; border-radius: 3px;
+  font-size: 11px; cursor: pointer; line-height: 1;
+}
+.pm-btn-rep       { background: rgba(0,0,0,0.55); color: #ccc; }
+.pm-btn-rep-active{ background: #facc15; color: #000; }
+.pm-btn-del       { background: rgba(220,38,38,0.85); color: #fff; }
+.pm-empty { text-align: center; padding: 28px 16px; color: #9ca3af; font-size: 13px; line-height: 1.7; }
+.pm-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; border-top: 1px solid #e5e7eb;
+}
+.pm-upload-label {
+  background: #0d2b5e; color: #fff; border-radius: 5px;
+  padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.pm-upload-label:hover { background: #1e3a6e; }
+.pp-footer {
+  padding: 8px 12px;
+  border-top: 1px solid #f3f4f6;
+  background: #f9fafb;
+}
+.pp-btn-cfg {
+  width: 100%; background: #0d2b5e; color: #fff;
+  border: none; border-radius: 5px; padding: 6px 0;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.pp-btn-cfg:hover { background: #1e3a6e; }
+
+/* 두 버튼 footer */
+.pp-footer-two { display: flex; gap: 6px; }
+.pp-btn-pick {
+  flex: 1; background: #0d2b5e; color: #fff;
+  border: none; border-radius: 5px; padding: 6px 4px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.pp-btn-pick:hover { background: #1e3a6e; }
+.pp-btn-mgr {
+  background: #f0f4ff; color: #0d2b5e;
+  border: 1px solid #b3c3e0; border-radius: 5px;
+  padding: 6px 10px; font-size: 11px; cursor: pointer;
+}
+.pp-btn-mgr:hover { background: #dce8ff; }
+
+/* 구간 선택 모드 팝업 */
+.pick-step {
+  font-size: 12px; font-weight: 600; color: #1e3a6e;
+  background: #e8f0fe; border-radius: 5px;
+  padding: 7px 10px; margin-bottom: 8px;
+}
+.pick-range {
+  display: flex; gap: 14px; font-size: 12px; color: #374151;
+}
+.pick-range strong { color: #0d2b5e; }
+.pick-dot-s, .pick-dot-e {
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; margin-right: 4px; vertical-align: middle;
+}
+.pick-dot-s { background: #22c55e; }
+.pick-dot-e { background: #ef4444; }
+.pick-color-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; font-size: 12px;
+}
+.pick-color-row input[type=color] {
+  width: 36px; height: 28px; border: 1px solid #d1d5db;
+  border-radius: 4px; cursor: pointer; padding: 1px;
+}
+
+/* ── 색상 설정 모달 ── */
+.color-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.cm-panel {
+  background: #fff; border-radius: 12px;
+  width: 420px; max-width: 95vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.cm-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; background: #0d2b5e; color: #fff;
+  font-size: 13px; font-weight: 700;
+}
+.cm-close {
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.7); font-size: 16px;
+}
+.cm-close:hover { color: #fff; }
+.cm-body { padding: 16px 18px; max-height: 50vh; overflow-y: auto; }
+.cm-hint { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+.cm-empty { text-align: center; color: #9ca3af; font-size: 12px; padding: 16px 0; }
+.cm-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 8px; padding: 8px 10px;
+  background: #f9fafb; border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+.cm-row input[type=number] {
+  width: 70px; border: 1px solid #d1d5db; border-radius: 4px;
+  padding: 4px 6px; font-size: 12px; text-align: center;
+}
+.cm-sep, .cm-unit { font-size: 12px; color: #6b7280; flex-shrink: 0; }
+.cm-row input[type=color] {
+  width: 36px; height: 28px; border: 1px solid #d1d5db;
+  border-radius: 4px; cursor: pointer; padding: 1px;
+}
+.cm-del {
+  margin-left: auto; background: none; border: none;
+  color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 2px;
+}
+.cm-del:hover { color: #dc2626; }
+.cm-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-top: 1px solid #e5e7eb; background: #f9fafb;
+}
+.cm-btn-add {
+  background: #f0f4ff; color: #0d2b5e; border: 1px solid #b3c3e0;
+  border-radius: 5px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-weight: 600;
+}
+.cm-btn-add:hover { background: #dce8ff; }
+.cm-btn-cancel {
+  background: #f3f4f6; color: #374151; border: none;
+  border-radius: 5px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+}
+.cm-btn-save {
+  background: #0d2b5e; color: #fff; border: none;
+  border-radius: 5px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-weight: 600;
+}
+.cm-btn-save:hover { background: #1e3a6e; }

@@ -65,48 +65,7 @@ async function calcSiteProgressFromCache(siteName) {
 
 // ===== 대시보드 =====
 async function renderDashboard() {
-  let allPct = 0, allCount = 0, allDone = 0;
-  const today = new Date();
-  let delayTotal = 0;
-
-  for (const siteName of SITE_NAMES) {
-    const items = await loadSiteItems(siteName);
-    items.forEach(row => {
-      const pct = calcProgressFromRow(row);
-      allPct += pct;
-      allCount++;
-      if (pct === 100) allDone++;
-      if (row.due_date && new Date(row.due_date) < today && pct < 100) delayTotal++;
-    });
-  }
-
-  const total = allCount > 0 ? Math.round(allPct / allCount) : 0;
-  const circumference = 2 * Math.PI * 52;
-  const offset = circumference - (total / 100) * circumference;
-  document.getElementById('gauge-circle-path').style.strokeDashoffset = offset;
-  document.getElementById('gauge-pct').textContent = total + '%';
-  document.getElementById('gauge-sub').textContent = `${allDone} / ${allCount} 완료`;
-
-  for (const siteName of SITE_NAMES) {
-    const p = await calcSiteProgressFromCache(siteName);
-    const el = document.getElementById('site-card-' + siteName);
-    if (!el) continue;
-    el.querySelector('.pct').textContent = p.pct + '%';
-    el.querySelector('.progress-fill').style.width = p.pct + '%';
-    el.querySelector('.stat-done').textContent = '✓ ' + p.done + '건';
-    el.querySelector('.stat-delay').textContent = p.delay + '건';
-  }
-
-  // 알람 배너
-  const banner = document.getElementById('alert-banner');
-  if (delayTotal > 0) {
-    banner.style.display = 'flex';
-    banner.querySelector('span').textContent = `기간 초과 항목 ${delayTotal}건 — 즉시 확인 필요`;
-  } else {
-    banner.style.display = 'none';
-  }
-
-  await renderSmsLog();
+  initMap();
 }
 
 async function renderSmsLog() {

@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>배관 좌표 설정 도구</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      background: #16213e;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid #2d3748;
+      flex-shrink: 0;
+    }
+    .toolbar h1 { font-size: 15px; font-weight: 700; color: #90cdf4; white-space: nowrap; }
+    .toolbar span { font-size: 11px; color: #718096; }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── 지도 영역 ── */
+    .map-area {
+      flex: 1;
+      overflow: auto;
+      background: #0d0d1a;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 12px;
+    }
+    .map-wrapper { position: relative; display: inline-block; }
+    #map-img { display: block; cursor: crosshair; user-select: none; max-width: none; }
+    #map-svg {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .upload-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      gap: 10px;
+      color: #718096;
+      padding: 60px;
+      text-align: center;
+    }
+    .upload-hint p { font-size: 14px; line-height: 1.6; }
+    .upload-hint small { font-size: 11px; color: #4a5568; }
+    .upload-hint input[type=file] { cursor: pointer; }
+
+    /* ── 우측 패널 ── */
+    .panel {
+      width: 310px;
+      background: #16213e;
+      border-left: 1px solid #2d3748;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .ps { padding: 13px 14px; border-bottom: 1px solid #2d3748; }
+    .ps h3 {
+      font-size: 11px; font-weight: 700;
+      color: #90cdf4; text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 10px;
+    }
+    label { font-size: 11px; color: #a0aec0; display: block; margin-bottom: 3px; }
+
+    input[type=text], input[type=number], select {
+      width: 100%;
+      background: #1a2744; border: 1px solid #3a4a6b;
+      color: #e2e8f0; padding: 5px 8px;
+      border-radius: 4px; font-size: 12px;
+      margin-bottom: 7px;
+    }
+    input[type=text]:focus, input[type=number]:focus, select:focus {
+      outline: none; border-color: #63b3ed;
+    }
+
+    .color-row { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+    .color-row label { margin: 0; }
+    input[type=color] {
+      width: 34px; height: 28px;
+      border: 1px solid #3a4a6b; border-radius: 4px;
+      background: none; cursor: pointer; padding: 1px;
+    }
+    .color-row input[type=text] { flex: 1; margin: 0; }
+
+    button {
+      padding: 6px 11px; border: none;
+      border-radius: 4px; cursor: pointer;
+      font-size: 11px; font-weight: 600;
+    }
+    .btn-primary   { background: #2b6cb0; color: #fff; }
+    .btn-primary:hover { background: #2c5282; }
+    .btn-danger    { background: #c53030; color: #fff; }
+    .btn-danger:hover  { background: #9b2c2c; }
+    .btn-secondary { background: #2d3748; color: #e2e8f0; }
+    .btn-secondary:hover { background: #4a5568; }
+    .btn-success   { background: #276749; color: #fff; }
+    .btn-success:hover  { background: #22543d; }
+    .btn-row { display: flex; gap: 5px; flex-wrap: wrap; }
+
+    .seg-list { overflow-y: auto; flex: 1; padding: 8px; }
+    .seg-item {
+      background: #1a2744; border: 1px solid #3a4a6b;
+      border-radius: 6px; padding: 9px; margin-bottom: 7px;
+      font-size: 12px;
+    }
+    .seg-item-header {
+      display: flex; align-items: center;
+      gap: 7px; margin-bottom: 5px;
+    }
+    .seg-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .seg-name { font-weight: 600; flex: 1; }
+    .seg-detail { color: #a0aec0; font-size: 11px; }
+    .seg-pts { color: #68d391; font-size: 11px; margin-top: 3px; }
+    .del-btn {
+      background: none; border: none;
+      color: #fc8181; cursor: pointer;
+      font-size: 13px; padding: 0 2px;
+    }
+
+    .points-preview {
+      max-height: 72px; overflow-y: auto;
+      margin-top: 6px;
+    }
+    .pt-row {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: #a0aec0;
+      padding: 1px 3px;
+    }
+    .pt-row:hover { background: #2d3748; border-radius: 3px; }
+
+    .info-msg { font-size: 11px; color: #fbd38d; margin: 5px 0; }
+
+    .json-section {
+      padding: 10px 14px;
+      border-top: 1px solid #2d3748;
+      flex-shrink: 0;
+    }
+    .json-section h3 {
+      font-size: 11px; font-weight: 700;
+      color: #90cdf4; margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    #json-output {
+      width: 100%; height: 100px;
+      background: #0d1117; border: 1px solid #3a4a6b;
+      color: #68d391; font-family: monospace;
+      font-size: 10px; padding: 7px;
+      border-radius: 4px; resize: none;
+      margin-bottom: 7px;
+    }
+
+    .status-bar {
+      background: #0d1117; padding: 4px 14px;
+      font-size: 10px; color: #718096;
+      flex-shrink: 0; border-top: 1px solid #1a2744;
+    }
+
+    /* 편집 모드 */
+    .toolbar-btn {
+      padding: 5px 10px; border: 1px solid #3a4a6b;
+      border-radius: 4px; cursor: pointer;
+      font-size: 11px; font-weight: 600;
+      background: #1a2744; color: #e2e8f0;
+      white-space: nowrap;
+    }
+    .toolbar-btn:hover { background: #2d3748; }
+    .toolbar-btn.active { background: #276749; border-color: #48bb78; color: #fff; }
+    .mode-hint { font-size: 11px; color: #68d391; }
+
+    /* JSON 불러오기 모달 */
+    .load-modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    .load-panel {
+      background: #16213e; border: 1px solid #3a4a6b;
+      border-radius: 10px; width: 500px; max-width: 95vw;
+      padding: 20px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .load-panel h2 { font-size: 13px; color: #90cdf4; }
+    .load-panel p  { font-size: 11px; color: #718096; }
+    .load-panel textarea {
+      width: 100%; height: 200px;
+      background: #0d1117; border: 1px solid #3a4a6b;
+      color: #68d391; font-family: monospace; font-size: 11px;
+      padding: 8px; border-radius: 4px; resize: vertical;
+    }
+    .load-panel-footer { display: flex; justify-content: flex-end; gap: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>🗺️ 배관 좌표 설정 도구</h1>
+  <button class="toolbar-btn" onclick="document.getElementById('img-file-input').click()">🖼️ 이미지 교체</button>
+  <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="loadFile(this)">
+  <button class="toolbar-btn" onclick="showLoadModal()">📂 JSON 불러오기</button>
+  <button class="toolbar-btn" id="edit-mode-btn" onclick="toggleEditMode()">✏️ 편집 모드</button>
+  <button class="toolbar-btn" id="label-mode-btn" onclick="toggleLabelMode()">📍 레이블 모드</button>
+  <div style="display:flex;align-items:center;gap:4px;margin-left:8px">
+    <span style="font-size:11px;color:#718096">확대:</span>
+    <button class="toolbar-btn" onclick="setZoom(zoom - 0.1)">－</button>
+    <span id="zoom-label" style="font-size:11px;color:#e2e8f0;min-width:34px;text-align:center">100%</span>
+    <button class="toolbar-btn" onclick="setZoom(zoom + 0.1)">＋</button>
+    <button class="toolbar-btn" onclick="fitZoom()">전체</button>
+  </div>
+  <span class="mode-hint" id="mode-hint">추가 모드 — 이미지 클릭으로 점 추가</span>
+</div>
+
+<div class="main">
+
+  <!-- 지도 영역 -->
+  <div class="map-area" id="map-area">
+    <div class="upload-hint" id="upload-hint">
+      <p><strong>map.png</strong>를 프로젝트 폴더에 넣고<br>로컬 서버(<code>python3 -m http.server 8080</code>)로 실행하거나,<br>아래에서 파일을 직접 선택하세요.</p>
+      <input type="file" accept="image/*" onchange="loadFile(this)">
+      <small>PNG / JPG 권장. 가로 1920px 이상 권장.</small>
+    </div>
+    <div class="map-wrapper" id="map-wrapper" style="display:none">
+      <img id="map-img" draggable="false" alt="위성지도">
+      <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <!-- 레이블 텍스트 입력 팝업 -->
+    <div id="label-input-popup" style="display:none;position:fixed;z-index:500;
+      background:#16213e;border:1px solid #63b3ed;border-radius:8px;padding:12px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:200px">
+      <div style="font-size:11px;color:#90cdf4;margin-bottom:6px">레이블 텍스트</div>
+      <input id="label-text-input" type="text" placeholder="예: 혜화약국"
+        style="width:100%;margin-bottom:8px"
+        onkeydown="if(event.key==='Enter') confirmLabel(); if(event.key==='Escape') cancelLabel()">
+      <div style="display:flex;gap:6px;align-items:center">
+        <label style="font-size:11px;color:#a0aec0;margin:0">색상</label>
+        <input type="color" id="label-color-input" value="#fef3c7" style="width:30px;height:24px;padding:1px">
+        <div style="flex:1"></div>
+        <button class="btn-secondary" onclick="cancelLabel()">취소</button>
+        <button class="btn-primary" onclick="confirmLabel()">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 우측 패널 -->
+  <div class="panel">
+
+    <div class="ps">
+      <h3>현재 세그먼트</h3>
+
+      <label>세그먼트 이름</label>
+      <input type="text" id="seg-name" value="배관 1" placeholder="예: 115정거장 주배관">
+
+      <label>현장</label>
+      <select id="seg-site">
+        <option>115정거장</option>
+        <option>15환기구</option>
+        <option>16환기구</option>
+      </select>
+
+      <label>관경</label>
+      <input type="text" id="seg-diam" placeholder="예: 150A">
+
+      <label>노출길이 (m)</label>
+      <input type="number" id="seg-length" placeholder="예: 15" min="0" step="0.1">
+
+      <div class="color-row">
+        <label>색상</label>
+        <input type="color" id="seg-color" value="#facc15">
+        <input type="text" id="seg-color-hex" value="#facc15">
+      </div>
+
+      <div class="points-preview" id="pts-preview"></div>
+      <div class="info-msg" id="pts-msg">점 0개 — 이미지를 클릭하여 추가</div>
+
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn-secondary" onclick="undoPoint()">↩ 마지막 점 취소</button>
+        <button class="btn-primary" onclick="saveSegment()">✓ 세그먼트 저장</button>
+      </div>
+    </div>
+
+    <div class="ps" style="flex-shrink:0">
+      <h3 style="margin-bottom:6px">저장된 세그먼트 <span id="seg-count">0</span>개</h3>
+      <div class="btn-row">
+        <button class="btn-danger" onclick="clearAll()">🗑 전체 초기화</button>
+      </div>
+    </div>
+
+    <div class="seg-list" id="seg-list" style="max-height:220px">
+      <div style="text-align:center;color:#4a5568;padding:20px;font-size:12px">
+        세그먼트를 저장하면 여기에 나타납니다
+      </div>
+    </div>
+
+    <div class="ps" style="flex-shrink:0;border-top:2px solid #2d3748">
+      <h3 style="margin-bottom:6px">레이블 <span id="label-count">0</span>개</h3>
+    </div>
+    <div class="seg-list" id="label-list" style="max-height:160px">
+      <div style="text-align:center;color:#4a5568;padding:12px;font-size:12px">
+        📍 레이블 모드에서 클릭하여 추가
+      </div>
+    </div>
+
+    <div class="json-section">
+      <h3>JSON 출력</h3>
+      <textarea id="json-output" readonly placeholder="세그먼트를 저장하면 JSON이 생성됩니다..."></textarea>
+      <button class="btn-success" style="width:100%" onclick="copyJSON()">
+        📋 전체 복사 → mapConfig.js에 붙여넣기
+      </button>
+    </div>
+  </div>
+
+</div>
+<div class="status-bar" id="status">준비 완료 — map.png를 로드하거나 파일을 직접 선택하세요</div>
+
+<!-- JSON 불러오기 모달 -->
+<div class="load-modal" id="load-modal" style="display:none">
+  <div class="load-panel">
+    <h2>📂 기존 JSON 불러오기</h2>
+    <p>mapConfig.js의 PIPELINE_SEGMENTS 배열 내용 ([ … ])을 붙여넣으세요.<br>불러오면 기존 세그먼트가 모두 교체됩니다.</p>
+    <textarea id="load-json-input" placeholder='[&#10;  { "id": "p1", "name": "메인관", ... }&#10;]'></textarea>
+    <div class="load-panel-footer">
+      <button class="btn-secondary" onclick="closeLoadModal()">취소</button>
+      <button class="btn-primary"   onclick="applyLoadJSON()">불러오기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 상태 ─────────────────────────────────────────────────────
+let natW = 0, natH = 0;
+let currentPts = [];   // [[x,y], ...]  (natural pixel coords)
+let segments = [];     // 저장된 세그먼트 배열
+let editMode  = false; // 편집 모드 ON/OFF
+let dragging  = null;  // { segIdx, ptIdx } — 드래그 중인 점
+let zoom = 1;          // 현재 배율
+let labelMode = false; // 레이블 추가 모드
+let labels = [];       // { id, text, x, y, color }
+let _pendingLabel = null; // { x, y } — 클릭 후 텍스트 입력 대기 중
+
+function setZoom(z) {
+  zoom = Math.max(0.1, Math.min(3, parseFloat(z.toFixed(1))));
+  const img = document.getElementById('map-img');
+  if (!natW) return;
+  img.style.width  = (natW * zoom) + 'px';
+  img.style.height = (natH * zoom) + 'px';
+  document.getElementById('zoom-label').textContent = Math.round(zoom * 100) + '%';
+  redraw();
+}
+
+function fitZoom() {
+  const area = document.getElementById('map-area');
+  const panelW = 310 + 24; // panel width + padding
+  const availW = window.innerWidth - panelW - 24;
+  const availH = window.innerHeight - 60 - 24;
+  const z = Math.min(availW / natW, availH / natH);
+  setZoom(z);
+}
+
+// ── 이미지 로드 ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  syncColorInputs();
+  const img = document.getElementById('map-img');
+  img.onload  = onImgLoad;
+  img.onerror = () => { /* upload-hint already visible */ };
+  img.src = 'map.png';
+});
+
+function loadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const img = document.getElementById('map-img');
+  img.onload = onImgLoad;
+  img.src = URL.createObjectURL(file);
+}
+
+function onImgLoad() {
+  const img = document.getElementById('map-img');
+  natW = img.naturalWidth;
+  natH = img.naturalHeight;
+
+  const svg = document.getElementById('map-svg');
+  svg.setAttribute('viewBox', `0 0 ${natW} ${natH}`);
+
+  document.getElementById('upload-hint').style.display  = 'none';
+  document.getElementById('map-wrapper').style.display  = 'inline-block';
+
+  img.removeEventListener('click', onImgClick);
+  img.addEventListener('click', onImgClick);
+
+  fitZoom(); // 전체 이미지가 보이도록 자동 맞춤
+  setStatus(`이미지 로드 완료 — ${natW}×${natH}px | 클릭하여 배관 경로 점을 추가하세요`);
+}
+
+// ── 클릭 → 좌표 추가 ─────────────────────────────────────────
+function onImgClick(e) {
+  if (editMode) return;
+  const img = e.currentTarget;
+  const rect = img.getBoundingClientRect();
+  const x = Math.round((e.clientX - rect.left) / zoom);
+  const y = Math.round((e.clientY - rect.top)  / zoom);
+
+  if (labelMode) {
+    _pendingLabel = { x, y };
+    const popup = document.getElementById('label-input-popup');
+    popup.style.display = 'block';
+    popup.style.left = (e.clientX + 10) + 'px';
+    popup.style.top  = (e.clientY - 20) + 'px';
+    const inp = document.getElementById('label-text-input');
+    inp.value = '';
+    setTimeout(() => inp.focus(), 50);
+    return;
+  }
+
+  currentPts.push([x, y]);
+  redraw();
+  renderPtsPreview();
+  setStatus(`점 추가 (${x}, ${y}) — 총 ${currentPts.length}개`);
+}
+
+// ── 편집 모드 ─────────────────────────────────────────────────
+function toggleEditMode() {
+  editMode = !editMode;
+  if (editMode && labelMode) toggleLabelMode(); // 동시에 켜지지 않도록
+  const svg = document.getElementById('map-svg');
+  const btn = document.getElementById('edit-mode-btn');
+  const hint = document.getElementById('mode-hint');
+  svg.style.pointerEvents = editMode ? 'all' : 'none';
+  btn.classList.toggle('active', editMode);
+  if (editMode) {
+    hint.textContent = '편집 모드 — 점을 드래그하여 이동';
+    hint.style.color = '#f6ad55';
+  } else {
+    hint.textContent = '추가 모드 — 이미지 클릭으로 점 추가';
+    hint.style.color = '#68d391';
+  }
+  redraw();
+  setStatus(editMode
+    ? '✏️ 편집 모드: 흰 점을 드래그하여 좌표를 수정하세요'
+    : '추가 모드: 이미지를 클릭하여 점을 추가하세요');
+}
+
+function toggleLabelMode() {
+  labelMode = !labelMode;
+  if (labelMode && editMode) toggleEditMode();
+  const btn  = document.getElementById('label-mode-btn');
+  const hint = document.getElementById('mode-hint');
+  btn.classList.toggle('active', labelMode);
+  if (labelMode) {
+    hint.textContent = '📍 레이블 모드 — 클릭으로 가게 이름 추가';
+    hint.style.color = '#fc8181';
+  } else {
+    hint.textContent = '추가 모드 — 이미지 클릭으로 점 추가';
+    hint.style.color = '#68d391';
+  }
+  setStatus(labelMode ? '📍 레이블 모드: 이미지 위 원하는 위치를 클릭하세요' : '추가 모드로 전환');
+}
+
+function cancelLabel() {
+  _pendingLabel = null;
+  document.getElementById('label-input-popup').style.display = 'none';
+  document.getElementById('label-text-input').value = '';
+}
+
+function confirmLabel() {
+  const text = document.getElementById('label-text-input').value.trim();
+  if (!text || !_pendingLabel) { cancelLabel(); return; }
+  const color = document.getElementById('label-color-input').value;
+  labels.push({ id: 'lb' + Date.now(), text, x: _pendingLabel.x, y: _pendingLabel.y, color });
+  cancelLabel();
+  redraw();
+  renderLabelList();
+  updateJSON();
+  setStatus(`📍 레이블 "${text}" 추가 완료`);
+}
+
+function deleteLabel(id) {
+  labels = labels.filter(l => l.id !== id);
+  redraw();
+  renderLabelList();
+  updateJSON();
+}
+
+// 드래그 이벤트 (document 레벨)
+document.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  const img  = document.getElementById('map-img');
+  const rect = img.getBoundingClientRect();
+  const x = Math.round(Math.max(0, Math.min(natW, (e.clientX - rect.left) / zoom)));
+  const y = Math.round(Math.max(0, Math.min(natH, (e.clientY - rect.top)  / zoom)));
+  segments[dragging.segIdx].points[dragging.ptIdx] = [x, y];
+  redraw();
+  updateJSON();
+  setStatus(`드래그 중: (${x}, ${y}) — 마우스를 놓으면 확정`);
+});
+
+document.addEventListener('mouseup', () => {
+  if (dragging) {
+    const [x, y] = segments[dragging.segIdx].points[dragging.ptIdx];
+    setStatus(`✅ 점 이동 완료: (${x}, ${y})`);
+    dragging = null;
+  }
+});
+
+// ── JSON 불러오기 모달 ─────────────────────────────────────────
+function showLoadModal() {
+  document.getElementById('load-json-input').value = '';
+  document.getElementById('load-modal').style.display = 'flex';
+}
+
+function closeLoadModal() {
+  document.getElementById('load-modal').style.display = 'none';
+}
+
+function applyLoadJSON() {
+  const raw = document.getElementById('load-json-input').value.trim();
+  if (!raw) return;
+  try {
+    let segsData, labelsData = [];
+    // 객체 형태 { segments:[...], labels:[...] } 또는 배열 형태 [...] 모두 허용
+    if (raw.startsWith('[')) {
+      segsData = JSON.parse(raw);
+    } else {
+      const obj = JSON.parse(raw);
+      segsData   = obj.segments || obj;
+      labelsData = obj.labels   || [];
+    }
+    if (!Array.isArray(segsData)) throw new Error('segments가 배열이 아닙니다');
+    segments = segsData.map((s, i) => ({
+      id:      s.id      || `p${i + 1}`,
+      name:    s.name    || `배관 ${i + 1}`,
+      site:    s.site    || '115정거장',
+      관경:   s.관경    || '',
+      노출길이: s.노출길이 ?? 0,
+      color:   s.color   || '#facc15',
+      points:  s.points  || [],
+      매달기구간: s.매달기구간 || []
+    }));
+    labels = labelsData.map(l => ({
+      id: l.id || 'lb' + Date.now() + Math.random(),
+      text: l.text || '', x: l.x || 0, y: l.y || 0, color: l.color || '#fef3c7'
+    }));
+    closeLoadModal();
+    redraw();
+    renderSegList();
+    renderLabelList();
+    updateJSON();
+    setStatus(`✅ 세그먼트 ${segments.length}개, 레이블 ${labels.length}개 불러오기 완료`);
+  } catch (err) {
+    alert('JSON 파싱 오류: ' + err.message + '\n\n배열 형태 [ { ... }, ... ] 인지 확인하세요.');
+  }
+}
+
+// ── SVG 그리기 ────────────────────────────────────────────────
+function redraw() {
+  const svg = document.getElementById('map-svg');
+  svg.innerHTML = '';
+  const unitPx = natW / 1000;
+
+  // 저장된 세그먼트
+  segments.forEach((seg, si) => {
+    if (seg.points.length === 0) return;
+    if (seg.points.length >= 2) drawLine(svg, seg.points, seg.color, 3 * unitPx);
+    const mid = seg.points[Math.floor(seg.points.length / 2)];
+    drawLabel(svg, mid, seg.name, seg.color, 14 * unitPx);
+
+    if (editMode) {
+      // 편집 모드: 드래그 가능한 흰 점
+      seg.points.forEach((p, pi) => {
+        const r  = Math.max(5, natW / 200);
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        el.setAttribute('cx', p[0]); el.setAttribute('cy', p[1]); el.setAttribute('r', r);
+        el.setAttribute('fill', '#ffffff');
+        el.setAttribute('stroke', seg.color); el.setAttribute('stroke-width', r * 0.5);
+        el.style.cursor = 'grab';
+        el.style.pointerEvents = 'all';
+        el.addEventListener('mousedown', (e) => {
+          e.stopPropagation(); e.preventDefault();
+          dragging = { segIdx: si, ptIdx: pi };
+          el.style.cursor = 'grabbing';
+        });
+        el.addEventListener('mouseenter', () => { el.setAttribute('r', r * 1.5); });
+        el.addEventListener('mouseleave', () => { if (!dragging) el.setAttribute('r', r); });
+        svg.appendChild(el);
+
+        // 좌표 텍스트
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', p[0] + r * 1.4); txt.setAttribute('y', p[1] - r * 0.5);
+        txt.setAttribute('fill', '#e2e8f0'); txt.setAttribute('font-size', r * 1.2);
+        txt.setAttribute('paint-order', 'stroke');
+        txt.setAttribute('stroke', '#000'); txt.setAttribute('stroke-width', r * 0.4);
+        txt.textContent = `${pi + 1}: (${p[0]}, ${p[1]})`;
+        svg.appendChild(txt);
+      });
+    } else {
+      seg.points.forEach(p => drawDot(svg, p, seg.color, 4 * unitPx));
+    }
+  });
+
+  // 현재 작업 중인 세그먼트 (점선, 추가 모드에서만)
+  if (!editMode) {
+    const col = document.getElementById('seg-color').value;
+    if (currentPts.length >= 2) drawLine(svg, currentPts, col, 3 * unitPx, [8 * unitPx, 4 * unitPx]);
+    currentPts.forEach((p, i) => {
+      drawDot(svg, p, i === currentPts.length - 1 ? '#ffffff' : col, 5 * unitPx);
+    });
+  }
+
+  // 레이블 렌더링
+  const fontSize = Math.max(20, natW / 55);
+  const pad = fontSize * 0.55;
+  labels.forEach(lb => {
+    const tw = lb.text.length * fontSize * 0.62 + pad * 2;
+    const th = fontSize + pad * 2;
+    const rx = lb.x - tw / 2, ry = lb.y - th / 2;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', rx); rect.setAttribute('y', ry);
+    rect.setAttribute('width', tw); rect.setAttribute('height', th);
+    rect.setAttribute('rx', fontSize * 0.3);
+    rect.setAttribute('fill', lb.color || '#fef3c7');
+    rect.setAttribute('fill-opacity', '0.88');
+    rect.setAttribute('stroke', '#92400e');
+    rect.setAttribute('stroke-width', fontSize * 0.08);
+    svg.appendChild(rect);
+
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', lb.x); txt.setAttribute('y', lb.y + fontSize * 0.35);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('fill', '#1a1a2e');
+    txt.setAttribute('font-size', fontSize);
+    txt.setAttribute('font-weight', '700');
+    txt.textContent = lb.text;
+    svg.appendChild(txt);
+  });
+}
+
+function drawLine(svg, pts, color, w, dash) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  el.setAttribute('points', pts.map(p => p.join(',')).join(' '));
+  el.setAttribute('fill', 'none');
+  el.setAttribute('stroke', color);
+  el.setAttribute('stroke-width', w);
+  el.setAttribute('stroke-linecap', 'round');
+  el.setAttribute('stroke-linejoin', 'round');
+  if (dash) el.setAttribute('stroke-dasharray', dash.join(' '));
+  svg.appendChild(el);
+}
+
+function drawDot(svg, p, color, r) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  el.setAttribute('cx', p[0]); el.setAttribute('cy', p[1]); el.setAttribute('r', r);
+  el.setAttribute('fill', color);
+  el.setAttribute('stroke', '#000'); el.setAttribute('stroke-width', r * 0.4);
+  svg.appendChild(el);
+}
+
+function drawLabel(svg, p, text, color, size) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  el.setAttribute('x', p[0]); el.setAttribute('y', p[1] - size * 0.6);
+  el.setAttribute('fill', color);
+  el.setAttribute('font-size', size);
+  el.setAttribute('font-weight', 'bold');
+  el.setAttribute('text-anchor', 'middle');
+  el.setAttribute('paint-order', 'stroke');
+  el.setAttribute('stroke', '#000');
+  el.setAttribute('stroke-width', size * 0.3);
+  el.textContent = text;
+  svg.appendChild(el);
+}
+
+// ── 세그먼트 관리 ─────────────────────────────────────────────
+function saveSegment() {
+  if (currentPts.length < 2) {
+    alert('최소 2개 이상의 점을 찍어야 저장할 수 있습니다.');
+    return;
+  }
+  const name   = document.getElementById('seg-name').value.trim() || `배관 ${segments.length + 1}`;
+  const site   = document.getElementById('seg-site').value;
+  const diam   = document.getElementById('seg-diam').value.trim();
+  const length = parseFloat(document.getElementById('seg-length').value) || 0;
+  const color  = document.getElementById('seg-color').value;
+
+  segments.push({
+    id: 'p' + (segments.length + 1),
+    name, site,
+    관경: diam,
+    노출길이: length,
+    color,
+    points: [...currentPts],
+    매달기구간: []
+  });
+
+  currentPts = [];
+  const next = segments.length + 1;
+  document.getElementById('seg-name').value = `배관 ${next}`;
+
+  redraw();
+  renderPtsPreview();
+  renderSegList();
+  updateJSON();
+  setStatus(`"${name}" 세그먼트 저장 완료`);
+}
+
+function undoPoint() {
+  if (!currentPts.length) return;
+  currentPts.pop();
+  redraw();
+  renderPtsPreview();
+  setStatus(`점 취소 — 남은 점: ${currentPts.length}개`);
+}
+
+function deleteSegment(i) {
+  if (!confirm(`"${segments[i].name}" 세그먼트를 삭제할까요?`)) return;
+  segments.splice(i, 1);
+  renderSegList();
+  updateJSON();
+  redraw();
+}
+
+function clearAll() {
+  if (!segments.length && !currentPts.length) return;
+  if (!confirm('모든 세그먼트와 점을 초기화할까요?')) return;
+  segments = []; currentPts = [];
+  renderSegList(); updateJSON(); redraw(); renderPtsPreview();
+  setStatus('전체 초기화');
+}
+
+// ── UI 렌더링 ─────────────────────────────────────────────────
+function renderPtsPreview() {
+  const el  = document.getElementById('pts-preview');
+  const msg = document.getElementById('pts-msg');
+  const n   = currentPts.length;
+  msg.textContent = n === 0
+    ? '점 0개 — 이미지를 클릭하여 추가'
+    : n < 2
+      ? `점 ${n}개 — 1개 더 추가하면 저장 가능`
+      : `점 ${n}개 ✓ 저장 가능`;
+  el.innerHTML = currentPts.map((p, i) =>
+    `<div class="pt-row"><span>점 ${i + 1}</span><span>(${p[0]}, ${p[1]})</span></div>`
+  ).join('');
+}
+
+function renderSegList() {
+  const el = document.getElementById('seg-list');
+  document.getElementById('seg-count').textContent = segments.length;
+  if (!segments.length) {
+    el.innerHTML = '<div style="text-align:center;color:#4a5568;padding:20px;font-size:12px">세그먼트를 저장하면 여기에 나타납니다</div>';
+    return;
+  }
+  el.innerHTML = segments.map((seg, i) => `
+    <div class="seg-item">
+      <div class="seg-item-header">
+        <div class="seg-dot" style="background:${seg.color}"></div>
+        <span class="seg-name">${seg.name}</span>
+        <button class="del-btn" onclick="deleteSegment(${i})">✕</button>
+      </div>
+      <div class="seg-detail">${seg.site} · ${seg.관경 || '관경 미입력'} · ${seg.노출길이}m</div>
+      <div class="seg-pts">${seg.points.length}개 점 정의됨</div>
+    </div>
+  `).join('');
+}
+
+function renderLabelList() {
+  const el = document.getElementById('label-list');
+  document.getElementById('label-count').textContent = labels.length;
+  if (!labels.length) {
+    el.innerHTML = '<div style="text-align:center;color:#4a5568;padding:12px;font-size:12px">📍 레이블 모드에서 클릭하여 추가</div>';
+    return;
+  }
+  el.innerHTML = labels.map(lb => `
+    <div class="seg-item" style="display:flex;align-items:center;gap:7px;padding:7px 9px">
+      <div style="width:14px;height:14px;border-radius:3px;background:${lb.color};border:1px solid #555;flex-shrink:0"></div>
+      <span style="flex:1;font-size:12px">${lb.text}</span>
+      <span style="font-size:10px;color:#718096">(${lb.x},${lb.y})</span>
+      <button class="del-btn" onclick="deleteLabel('${lb.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateJSON() {
+  if (!segments.length && !labels.length) {
+    document.getElementById('json-output').value = '';
+    return;
+  }
+  const segsJson  = JSON.stringify(
+    segments.map(({ id, name, site, 관경, 노출길이, color, points, 매달기구간 }) =>
+      ({ id, name, site, 관경, 노출길이, color, points, 매달기구간 })),
+    null, 2);
+  const labelsJson = JSON.stringify(
+    labels.map(({ id, text, x, y, color }) => ({ id, text, x, y, color })),
+    null, 2);
+  document.getElementById('json-output').value =
+    `// ===== 배관 위치도 설정 =====\nconst PIPELINE_SEGMENTS = ${segsJson};\n\nconst MAP_LABELS = ${labelsJson};`;
+}
+
+async function copyJSON() {
+  const text = document.getElementById('json-output').value;
+  if (!text) { alert('저장된 세그먼트가 없습니다.'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    document.getElementById('json-output').select();
+    document.execCommand('copy');
+  }
+  setStatus('✅ 복사 완료! mapConfig.js 파일 전체를 이 내용으로 교체하세요.');
+}
+
+// ── 색상 입력 동기화 ──────────────────────────────────────────
+function syncColorInputs() {
+  const picker = document.getElementById('seg-color');
+  const text   = document.getElementById('seg-color-hex');
+  picker.addEventListener('input', () => { text.value = picker.value; redraw(); });
+  text.addEventListener('change', () => {
+    if (/^#[0-9a-f]{6}$/i.test(text.value)) { picker.value = text.value; redraw(); }
+  });
+}
+
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+</script>
+</body>
+</html>
