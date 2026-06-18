@@ -232,9 +232,10 @@ const REGULATIONS = [
 // ===== Supabase Storage (pipe-photos 버킷) =====
 const PIPE_PHOTO_BUCKET = 'pipe-photos';
 
-async function uploadPipePhoto(segId, file) {
-  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
-  const path = `${segId}/${Date.now()}.${ext}`;
+async function uploadPipePhoto(segId, file, subSegId) {
+  const ext    = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const folder = subSegId ? `${segId}/${subSegId}` : segId;
+  const path   = `${folder}/${Date.now()}.${ext}`;
   const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, file, {
     cacheControl: '3600', upsert: false
   });
@@ -247,16 +248,17 @@ function getPipePhotoUrl(path) {
   return data.publicUrl;
 }
 
-async function listPipePhotos(segId) {
-  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list(segId, {
+async function listPipePhotos(segId, subSegId) {
+  const folder = subSegId ? `${segId}/${subSegId}` : segId;
+  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list(folder, {
     sortBy: { column: 'name', order: 'desc' }
   });
   if (error || !data) return [];
   return data
     .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
     .map(f => ({
-      path: `${segId}/${f.name}`,
-      url: getPipePhotoUrl(`${segId}/${f.name}`)
+      path: `${folder}/${f.name}`,
+      url: getPipePhotoUrl(`${folder}/${f.name}`)
     }));
 }
 

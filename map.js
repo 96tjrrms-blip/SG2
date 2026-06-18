@@ -205,13 +205,36 @@ function _showPipePopup(seg, e) {
       </div>`;
   }
 
-  const repPhoto = _getRepPhoto(seg.id);
-  const photoHtml = `
-    <div class="pp-photo-area" onclick="openPhotoModal('${seg.id}')">
-      ${repPhoto
-        ? `<img src="${repPhoto.url}" class="pp-photo-img">`
-        : `<div class="pp-photo-placeholder">📷 사진 없음 — 탭하여 추가</div>`}
-    </div>`;
+  // 구간별 사진 or 배관 전체 사진
+  let photoHtml = '';
+  if (L > 0 && segs.length > 0) {
+    // 구간별 사진 목록
+    const subsegList = segs.map(s => {
+      const subId = s.id || (s.from + '_' + s.to);
+      const rep   = _getRepPhoto(seg.id, subId);
+      return `
+        <div class="pp-subseg-item" onclick="openPhotoModal('${seg.id}','${subId}')">
+          <div class="pp-subseg-header">
+            <span class="pp-subseg-dot" style="background:${s.color}"></span>
+            <span>${s.from}m ~ ${s.to}m</span>
+            <span class="pp-subseg-photo-hint">${rep ? '📷' : '📷 없음'}</span>
+          </div>
+          ${rep
+            ? `<img src="${rep.url}" class="pp-photo-img-sm">`
+            : `<div class="pp-photo-placeholder-sm">탭하여 사진 추가</div>`}
+        </div>`;
+    }).join('');
+    photoHtml = `<div class="pp-subseg-list">${subsegList}</div>`;
+  } else {
+    // 구간 미설정 시 배관 전체 사진
+    const rep = _getRepPhoto(seg.id, '_pipe');
+    photoHtml = `
+      <div class="pp-photo-area" onclick="openPhotoModal('${seg.id}','_pipe')">
+        ${rep
+          ? `<img src="${rep.url}" class="pp-photo-img">`
+          : `<div class="pp-photo-placeholder">📷 사진 없음 — 탭하여 추가</div>`}
+      </div>`;
+  }
 
   popup.innerHTML = `
     <div class="pp-header">
@@ -232,7 +255,7 @@ function _showPipePopup(seg, e) {
         <button class="pp-btn-pick" onclick="startSectionPick('${seg.id}')">🗺️ 구간 선택</button>
         <button class="pp-btn-mgr"  onclick="openColorModal('${seg.id}')">📋 목록 관리</button>
       </div>` : ''}
-      <button class="pp-btn-photo" onclick="openPhotoModal('${seg.id}')">📷 사진 첨부 / 관리</button>
+      <button class="pp-btn-photo" onclick="openPhotoModal('${seg.id}','_pipe')">📷 배관 전체 사진</button>
     </div>
   `;
 
@@ -284,7 +307,7 @@ function openColorModal(segId) {
       segsEl.innerHTML = '<div class="cm-empty">아래 버튼으로 구간을 추가하세요.</div>';
     } else {
       segsEl.innerHTML = cmSegs.map((s, i) => `
-        <div class="cm-row" data-index="${i}">
+        <div class="cm-row" data-index="${i}" data-ssid="${s.id || ''}">
           <input type="number" class="cm-from" value="${s.from}"
             min="0" max="${seg.노출길이}" step="0.5" placeholder="시작(m)">
           <span class="cm-sep">~</span>
@@ -319,7 +342,7 @@ function openColorModal(segId) {
     const last = cmSegs[cmSegs.length - 1];
     const from = last ? last.to : 0;
     const to   = Math.min(from + 5, seg.노출길이);
-    cmSegs.push({ from, to, color: '#f59e0b' });
+    cmSegs.push({ id: _makeSubSegId(), from, to, color: '#f59e0b' });
     renderRows();
   });
 
@@ -330,7 +353,9 @@ function openColorModal(segId) {
       const to    = parseFloat(row.querySelector('.cm-to').value);
       const color = row.querySelector('.cm-color').value;
       if (!isNaN(from) && !isNaN(to) && to > from) {
-        newSegs.push({ from, to, color });
+        // 기존 ID 보존, 없으면 새로 생성
+        const existingId = row.dataset.ssid || _makeSubSegId();
+        newSegs.push({ id: existingId, from, to, color });
       }
     });
     _saveSegmentColors(segId, { 매달기구간: newSegs });
@@ -371,7 +396,7 @@ async function _syncSettingsFromSupabase() {
     const colorsAll = {}, photosAll = {};
     Object.values(rows).forEach(row => {
       if (row.colors)    colorsAll[row.seg_id] = row.colors;
-      if (row.rep_photo) photosAll[row.seg_id] = row.rep_photo;
+      if (row.rep_photo) photosAll[row.seg_id] = row.rep_photo; // { [subSegId]: {url,path} }
     });
     if (Object.keys(colorsAll).length)
       localStorage.setItem(PIPE_SETTINGS_KEY, JSON.stringify(colorsAll));
@@ -421,34 +446,53 @@ function _pxSubpath(points, t0, t1) {
 // ── 사진 관리 ─────────────────────────────────────────────────
 const PIPE_PHOTO_KEY = 'sg2_pipe_rep_photo';
 
-function _getRepPhoto(segId) {
-  try { return JSON.parse(localStorage.getItem(PIPE_PHOTO_KEY) || '{}')[segId] || null; }
-  catch { return null; }
+function _makeSubSegId() {
+  return 'ss' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 }
-function _setRepPhoto(segId, url, path) {
+
+// rep photo: { [segId]: { [subSegId]: {url, path} } }
+function _getRepPhoto(segId, subSegId) {
+  try {
+    return (JSON.parse(localStorage.getItem(PIPE_PHOTO_KEY) || '{}')[segId] || {})[subSegId] || null;
+  } catch { return null; }
+}
+function _setRepPhoto(segId, subSegId, url, path) {
   try {
     const all = JSON.parse(localStorage.getItem(PIPE_PHOTO_KEY) || '{}');
-    all[segId] = { url, path };
+    if (!all[segId]) all[segId] = {};
+    all[segId][subSegId] = { url, path };
     localStorage.setItem(PIPE_PHOTO_KEY, JSON.stringify(all));
   } catch {}
-  upsertPipeSettings(segId, { rep_photo: { url, path } }).catch(() => {});
-}
-function _clearRepPhoto(segId, path) {
+  // Supabase: rep_photo 전체 업데이트
   try {
     const all = JSON.parse(localStorage.getItem(PIPE_PHOTO_KEY) || '{}');
-    if (all[segId]?.path === path) delete all[segId];
+    upsertPipeSettings(segId, { rep_photo: all[segId] || {} }).catch(() => {});
+  } catch {}
+}
+function _clearRepPhoto(segId, subSegId, path) {
+  try {
+    const all = JSON.parse(localStorage.getItem(PIPE_PHOTO_KEY) || '{}');
+    if (all[segId]?.[subSegId]?.path === path) delete all[segId][subSegId];
     localStorage.setItem(PIPE_PHOTO_KEY, JSON.stringify(all));
+    upsertPipeSettings(segId, { rep_photo: all[segId] || {} }).catch(() => {});
   } catch {}
 }
 
-let _photoModalSegId = null;
+let _photoModalSegId  = null;
+let _photoModalSubId  = null;
 
-function openPhotoModal(segId) {
+function openPhotoModal(segId, subSegId) {
   _photoModalSegId = segId;
+  _photoModalSubId = subSegId || '_pipe';
   const seg = PIPELINE_SEGMENTS.find(s => s.id === segId);
-  document.getElementById('pm-title').textContent = (seg ? seg.name : '') + ' 사진';
+  const saved = _getSegmentColors(segId);
+  const segs  = saved.매달기구간 ?? [];
+  const sub   = segs.find(s => s.id === _photoModalSubId);
+  let title = seg ? seg.name : segId;
+  if (sub) title += ` (${sub.from}m~${sub.to}m)`;
+  document.getElementById('pm-title').textContent = title + ' 사진';
   document.getElementById('photo-modal').style.display = 'flex';
-  _renderPhotoGrid(segId);
+  _renderPhotoGrid(segId, _photoModalSubId);
 }
 
 function closePhotoModal() {
@@ -456,12 +500,12 @@ function closePhotoModal() {
   _photoModalSegId = null;
 }
 
-async function _renderPhotoGrid(segId) {
+async function _renderPhotoGrid(segId, subSegId) {
   const body = document.getElementById('pm-body');
   body.innerHTML = '<div class="pm-empty">불러오는 중...</div>';
   try {
-    const photos = await listPipePhotos(segId);
-    const rep = _getRepPhoto(segId);
+    const photos = await listPipePhotos(segId, subSegId);
+    const rep    = _getRepPhoto(segId, subSegId);
     if (!photos.length) {
       body.innerHTML = '<div class="pm-empty">📷 첨부된 사진이 없습니다<br><small>아래 버튼으로 추가하세요</small></div>';
       return;
@@ -469,69 +513,91 @@ async function _renderPhotoGrid(segId) {
     body.innerHTML = `<div class="pm-grid">${photos.map(p => {
       const isRep = rep && rep.path === p.path;
       const ep    = encodeURIComponent(p.path);
+      const ess   = encodeURIComponent(subSegId);
       return `
         <div class="pm-photo-item ${isRep ? 'pm-rep' : ''}">
-          <img src="${p.url}" onclick="setRepPhoto('${segId}','${p.url}','${ep}')">
+          <img src="${p.url}">
           <div class="pm-photo-actions">
             <button class="${isRep ? 'pm-btn-rep-active' : 'pm-btn-rep'}" title="대표사진"
-              onclick="setRepPhoto('${segId}','${p.url}','${ep}')">★</button>
+              onclick="setRepPhoto('${segId}','${ess}','${p.url}','${ep}')">★</button>
             <button class="pm-btn-del" title="삭제"
-              onclick="deletePhoto('${segId}','${ep}')">✕</button>
+              onclick="deletePhoto('${segId}','${ess}','${ep}')">✕</button>
           </div>
         </div>`;
     }).join('')}</div>`;
   } catch(e) {
-    body.innerHTML = `<div class="pm-empty" style="color:#ef4444">⚠️ ${e.message}<br><small>Supabase Storage 'pipe-photos' 버킷을 공개(Public)로 생성했는지 확인하세요</small></div>`;
+    body.innerHTML = `<div class="pm-empty" style="color:#ef4444">⚠️ ${e.message}<br><small>Supabase Storage 'pipe-photos' 버킷(Public)이 있는지 확인하세요</small></div>`;
   }
 }
 
-function setRepPhoto(segId, url, encodedPath) {
-  const path = decodeURIComponent(encodedPath);
-  _setRepPhoto(segId, url, path);
-  _renderPhotoGrid(segId);
-  // 팝업 썸네일도 즉시 교체
-  const area = document.querySelector('.pp-photo-area');
-  if (area) area.innerHTML = `<img src="${url}" class="pp-photo-img">`;
+function setRepPhoto(segId, encodedSubId, url, encodedPath) {
+  const subSegId = decodeURIComponent(encodedSubId);
+  const path     = decodeURIComponent(encodedPath);
+  _setRepPhoto(segId, subSegId, url, path);
+  _renderPhotoGrid(segId, subSegId);
+  // 팝업 썸네일 즉시 교체
+  _refreshPopupPhoto(segId, subSegId, url);
 }
 
-async function deletePhoto(segId, encodedPath) {
+async function deletePhoto(segId, encodedSubId, encodedPath) {
   if (!confirm('이 사진을 삭제할까요?')) return;
-  const path = decodeURIComponent(encodedPath);
+  const subSegId = decodeURIComponent(encodedSubId);
+  const path     = decodeURIComponent(encodedPath);
   try {
     await deletePipePhotoStorage(path);
-    _clearRepPhoto(segId, path);
-    _renderPhotoGrid(segId);
-    // 대표사진이 삭제된 경우 팝업 placeholder 복원
-    const rep = _getRepPhoto(segId);
-    if (!rep) {
-      const area = document.querySelector('.pp-photo-area');
-      if (area) area.innerHTML = `<div class="pp-photo-placeholder">📷 사진 없음 — 탭하여 추가</div>`;
-    }
+    _clearRepPhoto(segId, subSegId, path);
+    _renderPhotoGrid(segId, subSegId);
+    if (!_getRepPhoto(segId, subSegId)) _refreshPopupPhoto(segId, subSegId, null);
   } catch(e) { alert('삭제 오류: ' + e.message); }
 }
 
 async function handlePhotoUpload(input) {
-  const segId = _photoModalSegId;
+  const segId    = _photoModalSegId;
+  const subSegId = _photoModalSubId;
   if (!segId || !input.files.length) return;
   const body = document.getElementById('pm-body');
   body.innerHTML = '<div class="pm-empty">업로드 중...</div>';
   try {
-    const isFirst = !(await listPipePhotos(segId)).length;
+    const existing = await listPipePhotos(segId, subSegId);
     let firstUrl, firstPath;
     for (const file of input.files) {
-      const { path, url } = await uploadPipePhoto(segId, file);
-      if (isFirst && !firstUrl) { firstUrl = url; firstPath = path; }
+      const { path, url } = await uploadPipePhoto(segId, file, subSegId);
+      if (!existing.length && !firstUrl) { firstUrl = url; firstPath = path; }
     }
-    if (firstUrl && !_getRepPhoto(segId)) {
-      _setRepPhoto(segId, firstUrl, firstPath);
-      const area = document.querySelector('.pp-photo-area');
-      if (area) area.innerHTML = `<img src="${firstUrl}" class="pp-photo-img">`;
+    if (firstUrl && !_getRepPhoto(segId, subSegId)) {
+      _setRepPhoto(segId, subSegId, firstUrl, firstPath);
+      _refreshPopupPhoto(segId, subSegId, firstUrl);
     }
     input.value = '';
-    _renderPhotoGrid(segId);
+    _renderPhotoGrid(segId, subSegId);
   } catch(e) {
     alert('업로드 오류: ' + e.message);
-    _renderPhotoGrid(segId);
+    _renderPhotoGrid(segId, subSegId);
+  }
+}
+
+function _refreshPopupPhoto(segId, subSegId, url) {
+  if (subSegId === '_pipe') {
+    const area = document.querySelector('.pp-photo-area');
+    if (!area) return;
+    area.innerHTML = url
+      ? `<img src="${url}" class="pp-photo-img">`
+      : `<div class="pp-photo-placeholder">📷 사진 없음 — 탭하여 추가</div>`;
+  } else {
+    // 구간별 썸네일 업데이트
+    const items = document.querySelectorAll('.pp-subseg-item');
+    const saved = _getSegmentColors(segId);
+    const segs  = saved.매달기구간 ?? [];
+    items.forEach((el, i) => {
+      if (segs[i]?.id === subSegId) {
+        const prev = el.querySelector('.pp-photo-img-sm, .pp-photo-placeholder-sm');
+        if (prev) prev.outerHTML = url
+          ? `<img src="${url}" class="pp-photo-img-sm">`
+          : `<div class="pp-photo-placeholder-sm">탭하여 사진 추가</div>`;
+        const hint = el.querySelector('.pp-subseg-photo-hint');
+        if (hint) hint.textContent = url ? '📷' : '📷 없음';
+      }
+    });
   }
 }
 
@@ -637,7 +703,7 @@ function confirmSectionPick() {
   if (!_sectionPick || _sectionPick.step !== 'confirm') return;
   const { segId, fromM, toM, color } = _sectionPick;
   const saved = _getSegmentColors(segId);
-  const newSegs = [...(saved.매달기구간 || []), { from: fromM, to: toM, color }];
+  const newSegs = [...(saved.매달기구간 || []), { id: _makeSubSegId(), from: fromM, to: toM, color }];
   _saveSegmentColors(segId, { 매달기구간: newSegs });
   _sectionPick = null;
   renderAllPipes();

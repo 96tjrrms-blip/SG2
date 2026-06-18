@@ -253,6 +253,22 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
   border: 1.5px dashed #d1d5db; gap: 6px;
 }
 
+/* 구간별 사진 영역 */
+.pp-subseg-list { margin-top: 9px; padding-top: 9px; border-top: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 8px; }
+.pp-subseg-item { cursor: pointer; border: 1px solid #e5e7eb; border-radius: 7px; overflow: hidden; }
+.pp-subseg-item:hover { border-color: #93c5fd; }
+.pp-subseg-header {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; background: #f9fafb; font-size: 11px; font-weight: 600; color: #374151;
+}
+.pp-subseg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.pp-subseg-photo-hint { margin-left: auto; font-size: 11px; color: #9ca3af; }
+.pp-photo-img-sm { width: 100%; height: 70px; object-fit: cover; display: block; }
+.pp-photo-placeholder-sm {
+  height: 44px; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #9ca3af; background: #f9fafb;
+}
+
 /* 3버튼 footer */
 .pp-footer-col { display: flex; flex-direction: column; gap: 6px; }
 .pp-footer-row { display: flex; gap: 6px; }
