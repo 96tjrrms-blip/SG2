@@ -201,6 +201,9 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
   box-shadow: 0 6px 24px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.12);
   overflow: hidden;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
 }
 .pp-header {
   display: flex; align-items: center; gap: 8px;
@@ -215,7 +218,7 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
   color: #9ca3af; font-size: 14px; line-height: 1; padding: 0 2px;
 }
 .pp-close:hover { color: #374151; }
-.pp-body { padding: 10px 12px; }
+.pp-body { padding: 10px 12px; overflow-y: auto; flex: 1; }
 .pp-row {
   display: flex; justify-content: space-between;
   font-size: 12px; color: #374151; padding: 5px 0;
