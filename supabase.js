@@ -230,7 +230,7 @@ const REGULATIONS = [
 ];
 
 // ===== Supabase Storage (pipe-photos 버킷) =====
-const PIPE_PHOTO_BUCKET = 'pipe-photos';
+const PIPE_PHOTO_BUCKET = 'pipe-photo';
 
 async function uploadPipePhoto(segId, file, subSegId) {
   const ext    = file.name.split('.').pop().toLowerCase() || 'jpg';
