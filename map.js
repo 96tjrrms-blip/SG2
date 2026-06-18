@@ -31,6 +31,7 @@ function initMap() {
     _mapReady = true;
     renderAllPipes();
     _setupMapDocListener();
+    _syncSettingsFromSupabase(); // Supabase에서 최신 설정 로드
   };
 
   if (img.complete) {
@@ -347,7 +348,7 @@ function openColorModal(segId) {
   modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
 }
 
-// ── localStorage ──────────────────────────────────────────────
+// ── 설정 읽기/쓰기 (localStorage 캐시 + Supabase 동기화) ──────
 function _getSegmentColors(segId) {
   try {
     return JSON.parse(localStorage.getItem(PIPE_SETTINGS_KEY) || '{}')[segId] || {};
@@ -360,6 +361,26 @@ function _saveSegmentColors(segId, data) {
     all[segId] = data;
     localStorage.setItem(PIPE_SETTINGS_KEY, JSON.stringify(all));
   } catch {}
+  upsertPipeSettings(segId, { colors: data }).catch(() => {});
+}
+
+// 앱 시작 시 Supabase에서 설정 로드 → localStorage 덮어쓰기
+async function _syncSettingsFromSupabase() {
+  try {
+    const rows = await fetchAllPipeSettings();
+    const colorsAll = {}, photosAll = {};
+    Object.values(rows).forEach(row => {
+      if (row.colors)    colorsAll[row.seg_id] = row.colors;
+      if (row.rep_photo) photosAll[row.seg_id] = row.rep_photo;
+    });
+    if (Object.keys(colorsAll).length)
+      localStorage.setItem(PIPE_SETTINGS_KEY, JSON.stringify(colorsAll));
+    if (Object.keys(photosAll).length)
+      localStorage.setItem(PIPE_PHOTO_KEY, JSON.stringify(photosAll));
+    renderAllPipes();
+  } catch(e) {
+    console.warn('Supabase 동기화 실패, 로컬 캐시 사용:', e);
+  }
 }
 
 // ── 경로 보간 ─────────────────────────────────────────────────
@@ -410,6 +431,7 @@ function _setRepPhoto(segId, url, path) {
     all[segId] = { url, path };
     localStorage.setItem(PIPE_PHOTO_KEY, JSON.stringify(all));
   } catch {}
+  upsertPipeSettings(segId, { rep_photo: { url, path } }).catch(() => {});
 }
 function _clearRepPhoto(segId, path) {
   try {

@@ -265,6 +265,22 @@ async function deletePipePhotoStorage(path) {
   if (error) throw error;
 }
 
+// ── pipe_settings 테이블 (크로스디바이스 동기화) ──────────────
+async function fetchAllPipeSettings() {
+  const { data, error } = await sb.from('pipe_settings').select('*');
+  if (error || !data) return {};
+  const result = {};
+  data.forEach(row => { result[row.seg_id] = row; });
+  return result;
+}
+
+async function upsertPipeSettings(segId, patch) {
+  await sb.from('pipe_settings').upsert(
+    { seg_id: segId, ...patch, updated_at: new Date().toISOString() },
+    { onConflict: 'seg_id' }
+  );
+}
+
 // ===== DB API 함수 =====
 
 /** sites 테이블에서 { name → id } 맵 반환 */
