@@ -237,17 +237,19 @@ function _showPipePopup(seg, e) {
 
   popup.style.display = 'block';
 
-  // 위치 계산 (클릭 기준, 뷰포트 벗어나지 않도록)
-  let x = e.clientX - rect.left + 14;
-  let y = e.clientY - rect.top  - 14;
+  // position:fixed 기준 뷰포트 좌표로 계산
+  let x = e.clientX + 14;
+  let y = e.clientY - 14;
   popup.style.left = x + 'px';
   popup.style.top  = y + 'px';
 
   requestAnimationFrame(() => {
     const pw = popup.offsetWidth;
     const ph = popup.offsetHeight;
-    if (x + pw > rect.width  - 8) x = (e.clientX - rect.left) - pw - 14;
-    if (y + ph > rect.height - 8) y = rect.height - ph - 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (x + pw > vw - 8) x = e.clientX - pw - 14;
+    if (y + ph > vh - 8) y = vh - ph - 8;
     if (y < 8) y = 8;
     if (x < 8) x = 8;
     popup.style.left = x + 'px';

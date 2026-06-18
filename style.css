@@ -193,8 +193,8 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
 
 /* ── 팝업 ── */
 .pipe-popup {
-  position: absolute;
-  z-index: 200;
+  position: fixed;
+  z-index: 999;
   width: 230px;
   background: #fff;
   border-radius: 10px;
