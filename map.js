@@ -80,6 +80,21 @@ function renderAllPipes() {
   _drawPickMarkers(); // 구간 선택 마커 (pick mode 중에만 표시)
 }
 
+// 해당 파이프 위에 있는 밸브들의 fraction 목록 반환 (오름차순)
+function _valveFractionsOnPipe(seg) {
+  if (typeof VALVE_POSITIONS === 'undefined' || !VALVE_POSITIONS.length) return [];
+  const threshold = _mapNatW / 30; // 화면 너비의 1/30 픽셀 이내면 파이프 위로 판단
+  return VALVE_POSITIONS
+    .map(v => {
+      const t = _closestFractionOnPolyline(seg.points, v.x, v.y);
+      const [cx, cy] = _pointAtFraction(seg.points, t);
+      const dist = Math.hypot(cx - v.x, cy - v.y);
+      return dist < threshold ? t : null;
+    })
+    .filter(t => t !== null)
+    .sort((a, b) => a - b);
+}
+
 function _buildPipeGroup(seg) {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.setAttribute('class', 'pipe-group');
@@ -97,9 +112,20 @@ function _buildPipeGroup(seg) {
     line.dataset.baseWidth = lineW;
     g.appendChild(line);
   } else {
-    // 매달기구간 기반 분할 렌더링
-    const sorted = [...segs].sort((a, b) => a.from - b.from);
+    // 매달기구간 기반 분할 렌더링 (밸브 위치에서 클리핑)
     const L = seg.노출길이;
+    const valveTs = _valveFractionsOnPipe(seg); // 0~1 fraction
+
+    // 컬러 구간을 밸브 직전까지 클리핑
+    const clipped = segs.map(s => {
+      let toT = s.to / L;
+      for (const vt of valveTs) {
+        if (vt > s.from / L && vt < toT) toT = vt;
+      }
+      return { ...s, to: parseFloat((toT * L).toFixed(2)) };
+    }).filter(s => s.to > s.from);
+
+    const sorted = [...clipped].sort((a, b) => a.from - b.from);
     const full = [];
     let cur = 0;
     for (const s of sorted) {
@@ -673,10 +699,17 @@ function _renderExposedLabels() {
     const segs  = saved.매달기구간 ?? seg.매달기구간;
     if (!segs.length) return;
 
+    const valveTs = _valveFractionsOnPipe(seg);
     segs.forEach(s => {
-      const midFrac = ((s.from + s.to) / 2) / seg.노출길이;
+      const L = seg.노출길이;
+      let toClipped = s.to / L;
+      for (const vt of valveTs) {
+        if (vt > s.from / L && vt < toClipped) toClipped = vt;
+      }
+      const toM = parseFloat((toClipped * L).toFixed(1));
+      const midFrac = (s.from / L + toClipped) / 2;
       const [px, py] = _pointAtFraction(seg.points, midFrac);
-      const labelText = `노출중(${parseFloat((s.to - s.from).toFixed(1))}m)`;
+      const labelText = `노출중(${parseFloat((toM - s.from).toFixed(1))}m)`;
       const tw = labelText.length * fs * 0.68 + pad * 2;
       const th = fs + pad * 1.2;
 
