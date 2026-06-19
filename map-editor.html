@@ -365,8 +365,8 @@
 <div class="load-modal" id="load-modal" style="display:none">
   <div class="load-panel">
     <h2>📂 기존 JSON 불러오기</h2>
-    <p>mapConfig.js의 PIPELINE_SEGMENTS 배열 내용 ([ … ])을 붙여넣으세요.<br>불러오면 기존 세그먼트가 모두 교체됩니다.</p>
-    <textarea id="load-json-input" placeholder='[&#10;  { "id": "p1", "name": "메인관", ... }&#10;]'></textarea>
+    <p>mapConfig.js 파일 전체 내용을 붙여넣으세요.<br>불러오면 기존 세그먼트가 모두 교체됩니다.</p>
+    <textarea id="load-json-input" placeholder='mapConfig.js 파일 내용 전체를 여기에 붙여넣으세요...'></textarea>
     <div class="load-panel-footer">
       <button class="btn-secondary" onclick="closeLoadModal()">취소</button>
       <button class="btn-primary"   onclick="applyLoadJSON()">불러오기</button>
@@ -628,14 +628,29 @@ function applyLoadJSON() {
   if (!raw) return;
   try {
     let segsData, labelsData = [], valvesData = [];
-    // 배열 형태 [...] 또는 객체 형태 { segments:[...], labels:[...], valves:[...] } 모두 허용
     if (raw.startsWith('[')) {
+      // 배열 형태 [...]
       segsData = JSON.parse(raw);
-    } else {
+    } else if (raw.startsWith('{')) {
+      // 객체 형태 { segments:[...], ... }
       const obj = JSON.parse(raw);
-      segsData    = obj.segments || obj;
-      labelsData  = obj.labels  || [];
-      valvesData  = obj.valves  || [];
+      segsData   = obj.segments || obj;
+      labelsData = obj.labels   || [];
+      valvesData = obj.valves   || [];
+    } else {
+      // mapConfig.js 전체 붙여넣기 지원
+      const fn = new Function(`
+        ${raw}
+        return {
+          segs:   typeof PIPELINE_SEGMENTS !== 'undefined' ? PIPELINE_SEGMENTS : [],
+          labels: typeof MAP_LABELS        !== 'undefined' ? MAP_LABELS        : [],
+          valves: typeof VALVE_POSITIONS   !== 'undefined' ? VALVE_POSITIONS   : []
+        };
+      `);
+      const res = fn();
+      segsData   = res.segs;
+      labelsData = res.labels;
+      valvesData = res.valves;
     }
     if (!Array.isArray(segsData)) throw new Error('segments가 배열이 아닙니다');
     segments = segsData.map((s, i) => ({
