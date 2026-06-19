@@ -706,10 +706,9 @@ function _renderExposedLabels() {
       for (const vt of valveTs) {
         if (vt > s.from / L && vt < toClipped) toClipped = vt;
       }
-      const toM = parseFloat((toClipped * L).toFixed(1));
       const midFrac = (s.from / L + toClipped) / 2;
       const [px, py] = _pointAtFraction(seg.points, midFrac);
-      const labelText = `노출중(${parseFloat((toM - s.from).toFixed(1))}m)`;
+      const labelText = `노출중(${parseFloat((s.to - s.from).toFixed(1))}m)`;
       const tw = labelText.length * fs * 0.68 + pad * 2;
       const th = fs + pad * 1.2;
 
