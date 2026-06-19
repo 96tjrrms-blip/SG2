@@ -39,39 +39,39 @@ function renderBoringPoints() {
 
     // 바깥 원
     const outer = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    outer.setAttribute('r', 13);
+    outer.setAttribute('r', 8);
     outer.setAttribute('fill', fillColor);
     outer.setAttribute('stroke', strokeColor);
-    outer.setAttribute('stroke-width', 2);
+    outer.setAttribute('stroke-width', 1.5);
 
     // 안쪽 원
     const inner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    inner.setAttribute('r', 8);
+    inner.setAttribute('r', 5);
     inner.setAttribute('fill', 'none');
     inner.setAttribute('stroke', strokeColor);
-    inner.setAttribute('stroke-width', 1.5);
+    inner.setAttribute('stroke-width', 1);
 
     // H 심볼 (두 수직선 + 가로 연결)
     const symL = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    symL.setAttribute('x1', -4); symL.setAttribute('y1', -5);
-    symL.setAttribute('x2', -4); symL.setAttribute('y2',  5);
-    symL.setAttribute('stroke', strokeColor); symL.setAttribute('stroke-width', 1.5);
+    symL.setAttribute('x1', -2.5); symL.setAttribute('y1', -3);
+    symL.setAttribute('x2', -2.5); symL.setAttribute('y2',  3);
+    symL.setAttribute('stroke', strokeColor); symL.setAttribute('stroke-width', 1);
 
     const symR = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    symR.setAttribute('x1', 4); symR.setAttribute('y1', -5);
-    symR.setAttribute('x2', 4); symR.setAttribute('y2',  5);
-    symR.setAttribute('stroke', strokeColor); symR.setAttribute('stroke-width', 1.5);
+    symR.setAttribute('x1', 2.5); symR.setAttribute('y1', -3);
+    symR.setAttribute('x2', 2.5); symR.setAttribute('y2',  3);
+    symR.setAttribute('stroke', strokeColor); symR.setAttribute('stroke-width', 1);
 
     const symH = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    symH.setAttribute('x1', -4); symH.setAttribute('y1', 0);
-    symH.setAttribute('x2',  4); symH.setAttribute('y2', 0);
-    symH.setAttribute('stroke', strokeColor); symH.setAttribute('stroke-width', 1.5);
+    symH.setAttribute('x1', -2.5); symH.setAttribute('y1', 0);
+    symH.setAttribute('x2',  2.5); symH.setAttribute('y2', 0);
+    symH.setAttribute('stroke', strokeColor); symH.setAttribute('stroke-width', 1);
 
     // 라벨 (위쪽)
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('y', -17);
+    label.setAttribute('y', -11);
     label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-size', '10');
+    label.setAttribute('font-size', '7');
     label.setAttribute('font-weight', '700');
     label.setAttribute('fill', textColor);
     label.setAttribute('font-family', 'sans-serif');
