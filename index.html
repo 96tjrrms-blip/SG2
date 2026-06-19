@@ -44,13 +44,19 @@
     <div id="zone-toggle-bar" class="zone-controls" style="display:flex">
       <button id="zone-toggle-btn" class="zone-btn" onclick="toggleZoneVisible()">🚧 공사구역 표시</button>
       <button class="zone-btn zone-btn-edit" onclick="startZoneEdit()">✏️ 구역 편집</button>
+      <button class="zone-btn zone-btn-entrance" onclick="startEntranceEdit()">🚪 입구 편집</button>
     </div>
     <div id="zone-edit-bar" class="zone-controls zone-edit-mode" style="display:none">
-      <span class="zone-hint">📍 지도 클릭으로 꼭짓점 추가 (첫 점 → 자동 닫힘)</span>
+      <span class="zone-hint">📍 지도 클릭으로 꼭짓점 추가</span>
       <button class="zone-btn" onclick="undoZonePoint()">↩ 되돌리기</button>
       <button class="zone-btn" onclick="clearZonePoints()">🗑 전체 삭제</button>
       <button class="zone-btn zone-btn-save" onclick="saveZone()">✓ 저장</button>
       <button class="zone-btn zone-btn-cancel" onclick="cancelZoneEdit()">✕ 취소</button>
+    </div>
+    <div id="entrance-edit-bar" class="zone-controls zone-edit-mode" style="display:none;border-color:#86efac;background:#f0fdf4">
+      <span class="zone-hint" style="color:#166534">🚪 입구 위치 클릭 → 추가 / 마커 클릭 → 삭제</span>
+      <button class="zone-btn zone-btn-save" onclick="saveZone()">✓ 저장</button>
+      <button class="zone-btn zone-btn-cancel" onclick="cancelEntranceEdit()">✕ 취소</button>
     </div>
 
     <div class="card" style="padding:16px">
@@ -60,7 +66,7 @@
           style="position:absolute;top:0;left:0;width:100%;height:100%"></svg>
         <div id="pipe-popup" class="pipe-popup" style="display:none"></div>
         <!-- 공사구역 편집 클릭 오버레이 -->
-        <div id="zone-click-overlay" onclick="_onZoneOverlayClick(event)"
+        <div id="zone-click-overlay" onclick="_onZoneOverlayClick(event, this)"
           style="display:none;position:absolute;inset:0;z-index:20;cursor:crosshair"></div>
         <!-- 방향 표시 -->
         <div class="map-dir map-dir-left">

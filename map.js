@@ -7,8 +7,9 @@ let _activePipeId = null;
 let _sectionPick  = null; // { segId, step:'start'|'end'|'confirm', startM,startT, fromM,toM,fromT,toT, color }
 const PIPE_SETTINGS_KEY = 'sg2_pipe_settings';
 const ZONE_KEY = 'sg2_construction_zone';
-let _zoneEdit = false;
-let _zoneEditPts = [];
+let _zoneEdit     = false;
+let _zoneEditPts  = [];
+let _entranceEdit = false;
 
 // ── 초기화 ────────────────────────────────────────────────────
 function initMap() {
@@ -804,10 +805,11 @@ function cancelZoneEdit() {
 }
 function saveZone() {
   const d = _loadZoneData();
-  d.points  = _zoneEditPts;
+  if (_zoneEdit) d.points = _zoneEditPts;
   d.visible = true;
   _saveZoneData(d);
-  cancelZoneEdit();
+  if (_zoneEdit) cancelZoneEdit();
+  if (_entranceEdit) cancelEntranceEdit();
   _updateZoneBtn();
 }
 function clearZonePoints() {
@@ -824,7 +826,41 @@ function _onZoneOverlayClick(e) {
   const rect = img.getBoundingClientRect();
   const x = Math.round((e.clientX - rect.left) * (_mapNatW / img.clientWidth));
   const y = Math.round((e.clientY - rect.top)  * (_mapNatH / img.clientHeight));
-  _zoneEditPts.push([x, y]);
+
+  if (_entranceEdit) {
+    // 기존 마커 근처 클릭 → 삭제
+    const d = _loadZoneData();
+    const threshold = Math.max(20, _mapNatW / 80);
+    const idx = (d.entrances || []).findIndex(e => Math.hypot(e.x - x, e.y - y) < threshold);
+    if (idx >= 0) {
+      d.entrances.splice(idx, 1);
+    } else {
+      if (!d.entrances) d.entrances = [];
+      d.entrances.push({ x, y });
+    }
+    localStorage.setItem(ZONE_KEY, JSON.stringify(d));
+  } else {
+    _zoneEditPts.push([x, y]);
+  }
+  renderAllPipes();
+}
+
+function startEntranceEdit() {
+  _entranceEdit = true;
+  document.getElementById('zone-toggle-bar').style.display    = 'none';
+  document.getElementById('entrance-edit-bar').style.display  = 'flex';
+  document.getElementById('zone-click-overlay').style.display = 'block';
+  const d = _loadZoneData();
+  d.visible = true;
+  localStorage.setItem(ZONE_KEY, JSON.stringify(d));
+  _updateZoneBtn();
+  renderAllPipes();
+}
+function cancelEntranceEdit() {
+  _entranceEdit = false;
+  document.getElementById('zone-toggle-bar').style.display    = 'flex';
+  document.getElementById('entrance-edit-bar').style.display  = 'none';
+  document.getElementById('zone-click-overlay').style.display = 'none';
   renderAllPipes();
 }
 
@@ -892,6 +928,43 @@ function _renderConstructionZone() {
   lbl.setAttribute('stroke', '#fff'); lbl.setAttribute('stroke-width', fs * 0.3);
   lbl.textContent = '🚧 현재공사구역';
   svg.appendChild(lbl);
+
+  // 입구 마커 (깃발 스타일)
+  const entrances = d.entrances || [];
+  const er = Math.max(10, _mapNatW / 140);
+  const eColor = _entranceEdit ? '#16a34a' : '#22c55e';
+  entrances.forEach(en => {
+    // 깃대
+    const pole = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    pole.setAttribute('x1', en.x); pole.setAttribute('y1', en.y);
+    pole.setAttribute('x2', en.x); pole.setAttribute('y2', en.y - er * 3.5);
+    pole.setAttribute('stroke', eColor); pole.setAttribute('stroke-width', sw);
+    svg.appendChild(pole);
+    // 깃발 삼각형
+    const flag = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    flag.setAttribute('points',
+      `${en.x},${en.y - er * 3.5} ${en.x + er * 2},${en.y - er * 2.7} ${en.x},${en.y - er * 1.9}`);
+    flag.setAttribute('fill', eColor); flag.setAttribute('stroke', 'none');
+    svg.appendChild(flag);
+    // "입구" 텍스트
+    const et = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    et.setAttribute('x', en.x + er * 2.2); et.setAttribute('y', en.y - er * 2.5);
+    et.setAttribute('fill', eColor); et.setAttribute('font-size', er * 1.2);
+    et.setAttribute('font-weight', '800');
+    et.setAttribute('paint-order', 'stroke');
+    et.setAttribute('stroke', '#fff'); et.setAttribute('stroke-width', er * 0.4);
+    et.textContent = '입구';
+    svg.appendChild(et);
+    // 편집 중엔 삭제 안내 원
+    if (_entranceEdit) {
+      const hint = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      hint.setAttribute('cx', en.x); hint.setAttribute('cy', en.y);
+      hint.setAttribute('r', er * 0.8);
+      hint.setAttribute('fill', '#fff'); hint.setAttribute('fill-opacity', '0.5');
+      hint.setAttribute('stroke', eColor); hint.setAttribute('stroke-width', sw);
+      svg.appendChild(hint);
+    }
+  });
 }
 
 function _renderValves() {
