@@ -653,27 +653,37 @@ function _renderValves() {
   const svg = document.getElementById('map-svg');
   if (!svg) return;
   const r = Math.max(6, _mapNatW / 160);
-  VALVE_POSITIONS.forEach(v => {
-    const pts = `${v.x},${v.y - r} ${v.x + r},${v.y} ${v.x},${v.y + r} ${v.x - r},${v.y}`;
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    poly.setAttribute('points', pts);
-    poly.setAttribute('fill', '#ef4444');
-    poly.setAttribute('stroke', '#fff');
-    poly.setAttribute('stroke-width', r * 0.25);
-    svg.appendChild(poly);
-    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    lbl.setAttribute('x', v.x);
-    lbl.setAttribute('y', v.y + r * 2.2);
-    lbl.setAttribute('text-anchor', 'middle');
-    lbl.setAttribute('fill', '#ef4444');
-    lbl.setAttribute('font-size', r * 1.2);
-    lbl.setAttribute('font-weight', '700');
-    lbl.setAttribute('paint-order', 'stroke');
-    lbl.setAttribute('stroke', '#000');
-    lbl.setAttribute('stroke-width', r * 0.35);
-    lbl.textContent = v.name;
-    svg.appendChild(lbl);
-  });
+  VALVE_POSITIONS.forEach(v => _drawValveSymbol(svg, v.x, v.y, r, v.name));
+}
+
+function _drawValveSymbol(svg, x, y, r, name) {
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.entries(attrs).forEach(([k, val]) => el.setAttribute(k, val));
+    svg.appendChild(el);
+    return el;
+  };
+  // 왼쪽 삼각형
+  mk('polygon', { points: `${x-r},${y-r} ${x},${y} ${x-r},${y+r}`,
+    fill: '#ef4444', stroke: '#fff', 'stroke-width': r * 0.18, 'stroke-linejoin': 'round' });
+  // 오른쪽 삼각형
+  mk('polygon', { points: `${x+r},${y-r} ${x},${y} ${x+r},${y+r}`,
+    fill: '#ef4444', stroke: '#fff', 'stroke-width': r * 0.18, 'stroke-linejoin': 'round' });
+  // 가운데 수평선 (배관 연결)
+  mk('line', { x1: x - r, y1: y, x2: x + r, y2: y,
+    stroke: '#fff', 'stroke-width': r * 0.22 });
+  // 스템 (위 수직선)
+  mk('line', { x1: x, y1: y - r, x2: x, y2: y - r * 1.9,
+    stroke: '#ef4444', 'stroke-width': r * 0.28 });
+  // 핸드휠 (원)
+  mk('circle', { cx: x, cy: y - r * 2.3, r: r * 0.5,
+    fill: 'none', stroke: '#ef4444', 'stroke-width': r * 0.28 });
+  // 이름 레이블
+  const lbl = mk('text', { x, y: y + r * 2.2,
+    'text-anchor': 'middle', fill: '#ef4444',
+    'font-size': r * 1.1, 'font-weight': '700',
+    'paint-order': 'stroke', stroke: '#000', 'stroke-width': r * 0.35 });
+  lbl.textContent = name;
 }
 
 function _renderLabels() {
