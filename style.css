@@ -189,7 +189,7 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
 
 /* 방향 표시 배지 */
 .map-dir {
-  position: absolute; top: 50%; transform: translateY(-50%);
+  position: absolute; top: 14px;
   z-index: 10; display: flex; align-items: center; gap: 5px;
   background: rgba(15,15,30,0.72); backdrop-filter: blur(4px);
   color: #fff; border-radius: 8px; padding: 8px 10px;
