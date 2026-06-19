@@ -284,6 +284,8 @@ const PIPELINE_SEGMENTS = [
   }
 ];
 
+const VALVE_POSITIONS = [];
+
 const MAP_LABELS = [
   {
     "id": "lb1781822513237",

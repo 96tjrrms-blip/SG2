@@ -75,6 +75,7 @@ function renderAllPipes() {
 
   PIPELINE_SEGMENTS.forEach(seg => svg.appendChild(_buildPipeGroup(seg)));
   _renderLabels();
+  _renderValves();
   _drawPickMarkers(); // 구간 선택 마커 (pick mode 중에만 표시)
 }
 
@@ -645,6 +646,34 @@ function _closestFractionOnPolyline(points, px, py) {
     cum += segLens[i];
   }
   return bestT;
+}
+
+function _renderValves() {
+  if (typeof VALVE_POSITIONS === 'undefined' || !VALVE_POSITIONS.length) return;
+  const svg = document.getElementById('map-svg');
+  if (!svg) return;
+  const r = Math.max(6, _mapNatW / 160);
+  VALVE_POSITIONS.forEach(v => {
+    const pts = `${v.x},${v.y - r} ${v.x + r},${v.y} ${v.x},${v.y + r} ${v.x - r},${v.y}`;
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', pts);
+    poly.setAttribute('fill', '#ef4444');
+    poly.setAttribute('stroke', '#fff');
+    poly.setAttribute('stroke-width', r * 0.25);
+    svg.appendChild(poly);
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', v.x);
+    lbl.setAttribute('y', v.y + r * 2.2);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('fill', '#ef4444');
+    lbl.setAttribute('font-size', r * 1.2);
+    lbl.setAttribute('font-weight', '700');
+    lbl.setAttribute('paint-order', 'stroke');
+    lbl.setAttribute('stroke', '#000');
+    lbl.setAttribute('stroke-width', r * 0.35);
+    lbl.textContent = v.name;
+    svg.appendChild(lbl);
+  });
 }
 
 function _renderLabels() {

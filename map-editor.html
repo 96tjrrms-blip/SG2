@@ -219,6 +219,7 @@
   <button class="toolbar-btn" onclick="showLoadModal()">📂 JSON 불러오기</button>
   <button class="toolbar-btn" id="edit-mode-btn" onclick="toggleEditMode()">✏️ 편집 모드</button>
   <button class="toolbar-btn" id="label-mode-btn" onclick="toggleLabelMode()">📍 레이블 모드</button>
+  <button class="toolbar-btn" id="valve-mode-btn" onclick="toggleValveMode()">🔧 밸브 모드</button>
   <div style="display:flex;align-items:center;gap:4px;margin-left:8px">
     <span style="font-size:11px;color:#718096">확대:</span>
     <button class="toolbar-btn" onclick="setZoom(zoom - 0.1)">－</button>
@@ -242,6 +243,26 @@
       <img id="map-img" draggable="false" alt="위성지도">
       <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
+    <!-- 밸브 입력 팝업 -->
+    <div id="valve-input-popup" style="display:none;position:fixed;z-index:500;
+      background:#16213e;border:1px solid #fc8181;border-radius:8px;padding:12px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:200px">
+      <div style="font-size:11px;color:#fc8181;margin-bottom:6px">밸브 정보 입력</div>
+      <input id="valve-name-input" type="text" placeholder="예: V-1 차단밸브"
+        style="width:100%;margin-bottom:6px"
+        onkeydown="if(event.key==='Enter') confirmValve(); if(event.key==='Escape') cancelValve()">
+      <select id="valve-type-select" style="width:100%;margin-bottom:8px">
+        <option>개폐밸브</option>
+        <option>긴급차단밸브</option>
+        <option>정압기</option>
+        <option>기타</option>
+      </select>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn-secondary" onclick="cancelValve()">취소</button>
+        <button class="btn-danger" onclick="confirmValve()">추가</button>
+      </div>
+    </div>
+
     <!-- 레이블 텍스트 입력 팝업 -->
     <div id="label-input-popup" style="display:none;position:fixed;z-index:500;
       background:#16213e;border:1px solid #63b3ed;border-radius:8px;padding:12px;
@@ -311,9 +332,18 @@
     </div>
 
     <div class="ps" style="flex-shrink:0;border-top:2px solid #2d3748">
+      <h3 style="margin-bottom:6px">밸브 <span id="valve-count">0</span>개</h3>
+    </div>
+    <div class="seg-list" id="valve-list" style="max-height:120px">
+      <div style="text-align:center;color:#4a5568;padding:12px;font-size:12px">
+        🔧 밸브 모드에서 클릭하여 추가
+      </div>
+    </div>
+
+    <div class="ps" style="flex-shrink:0;border-top:2px solid #2d3748">
       <h3 style="margin-bottom:6px">레이블 <span id="label-count">0</span>개</h3>
     </div>
-    <div class="seg-list" id="label-list" style="max-height:160px">
+    <div class="seg-list" id="label-list" style="max-height:120px">
       <div style="text-align:center;color:#4a5568;padding:12px;font-size:12px">
         📍 레이블 모드에서 클릭하여 추가
       </div>
@@ -355,6 +385,9 @@ let zoom = 1;          // 현재 배율
 let labelMode = false; // 레이블 추가 모드
 let labels = [];       // { id, text, x, y, color }
 let _pendingLabel = null; // { x, y } — 클릭 후 텍스트 입력 대기 중
+let valveMode = false; // 밸브 추가 모드
+let valves = [];       // { id, name, type, x, y }
+let _pendingValve = null;
 
 function setZoom(z) {
   zoom = Math.max(0.1, Math.min(3, parseFloat(z.toFixed(1))));
@@ -418,6 +451,18 @@ function onImgClick(e) {
   const x = Math.round((e.clientX - rect.left) / zoom);
   const y = Math.round((e.clientY - rect.top)  / zoom);
 
+  if (valveMode) {
+    _pendingValve = { x, y };
+    const popup = document.getElementById('valve-input-popup');
+    popup.style.display = 'block';
+    popup.style.left = (e.clientX + 10) + 'px';
+    popup.style.top  = (e.clientY - 20) + 'px';
+    const inp = document.getElementById('valve-name-input');
+    inp.value = '';
+    setTimeout(() => inp.focus(), 50);
+    return;
+  }
+
   if (labelMode) {
     _pendingLabel = { x, y };
     const popup = document.getElementById('label-input-popup');
@@ -472,6 +517,54 @@ function toggleLabelMode() {
     hint.style.color = '#68d391';
   }
   setStatus(labelMode ? '📍 레이블 모드: 이미지 위 원하는 위치를 클릭하세요' : '추가 모드로 전환');
+}
+
+function toggleValveMode() {
+  valveMode = !valveMode;
+  if (valveMode && editMode) toggleEditMode();
+  if (valveMode && labelMode) toggleLabelMode();
+  const btn  = document.getElementById('valve-mode-btn');
+  const hint = document.getElementById('mode-hint');
+  btn.classList.toggle('active', valveMode);
+  if (valveMode) {
+    hint.textContent = '🔧 밸브 모드 — 클릭으로 밸브 위치 추가';
+    hint.style.color = '#fc8181';
+  } else {
+    hint.textContent = '추가 모드 — 이미지 클릭으로 점 추가';
+    hint.style.color = '#68d391';
+  }
+  setStatus(valveMode ? '🔧 밸브 모드: 밸브가 있는 위치를 클릭하세요' : '추가 모드로 전환');
+}
+
+function cancelValve() {
+  _pendingValve = null;
+  document.getElementById('valve-input-popup').style.display = 'none';
+  document.getElementById('valve-name-input').value = '';
+}
+
+function confirmValve() {
+  const name = document.getElementById('valve-name-input').value.trim();
+  const type = document.getElementById('valve-type-select').value;
+  if (!_pendingValve) { cancelValve(); return; }
+  valves.push({
+    id: 'v' + Date.now(),
+    name: name || type,
+    type,
+    x: _pendingValve.x,
+    y: _pendingValve.y
+  });
+  cancelValve();
+  redraw();
+  renderValveList();
+  updateJSON();
+  setStatus(`🔧 밸브 "${name || type}" 추가 완료`);
+}
+
+function deleteValve(id) {
+  valves = valves.filter(v => v.id !== id);
+  redraw();
+  renderValveList();
+  updateJSON();
 }
 
 function cancelLabel() {
@@ -558,12 +651,18 @@ function applyLoadJSON() {
       id: l.id || 'lb' + Date.now() + Math.random(),
       text: l.text || '', x: l.x || 0, y: l.y || 0, color: l.color || '#fef3c7'
     }));
+    const valvesData = obj.valves || [];
+    valves = valvesData.map(v => ({
+      id: v.id || 'v' + Date.now() + Math.random(),
+      name: v.name || '', type: v.type || '개폐밸브', x: v.x || 0, y: v.y || 0
+    }));
     closeLoadModal();
     redraw();
     renderSegList();
     renderLabelList();
+    renderValveList();
     updateJSON();
-    setStatus(`✅ 세그먼트 ${segments.length}개, 레이블 ${labels.length}개 불러오기 완료`);
+    setStatus(`✅ 세그먼트 ${segments.length}개, 레이블 ${labels.length}개, 밸브 ${valves.length}개 불러오기 완료`);
   } catch (err) {
     alert('JSON 파싱 오류: ' + err.message + '\n\n배열 형태 [ { ... }, ... ] 인지 확인하세요.');
   }
@@ -623,6 +722,30 @@ function redraw() {
       drawDot(svg, p, i === currentPts.length - 1 ? '#ffffff' : col, 5 * unitPx);
     });
   }
+
+  // 밸브 렌더링 (마름모 + 이름)
+  const vr = Math.max(8, natW / 130);
+  valves.forEach(v => {
+    const pts = `${v.x},${v.y - vr} ${v.x + vr},${v.y} ${v.x},${v.y + vr} ${v.x - vr},${v.y}`;
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', pts);
+    poly.setAttribute('fill', '#ef4444');
+    poly.setAttribute('stroke', '#fff');
+    poly.setAttribute('stroke-width', vr * 0.25);
+    svg.appendChild(poly);
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', v.x);
+    lbl.setAttribute('y', v.y + vr * 2);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('fill', '#ef4444');
+    lbl.setAttribute('font-size', vr * 1.1);
+    lbl.setAttribute('font-weight', '700');
+    lbl.setAttribute('paint-order', 'stroke');
+    lbl.setAttribute('stroke', '#000');
+    lbl.setAttribute('stroke-width', vr * 0.35);
+    lbl.textContent = v.name;
+    svg.appendChild(lbl);
+  });
 
   // 레이블 렌더링
   const fontSize = Math.max(20, natW / 55);
@@ -778,6 +901,23 @@ function renderSegList() {
   `).join('');
 }
 
+function renderValveList() {
+  const el = document.getElementById('valve-list');
+  document.getElementById('valve-count').textContent = valves.length;
+  if (!valves.length) {
+    el.innerHTML = '<div style="text-align:center;color:#4a5568;padding:12px;font-size:12px">🔧 밸브 모드에서 클릭하여 추가</div>';
+    return;
+  }
+  el.innerHTML = valves.map(v => `
+    <div class="seg-item" style="display:flex;align-items:center;gap:7px;padding:7px 9px">
+      <span style="font-size:14px">🔧</span>
+      <span style="flex:1;font-size:12px">${v.name}<br><span style="color:#718096;font-size:10px">${v.type}</span></span>
+      <span style="font-size:10px;color:#718096">(${v.x},${v.y})</span>
+      <button class="del-btn" onclick="deleteValve('${v.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
 function renderLabelList() {
   const el = document.getElementById('label-list');
   document.getElementById('label-count').textContent = labels.length;
@@ -807,8 +947,11 @@ function updateJSON() {
   const labelsJson = JSON.stringify(
     labels.map(({ id, text, x, y, color }) => ({ id, text, x, y, color })),
     null, 2);
+  const valvesJson = JSON.stringify(
+    valves.map(({ id, name, type, x, y }) => ({ id, name, type, x, y })),
+    null, 2);
   document.getElementById('json-output').value =
-    `// ===== 배관 위치도 설정 =====\nconst PIPELINE_SEGMENTS = ${segsJson};\n\nconst MAP_LABELS = ${labelsJson};`;
+    `// ===== 배관 위치도 설정 =====\nconst PIPELINE_SEGMENTS = ${segsJson};\n\nconst MAP_LABELS = ${labelsJson};\n\nconst VALVE_POSITIONS = ${valvesJson};`;
 }
 
 async function copyJSON() {
