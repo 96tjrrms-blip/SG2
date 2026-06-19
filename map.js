@@ -84,7 +84,7 @@ function _buildPipeGroup(seg) {
   g.setAttribute('data-pipe-id', seg.id);
   g.style.cursor = 'pointer';
 
-  const lineW = Math.max(2, _mapNatW / 350);
+  const lineW = Math.max(3, _mapNatW / 200);
   const hitW  = lineW * 7;
 
   const saved = _getSegmentColors(seg.id);
