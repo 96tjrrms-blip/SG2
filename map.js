@@ -667,13 +667,24 @@ function _renderExposedLabels() {
       const [px, py] = _pointAtFraction(seg.points, midFrac);
       const tw = '노출중'.length * fs * 0.68 + pad * 2;
       const th = fs + pad * 1.2;
-      const bx = px - tw / 2;
+
+      // 근처 밸브 확인 → 겹치면 배지 수평 이동
+      let offsetX = 0;
+      if (typeof VALVE_POSITIONS !== 'undefined') {
+        VALVE_POSITIONS.forEach(v => {
+          if (Math.abs(v.x - px) < tw * 1.8 && Math.abs(v.y - py) < fs * 8) {
+            offsetX = v.x <= px ? tw * 0.9 : -tw * 0.9;
+          }
+        });
+      }
+      const cx = px + offsetX; // 배지 중심 x
+      const bx = cx - tw / 2;
       const by = py - th - arr - fs * 0.6;
 
-      // 아래 화살표
+      // 아래 화살표 (배관 위 실제 지점을 가리킴)
       const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       tri.setAttribute('points',
-        `${px},${by + th + arr} ${px - arr * 0.55},${by + th} ${px + arr * 0.55},${by + th}`);
+        `${cx},${by + th + arr} ${cx - arr * 0.55},${by + th} ${cx + arr * 0.55},${by + th}`);
       tri.setAttribute('fill', s.color);
       svg.appendChild(tri);
 
@@ -688,7 +699,7 @@ function _renderExposedLabels() {
 
       // 텍스트
       const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      txt.setAttribute('x', px); txt.setAttribute('y', by + th * 0.73);
+      txt.setAttribute('x', cx); txt.setAttribute('y', by + th * 0.73);
       txt.setAttribute('text-anchor', 'middle');
       txt.setAttribute('fill', '#1a1a1a');
       txt.setAttribute('font-size', fs);
