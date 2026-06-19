@@ -187,6 +187,23 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
 }
 .map-container img { display: block; }
 
+/* 공사구역 컨트롤 */
+.zone-controls {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; flex-wrap: wrap;
+}
+.zone-btn {
+  padding: 6px 13px; border: none; border-radius: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  background: #e5e7eb; color: #374151; white-space: nowrap;
+}
+.zone-btn:hover { background: #d1d5db; }
+.zone-btn-edit   { background: #dbeafe; color: #1d4ed8; }
+.zone-btn-save   { background: #dcfce7; color: #166534; }
+.zone-btn-cancel { background: #fee2e2; color: #991b1b; }
+.zone-edit-mode  { background: #fef3c7; padding: 8px 12px; border-radius: 8px; border: 1px solid #fcd34d; }
+.zone-hint { font-size: 12px; color: #92400e; font-weight: 600; flex: 1; }
+
 /* 방향 표시 배지 */
 .map-dir {
   position: absolute; top: 35%;

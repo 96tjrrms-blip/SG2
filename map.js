@@ -6,6 +6,9 @@ let _mapNatH     = 0;
 let _activePipeId = null;
 let _sectionPick  = null; // { segId, step:'start'|'end'|'confirm', startM,startT, fromM,toM,fromT,toT, color }
 const PIPE_SETTINGS_KEY = 'sg2_pipe_settings';
+const ZONE_KEY = 'sg2_construction_zone';
+let _zoneEdit = false;
+let _zoneEditPts = [];
 
 // ── 초기화 ────────────────────────────────────────────────────
 function initMap() {
@@ -31,7 +34,8 @@ function initMap() {
     _mapReady = true;
     renderAllPipes();
     _setupMapDocListener();
-    _syncSettingsFromSupabase(); // Supabase에서 최신 설정 로드
+    _syncSettingsFromSupabase();
+    _updateZoneBtn(); // Supabase에서 최신 설정 로드
   };
 
   if (img.complete) {
@@ -74,6 +78,7 @@ function renderAllPipes() {
   svg.appendChild(defs);
 
   PIPELINE_SEGMENTS.forEach(seg => svg.appendChild(_buildPipeGroup(seg)));
+  _renderConstructionZone();
   _renderLabels();
   _renderValves();
   _renderExposedLabels();
@@ -426,6 +431,9 @@ async function _syncSettingsFromSupabase() {
       if (row.colors)    colorsAll[row.seg_id] = row.colors;
       if (row.rep_photo) photosAll[row.seg_id] = row.rep_photo; // { [subSegId]: {url,path} }
     });
+    if (rows['_zone']?.colors)
+      localStorage.setItem(ZONE_KEY, JSON.stringify(rows['_zone'].colors));
+    delete colorsAll['_zone'];
     if (Object.keys(colorsAll).length)
       localStorage.setItem(PIPE_SETTINGS_KEY, JSON.stringify(colorsAll));
     if (Object.keys(photosAll).length)
@@ -752,6 +760,138 @@ function _renderExposedLabels() {
       svg.appendChild(txt);
     });
   });
+}
+
+// ── 공사구역 ──────────────────────────────────────────────────
+function _loadZoneData() {
+  try { return JSON.parse(localStorage.getItem(ZONE_KEY) || '{"points":[],"visible":false}'); }
+  catch { return { points: [], visible: false }; }
+}
+function _saveZoneData(data) {
+  localStorage.setItem(ZONE_KEY, JSON.stringify(data));
+  upsertPipeSettings('_zone', { colors: data }).catch(() => {});
+}
+
+function toggleZoneVisible() {
+  const d = _loadZoneData();
+  d.visible = !d.visible;
+  _saveZoneData(d);
+  renderAllPipes();
+  _updateZoneBtn();
+}
+function _updateZoneBtn() {
+  const d = _loadZoneData();
+  const btn = document.getElementById('zone-toggle-btn');
+  if (btn) btn.textContent = d.visible ? '🚧 공사구역 숨기기' : '🚧 공사구역 표시';
+}
+
+function startZoneEdit() {
+  const d = _loadZoneData();
+  _zoneEditPts = [...d.points];
+  _zoneEdit = true;
+  document.getElementById('zone-toggle-bar').style.display = 'none';
+  document.getElementById('zone-edit-bar').style.display  = 'flex';
+  document.getElementById('zone-click-overlay').style.display = 'block';
+  renderAllPipes();
+}
+function cancelZoneEdit() {
+  _zoneEdit = false;
+  _zoneEditPts = [];
+  document.getElementById('zone-toggle-bar').style.display = 'flex';
+  document.getElementById('zone-edit-bar').style.display  = 'none';
+  document.getElementById('zone-click-overlay').style.display = 'none';
+  renderAllPipes();
+}
+function saveZone() {
+  const d = _loadZoneData();
+  d.points  = _zoneEditPts;
+  d.visible = true;
+  _saveZoneData(d);
+  cancelZoneEdit();
+  _updateZoneBtn();
+}
+function clearZonePoints() {
+  _zoneEditPts = [];
+  renderAllPipes();
+}
+function undoZonePoint() {
+  _zoneEditPts.pop();
+  renderAllPipes();
+}
+
+function _onZoneOverlayClick(e) {
+  const img  = document.getElementById('map-img');
+  const rect = img.getBoundingClientRect();
+  const x = Math.round((e.clientX - rect.left) * (_mapNatW / img.clientWidth));
+  const y = Math.round((e.clientY - rect.top)  * (_mapNatH / img.clientHeight));
+  _zoneEditPts.push([x, y]);
+  renderAllPipes();
+}
+
+function _renderConstructionZone() {
+  const svg = document.getElementById('map-svg');
+  if (!svg) return;
+  const sw = Math.max(3, _mapNatW / 350);
+
+  if (_zoneEdit) {
+    const pts = _zoneEditPts;
+    // 편집 중 폴리곤 (점선)
+    if (pts.length >= 2) {
+      const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      poly.setAttribute('points', [...pts, pts[0]].map(p => p.join(',')).join(' '));
+      poly.setAttribute('fill', 'rgba(251,146,60,0.12)');
+      poly.setAttribute('stroke', '#f97316');
+      poly.setAttribute('stroke-width', sw);
+      poly.setAttribute('stroke-dasharray', `${_mapNatW / 80} ${_mapNatW / 120}`);
+      poly.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(poly);
+    }
+    // 꼭짓점 원
+    const r = Math.max(8, _mapNatW / 180);
+    pts.forEach((p, i) => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', r);
+      c.setAttribute('fill', i === 0 ? '#f97316' : '#fff');
+      c.setAttribute('stroke', '#f97316'); c.setAttribute('stroke-width', sw);
+      svg.appendChild(c);
+      const n = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      n.setAttribute('x', p[0]); n.setAttribute('y', p[1] - r * 1.4);
+      n.setAttribute('text-anchor', 'middle');
+      n.setAttribute('fill', '#f97316'); n.setAttribute('font-size', r * 1.3);
+      n.setAttribute('font-weight', '700');
+      n.setAttribute('paint-order', 'stroke');
+      n.setAttribute('stroke', '#000'); n.setAttribute('stroke-width', r * 0.3);
+      n.textContent = i + 1;
+      svg.appendChild(n);
+    });
+    return;
+  }
+
+  const d = _loadZoneData();
+  if (!d.visible || d.points.length < 3) return;
+
+  const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  poly.setAttribute('points', d.points.map(p => p.join(',')).join(' '));
+  poly.setAttribute('fill', 'rgba(251,146,60,0.18)');
+  poly.setAttribute('stroke', '#f97316');
+  poly.setAttribute('stroke-width', sw * 1.5);
+  poly.setAttribute('stroke-dasharray', `${_mapNatW / 80} ${_mapNatW / 120}`);
+  poly.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(poly);
+
+  // 중앙 라벨
+  const cx = d.points.reduce((s, p) => s + p[0], 0) / d.points.length;
+  const cy = d.points.reduce((s, p) => s + p[1], 0) / d.points.length;
+  const fs = Math.max(18, _mapNatW / 100);
+  const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  lbl.setAttribute('x', cx); lbl.setAttribute('y', cy + fs * 0.35);
+  lbl.setAttribute('text-anchor', 'middle');
+  lbl.setAttribute('fill', '#ea580c'); lbl.setAttribute('font-size', fs);
+  lbl.setAttribute('font-weight', '800');
+  lbl.setAttribute('paint-order', 'stroke');
+  lbl.setAttribute('stroke', '#fff'); lbl.setAttribute('stroke-width', fs * 0.3);
+  lbl.textContent = '🚧 현재공사구역';
+  svg.appendChild(lbl);
 }
 
 function _renderValves() {
