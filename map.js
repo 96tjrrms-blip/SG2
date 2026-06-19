@@ -652,7 +652,7 @@ function _closestFractionOnPolyline(points, px, py) {
 function _renderExposedLabels() {
   const svg = document.getElementById('map-svg');
   if (!svg) return;
-  const fs  = Math.max(10, _mapNatW / 180);
+  const fs  = Math.max(14, _mapNatW / 90);
   const pad = fs * 0.5;
   const arr = fs * 0.9;
 
