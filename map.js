@@ -36,7 +36,8 @@ function initMap() {
     renderAllPipes();
     _setupMapDocListener();
     _syncSettingsFromSupabase();
-    _updateZoneBtn(); // Supabase에서 최신 설정 로드
+    _updateZoneBtn();
+    if (typeof _updateBoringBtn === 'function') _updateBoringBtn();
   };
 
   if (img.complete) {
@@ -1193,4 +1194,6 @@ function _drawPickMarkers() {
     const defs = svg.querySelector('defs');
     svg.insertBefore(prevLine, defs ? defs.nextSibling : svg.firstChild);
   }
+
+  if (typeof renderBoringPoints === 'function') renderBoringPoints();
 }

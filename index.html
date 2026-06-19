@@ -48,6 +48,7 @@
       <div id="onoff-group" class="ctrl-group-items" style="display:none">
         <button id="zone-toggle-btn" class="zone-btn" onclick="toggleZoneVisible()">🚧 공사구역 표시</button>
         <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
+        <button id="boring-toggle-btn" class="zone-btn" onclick="toggleBoringVisible()">⊕ 천공위치 표시</button>
       </div>
       <button class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
         <span id="edit-arrow">▸</span> 편집
@@ -270,6 +271,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script src="mapConfig.js"></script>
+<script src="boring-data.js"></script>
+<script src="boring.js"></script>
 <script src="map.js"></script>
 <script src="app.js"></script>
 </body>
