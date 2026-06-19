@@ -193,7 +193,7 @@ function _showPipePopup(seg, e) {
       cur = s.to;
     }
     if (cur < L) barParts.push({ from: cur, to: L, color: '#374151' });
-    const done = segs.reduce((acc, s) => acc + (s.to - s.from), 0);
+    const done = parseFloat(segs.reduce((acc, s) => acc + (s.to - s.from), 0).toFixed(1));
     const pct  = Math.round(done / L * 100);
     madalkiHtml = `
       <div class="pp-madalki">
