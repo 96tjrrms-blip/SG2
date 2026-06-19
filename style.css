@@ -186,6 +186,21 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
   line-height: 0;
 }
 .map-container img { display: block; }
+
+/* 방향 표시 배지 */
+.map-dir {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 10; display: flex; align-items: center; gap: 5px;
+  background: rgba(15,15,30,0.72); backdrop-filter: blur(4px);
+  color: #fff; border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; font-weight: 700; pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  white-space: nowrap;
+}
+.map-dir-left  { left: 8px; flex-direction: column; text-align: center; }
+.map-dir-right { right: 8px; flex-direction: column; text-align: center; }
+.map-dir-arrow { font-size: 18px; line-height: 1; color: #facc15; }
+.map-dir-label { font-size: 11px; color: #e2e8f0; letter-spacing: -0.02em; }
 .map-no-image {
   text-align: center; color: #9ca3af;
   padding: 28px; font-size: 13px;
