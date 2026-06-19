@@ -16,7 +16,7 @@ function renderBoringPoints() {
   svg.querySelectorAll('.boring-marker').forEach(el => el.remove());
 
   const visible = localStorage.getItem('boring_visible') !== 'false';
-  if (!visible || !window.BORING_POINTS) return;
+  if (!visible || typeof BORING_POINTS === 'undefined' || !BORING_POINTS.length) return;
 
   const done = _boringDoneSet();
   const W = svg.clientWidth  || svg.parentElement.clientWidth;
