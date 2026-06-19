@@ -681,10 +681,10 @@ function _renderExposedLabels() {
       const bx = cx - tw / 2;
       const by = py - th - arr - fs * 0.6;
 
-      // 아래 화살표 (배관 위 실제 지점을 가리킴)
+      // 화살표: 배지 바닥 양쪽 → 배관 실제 위치(px,py)를 정확히 가리킴
       const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       tri.setAttribute('points',
-        `${cx},${by + th + arr} ${cx - arr * 0.55},${by + th} ${cx + arr * 0.55},${by + th}`);
+        `${px},${py} ${cx - arr * 0.55},${by + th} ${cx + arr * 0.55},${by + th}`);
       tri.setAttribute('fill', s.color);
       svg.appendChild(tri);
 
