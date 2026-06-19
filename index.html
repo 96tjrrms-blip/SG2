@@ -74,6 +74,14 @@
     </div>
   </div>
 
+  <!-- 사진 라이트박스 -->
+  <div id="lightbox" onclick="closeLightbox()"
+    style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.88);
+    align-items:center;justify-content:center;cursor:zoom-out">
+    <img id="lightbox-img" style="max-width:92vw;max-height:92vh;border-radius:8px;
+      box-shadow:0 8px 40px rgba(0,0,0,0.6);object-fit:contain">
+  </div>
+
   <!-- 사진 관리 모달 -->
   <div id="photo-modal" class="color-modal" style="display:none">
     <div class="cm-panel pm-panel">
