@@ -42,10 +42,20 @@
 
     <!-- 공사구역 컨트롤 -->
     <div id="zone-toggle-bar" class="zone-controls" style="display:flex">
-      <button id="zone-toggle-btn" class="zone-btn" onclick="toggleZoneVisible()">🚧 공사구역 표시</button>
-      <button class="zone-btn zone-btn-edit" onclick="startZoneEdit()">✏️ 구역 편집</button>
-      <button class="zone-btn zone-btn-entrance" onclick="startEntranceEdit()">🚪 입구 편집</button>
-      <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
+      <button class="ctrl-group-hdr" onclick="toggleCtrlGroup('onoff-group')">
+        <span id="onoff-arrow">▸</span> ON/OFF
+      </button>
+      <div id="onoff-group" class="ctrl-group-items" style="display:none">
+        <button id="zone-toggle-btn" class="zone-btn" onclick="toggleZoneVisible()">🚧 공사구역 표시</button>
+        <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
+      </div>
+      <button class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
+        <span id="edit-arrow">▸</span> 편집
+      </button>
+      <div id="edit-group" class="ctrl-group-items" style="display:none">
+        <button class="zone-btn zone-btn-edit" onclick="startZoneEdit()">✏️ 구역 편집</button>
+        <button class="zone-btn zone-btn-entrance" onclick="startEntranceEdit()">🚪 입구 편집</button>
+      </div>
     </div>
     <div id="zone-edit-bar" class="zone-controls zone-edit-mode" style="display:none">
       <span class="zone-hint">📍 지도 클릭으로 꼭짓점 추가</span>

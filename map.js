@@ -786,6 +786,15 @@ function _updateZoneBtn() {
   if (btn) btn.textContent = d.visible ? '🚧 공사구역 숨기기' : '🚧 공사구역 표시';
 }
 
+function toggleCtrlGroup(id) {
+  const el = document.getElementById(id);
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'flex';
+  const arrowId = id === 'onoff-group' ? 'onoff-arrow' : 'edit-arrow';
+  const arrow = document.getElementById(arrowId);
+  if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
+}
+
 function toggleDirBadges() {
   const els = document.querySelectorAll('.map-dir');
   const isVisible = els[0] && els[0].style.display !== 'none';

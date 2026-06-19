@@ -192,6 +192,16 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 10px; flex-wrap: wrap;
 }
+.ctrl-group-hdr {
+  padding: 6px 12px; border: none; border-radius: 6px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  background: #374151; color: #fff; white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
+}
+.ctrl-group-hdr:hover { background: #1f2937; }
+.ctrl-group-hdr-edit { background: #1d4ed8; }
+.ctrl-group-hdr-edit:hover { background: #1e40af; }
+.ctrl-group-items { display: flex; align-items: center; gap: 6px; margin-right: 4px; }
 .zone-btn {
   padding: 6px 13px; border: none; border-radius: 6px;
   font-size: 12px; font-weight: 600; cursor: pointer;
