@@ -627,14 +627,15 @@ function applyLoadJSON() {
   const raw = document.getElementById('load-json-input').value.trim();
   if (!raw) return;
   try {
-    let segsData, labelsData = [];
-    // 객체 형태 { segments:[...], labels:[...] } 또는 배열 형태 [...] 모두 허용
+    let segsData, labelsData = [], valvesData = [];
+    // 배열 형태 [...] 또는 객체 형태 { segments:[...], labels:[...], valves:[...] } 모두 허용
     if (raw.startsWith('[')) {
       segsData = JSON.parse(raw);
     } else {
       const obj = JSON.parse(raw);
-      segsData   = obj.segments || obj;
-      labelsData = obj.labels   || [];
+      segsData    = obj.segments || obj;
+      labelsData  = obj.labels  || [];
+      valvesData  = obj.valves  || [];
     }
     if (!Array.isArray(segsData)) throw new Error('segments가 배열이 아닙니다');
     segments = segsData.map((s, i) => ({
@@ -651,7 +652,6 @@ function applyLoadJSON() {
       id: l.id || 'lb' + Date.now() + Math.random(),
       text: l.text || '', x: l.x || 0, y: l.y || 0, color: l.color || '#fef3c7'
     }));
-    const valvesData = obj.valves || [];
     valves = valvesData.map(v => ({
       id: v.id || 'v' + Date.now() + Math.random(),
       name: v.name || '', type: v.type || '개폐밸브', x: v.x || 0, y: v.y || 0
