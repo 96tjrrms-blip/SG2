@@ -665,7 +665,8 @@ function _renderExposedLabels() {
     segs.forEach(s => {
       const midFrac = ((s.from + s.to) / 2) / seg.노출길이;
       const [px, py] = _pointAtFraction(seg.points, midFrac);
-      const tw = '노출중'.length * fs * 0.68 + pad * 2;
+      const labelText = `노출중(${parseFloat((s.to - s.from).toFixed(1))}m)`;
+      const tw = labelText.length * fs * 0.68 + pad * 2;
       const th = fs + pad * 1.2;
 
       // 근처 밸브 확인 → 겹치면 배지 수평 이동
@@ -704,7 +705,7 @@ function _renderExposedLabels() {
       txt.setAttribute('fill', '#1a1a1a');
       txt.setAttribute('font-size', fs);
       txt.setAttribute('font-weight', '800');
-      txt.textContent = '노출중';
+      txt.textContent = labelText;
       svg.appendChild(txt);
     });
   });
