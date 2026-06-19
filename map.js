@@ -76,6 +76,7 @@ function renderAllPipes() {
   PIPELINE_SEGMENTS.forEach(seg => svg.appendChild(_buildPipeGroup(seg)));
   _renderLabels();
   _renderValves();
+  _renderExposedLabels();
   _drawPickMarkers(); // 구간 선택 마커 (pick mode 중에만 표시)
 }
 
@@ -646,6 +647,56 @@ function _closestFractionOnPolyline(points, px, py) {
     cum += segLens[i];
   }
   return bestT;
+}
+
+function _renderExposedLabels() {
+  const svg = document.getElementById('map-svg');
+  if (!svg) return;
+  const fs  = Math.max(10, _mapNatW / 180);
+  const pad = fs * 0.5;
+  const arr = fs * 0.9;
+
+  PIPELINE_SEGMENTS.forEach(seg => {
+    if (!seg.노출길이) return;
+    const saved = _getSegmentColors(seg.id);
+    const segs  = saved.매달기구간 ?? seg.매달기구간;
+    if (!segs.length) return;
+
+    segs.forEach(s => {
+      const midFrac = ((s.from + s.to) / 2) / seg.노출길이;
+      const [px, py] = _pointAtFraction(seg.points, midFrac);
+      const tw = '노출중'.length * fs * 0.68 + pad * 2;
+      const th = fs + pad * 1.2;
+      const bx = px - tw / 2;
+      const by = py - th - arr - fs * 0.6;
+
+      // 아래 화살표
+      const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      tri.setAttribute('points',
+        `${px},${by + th + arr} ${px - arr * 0.55},${by + th} ${px + arr * 0.55},${by + th}`);
+      tri.setAttribute('fill', s.color);
+      svg.appendChild(tri);
+
+      // 배경 rect
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', bx); rect.setAttribute('y', by);
+      rect.setAttribute('width', tw); rect.setAttribute('height', th);
+      rect.setAttribute('rx', fs * 0.35);
+      rect.setAttribute('fill', s.color);
+      rect.setAttribute('fill-opacity', '0.92');
+      svg.appendChild(rect);
+
+      // 텍스트
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', px); txt.setAttribute('y', by + th * 0.73);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('fill', '#1a1a1a');
+      txt.setAttribute('font-size', fs);
+      txt.setAttribute('font-weight', '800');
+      txt.textContent = '노출중';
+      svg.appendChild(txt);
+    });
+  });
 }
 
 function _renderValves() {
