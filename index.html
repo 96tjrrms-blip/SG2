@@ -49,6 +49,7 @@
         <button id="zone-toggle-btn" class="zone-btn" onclick="toggleZoneVisible()">🚧 공사구역 표시</button>
         <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
         <button id="boring-toggle-btn" class="zone-btn" onclick="toggleBoringVisible()">⊕ 천공위치 표시</button>
+        <button class="zone-btn" onclick="toggleBoringAdjust()" style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc">🎚 천공 조정</button>
       </div>
       <button class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
         <span id="edit-arrow">▸</span> 편집
@@ -291,6 +292,93 @@
     <button onclick="toggleCoordPicker()" style="padding:4px 10px;border-radius:6px;border:1px solid #ef4444;background:#dc2626;color:#fff;cursor:pointer;font-size:11px">종료</button>
   </div>
 </div>
+<!-- 천공위치 조정 패널 -->
+<div id="boring-adjust-panel" style="display:none;position:fixed;bottom:24px;right:24px;background:#fff;border:1.5px solid #7dd3fc;border-radius:12px;padding:18px 20px;z-index:1001;box-shadow:0 8px 32px rgba(0,0,0,0.18);min-width:300px">
+  <div style="font-weight:700;font-size:14px;color:#0369a1;margin-bottom:14px">🎚 천공위치 조정</div>
+  <div style="display:grid;gap:10px">
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#475569;margin-bottom:3px"><span>X 이동</span><span id="badj-ox-val" style="font-weight:700;color:#0f172a">0.0%</span></div>
+      <input type="range" id="badj-ox" min="-50" max="50" step="0.5" value="0" oninput="updateBoringAdjust()" style="width:100%;accent-color:#0ea5e9">
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#475569;margin-bottom:3px"><span>Y 이동</span><span id="badj-oy-val" style="font-weight:700;color:#0f172a">0.0%</span></div>
+      <input type="range" id="badj-oy" min="-50" max="50" step="0.5" value="0" oninput="updateBoringAdjust()" style="width:100%;accent-color:#0ea5e9">
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#475569;margin-bottom:3px"><span>X 스케일 (좌우 확대)</span><span id="badj-sx-val" style="font-weight:700;color:#0f172a">1.00x</span></div>
+      <input type="range" id="badj-sx" min="0.2" max="5" step="0.01" value="1" oninput="updateBoringAdjust()" style="width:100%;accent-color:#8b5cf6">
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#475569;margin-bottom:3px"><span>Y 스케일 (상하 확대)</span><span id="badj-sy-val" style="font-weight:700;color:#0f172a">1.00x</span></div>
+      <input type="range" id="badj-sy" min="0.2" max="5" step="0.01" value="1" oninput="updateBoringAdjust()" style="width:100%;accent-color:#8b5cf6">
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button onclick="resetBoringAdjust()" style="flex:1;padding:7px;border-radius:7px;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;cursor:pointer;font-size:12px">초기화</button>
+    <button onclick="copyBoringAdjustValues()" style="flex:1;padding:7px;border-radius:7px;border:1px solid #0ea5e9;background:#e0f2fe;color:#0369a1;cursor:pointer;font-size:12px">값 복사</button>
+    <button onclick="toggleBoringAdjust()" style="flex:1;padding:7px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;font-size:12px">닫기</button>
+  </div>
+  <div style="margin-top:10px;font-size:10px;color:#94a3b8;text-align:center">슬라이더 조정 → 맞으면 "값 복사" → 개발자에게 전달</div>
+</div>
+<script>
+(function() {
+  function _syncAdjustPanel() {
+    const t = (typeof _getBoringTransform === 'function') ? _getBoringTransform() : {offsetX:0,offsetY:0,scaleX:1,scaleY:1};
+    document.getElementById('badj-ox').value = t.offsetX;
+    document.getElementById('badj-oy').value = t.offsetY;
+    document.getElementById('badj-sx').value = t.scaleX;
+    document.getElementById('badj-sy').value = t.scaleY;
+    document.getElementById('badj-ox-val').textContent = parseFloat(t.offsetX).toFixed(1) + '%';
+    document.getElementById('badj-oy-val').textContent = parseFloat(t.offsetY).toFixed(1) + '%';
+    document.getElementById('badj-sx-val').textContent = parseFloat(t.scaleX).toFixed(2) + 'x';
+    document.getElementById('badj-sy-val').textContent = parseFloat(t.scaleY).toFixed(2) + 'x';
+  }
+
+  window.toggleBoringAdjust = function() {
+    const panel = document.getElementById('boring-adjust-panel');
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) _syncAdjustPanel();
+  };
+
+  window.updateBoringAdjust = function() {
+    const ox = parseFloat(document.getElementById('badj-ox').value);
+    const oy = parseFloat(document.getElementById('badj-oy').value);
+    const sx = parseFloat(document.getElementById('badj-sx').value);
+    const sy = parseFloat(document.getElementById('badj-sy').value);
+    document.getElementById('badj-ox-val').textContent = ox.toFixed(1) + '%';
+    document.getElementById('badj-oy-val').textContent = oy.toFixed(1) + '%';
+    document.getElementById('badj-sx-val').textContent = sx.toFixed(2) + 'x';
+    document.getElementById('badj-sy-val').textContent = sy.toFixed(2) + 'x';
+    localStorage.setItem('boring_transform', JSON.stringify({offsetX:ox, offsetY:oy, scaleX:sx, scaleY:sy}));
+    if (typeof renderBoringPoints === 'function') renderBoringPoints();
+  };
+
+  window.resetBoringAdjust = function() {
+    localStorage.removeItem('boring_transform');
+    _syncAdjustPanel();
+    document.getElementById('badj-ox').value = 0;
+    document.getElementById('badj-oy').value = 0;
+    document.getElementById('badj-sx').value = 1;
+    document.getElementById('badj-sy').value = 1;
+    document.getElementById('badj-ox-val').textContent = '0.0%';
+    document.getElementById('badj-oy-val').textContent = '0.0%';
+    document.getElementById('badj-sx-val').textContent = '1.00x';
+    document.getElementById('badj-sy-val').textContent = '1.00x';
+    if (typeof renderBoringPoints === 'function') renderBoringPoints();
+  };
+
+  window.copyBoringAdjustValues = function() {
+    const ox = document.getElementById('badj-ox').value;
+    const oy = document.getElementById('badj-oy').value;
+    const sx = document.getElementById('badj-sx').value;
+    const sy = document.getElementById('badj-sy').value;
+    const text = `offsetX: ${ox}, offsetY: ${oy}, scaleX: ${sx}, scaleY: ${sy}`;
+    navigator.clipboard.writeText(text).then(() => alert('클립보드에 복사됐어요!\n\n' + text));
+  };
+})();
+</script>
+
 <script>
 (function() {
   let _pickerActive = false;

@@ -8,6 +8,18 @@ function _saveDoneSet(s) {
   localStorage.setItem(BORING_DONE_KEY, JSON.stringify([...s]));
 }
 
+function _getBoringTransform() {
+  try {
+    const t = JSON.parse(localStorage.getItem('boring_transform') || '{}');
+    return {
+      offsetX: t.offsetX !== undefined ? t.offsetX : 0,
+      offsetY: t.offsetY !== undefined ? t.offsetY : 0,
+      scaleX:  t.scaleX  !== undefined ? t.scaleX  : 1,
+      scaleY:  t.scaleY  !== undefined ? t.scaleY  : 1,
+    };
+  } catch { return { offsetX:0, offsetY:0, scaleX:1, scaleY:1 }; }
+}
+
 function renderBoringPoints() {
   const svg = document.getElementById('map-svg');
   if (!svg) return;
@@ -21,10 +33,13 @@ function renderBoringPoints() {
   const done = _boringDoneSet();
   const W = svg.clientWidth  || svg.parentElement.clientWidth;
   const H = svg.clientHeight || svg.parentElement.clientHeight;
+  const tr = _getBoringTransform();
 
   BORING_POINTS.forEach(pt => {
-    const cx = (pt.x / 100) * W;
-    const cy = (pt.y / 100) * H;
+    const fx = (pt.x - 50) * tr.scaleX + 50 + tr.offsetX;
+    const fy = (pt.y - 50) * tr.scaleY + 50 + tr.offsetY;
+    const cx = (fx / 100) * W;
+    const cy = (fy / 100) * H;
     const isDone = done.has(pt.id);
 
     const strokeColor = isDone ? '#16a34a' : '#1e293b';
