@@ -75,10 +75,19 @@
 
     <div class="card" style="padding:16px">
       <div id="map-container" class="map-container">
-        <img id="map-img" src="map.png" alt="위성지도" style="width:100%;display:none">
-        <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"
-          style="position:absolute;top:0;left:0;width:100%;height:100%"></svg>
+        <!-- 줌/패닝 래퍼 -->
+        <div id="map-zoomable" style="position:relative;width:100%;transform-origin:0 0;will-change:transform">
+          <img id="map-img" src="map.png" alt="위성지도" style="width:100%;display:none">
+          <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"
+            style="position:absolute;top:0;left:0;width:100%;height:100%"></svg>
+        </div>
         <div id="pipe-popup" class="pipe-popup" style="display:none"></div>
+        <!-- 줌 컨트롤 -->
+        <div id="map-zoom-ctrl" style="position:absolute;bottom:10px;right:10px;z-index:30;display:flex;flex-direction:column;gap:4px">
+          <button onclick="mapZoomIn()" title="확대" style="width:32px;height:32px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.92);font-size:18px;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.2)">+</button>
+          <button onclick="mapZoomOut()" title="축소" style="width:32px;height:32px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.92);font-size:18px;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.2)">−</button>
+          <button onclick="mapZoomReset()" title="초기화" id="map-zoom-label" style="width:32px;height:28px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.92);font-size:10px;cursor:pointer;color:#475569;box-shadow:0 1px 4px rgba(0,0,0,0.2)">100%</button>
+        </div>
         <!-- 공사구역 편집 클릭 오버레이 -->
         <div id="zone-click-overlay" onclick="_onZoneOverlayClick(event, this)"
           style="display:none;position:absolute;inset:0;z-index:20;cursor:crosshair"></div>
@@ -292,6 +301,112 @@
     <button onclick="toggleCoordPicker()" style="padding:4px 10px;border-radius:6px;border:1px solid #ef4444;background:#dc2626;color:#fff;cursor:pointer;font-size:11px">종료</button>
   </div>
 </div>
+<!-- 지도 줌/패닝 -->
+<script>
+(function() {
+  let scale = 1, tx = 0, ty = 0;
+  let dragging = false, startX, startY, startTx, startTy;
+  const MIN = 1, MAX = 8;
+
+  function zoomable() { return document.getElementById('map-zoomable'); }
+  function container() { return document.getElementById('map-container'); }
+
+  function apply() {
+    const z = zoomable();
+    if (!z) return;
+    z.style.transform = `matrix(${scale},0,0,${scale},${tx},${ty})`;
+    const lbl = document.getElementById('map-zoom-label');
+    if (lbl) lbl.textContent = Math.round(scale * 100) + '%';
+    container().style.cursor = scale > 1 ? 'grab' : '';
+  }
+
+  function clampPan() {
+    const c = container();
+    if (!c) return;
+    const W = c.clientWidth, H = c.clientHeight;
+    tx = Math.max(W - W * scale, Math.min(0, tx));
+    ty = Math.max(H - H * scale, Math.min(0, ty));
+  }
+
+  function zoomAt(cx, cy, delta) {
+    const ns = Math.max(MIN, Math.min(MAX, scale * delta));
+    const f = ns / scale;
+    tx = cx - f * (cx - tx);
+    ty = cy - f * (cy - ty);
+    scale = ns;
+    clampPan();
+    apply();
+  }
+
+  window.mapZoomIn = function() {
+    const c = container();
+    zoomAt(c.clientWidth / 2, c.clientHeight / 2, 1.3);
+  };
+  window.mapZoomOut = function() {
+    const c = container();
+    zoomAt(c.clientWidth / 2, c.clientHeight / 2, 1 / 1.3);
+  };
+  window.mapZoomReset = function() {
+    scale = 1; tx = 0; ty = 0; apply();
+  };
+  window.getMapZoom = function() { return { scale, tx, ty }; };
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const c = container();
+    if (!c) return;
+
+    // 마우스 휠 줌 (커서 위치 기준)
+    c.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      const rect = c.getBoundingClientRect();
+      zoomAt(e.clientX - rect.left, e.clientY - rect.top, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+    }, { passive: false });
+
+    // 드래그 패닝
+    c.addEventListener('mousedown', function(e) {
+      if (scale <= 1 || e.button !== 0) return;
+      // 편집 오버레이/버튼이면 무시
+      if (e.target.closest('#zone-click-overlay,button,input')) return;
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      startTx = tx; startTy = ty;
+      c.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      tx = startTx + (e.clientX - startX);
+      ty = startTy + (e.clientY - startY);
+      clampPan();
+      apply();
+    });
+    document.addEventListener('mouseup', function() {
+      if (!dragging) return;
+      dragging = false;
+      apply();
+    });
+
+    // 터치 핀치줌
+    let lastDist = 0;
+    c.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) lastDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    }, { passive: true });
+    c.addEventListener('touchmove', function(e) {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (lastDist > 0) {
+        const rect = c.getBoundingClientRect();
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        zoomAt(cx, cy, dist / lastDist);
+      }
+      lastDist = dist;
+    }, { passive: false });
+  });
+})();
+</script>
+
 <!-- 천공위치 조정 패널 -->
 <div id="boring-adjust-panel" style="display:none;position:fixed;bottom:24px;right:24px;background:#fff;border:1.5px solid #7dd3fc;border-radius:12px;padding:18px 20px;z-index:1001;box-shadow:0 8px 32px rgba(0,0,0,0.18);min-width:300px">
   <div style="font-weight:700;font-size:14px;color:#0369a1;margin-bottom:14px">🎚 천공위치 조정</div>
@@ -408,6 +523,7 @@
   let _clickCount = 0;
 
   window.toggleCoordPicker = function() {
+    if (!_pickerActive && typeof mapZoomReset === 'function') mapZoomReset();
     _pickerActive = !_pickerActive;
     const overlay = document.getElementById('coord-picker-overlay');
     const badge   = document.getElementById('coord-badge');

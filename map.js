@@ -806,6 +806,7 @@ function toggleDirBadges() {
 }
 
 function startZoneEdit() {
+  if (typeof mapZoomReset === 'function') mapZoomReset();
   const d = _loadZoneData();
   _zoneEditPts = [...d.points];
   _zoneEdit = true;
@@ -865,6 +866,7 @@ function _onZoneOverlayClick(e) {
 }
 
 function startEntranceEdit() {
+  if (typeof mapZoomReset === 'function') mapZoomReset();
   _entranceEdit = true;
   document.getElementById('zone-toggle-bar').style.display    = 'none';
   document.getElementById('entrance-edit-bar').style.display  = 'flex';
