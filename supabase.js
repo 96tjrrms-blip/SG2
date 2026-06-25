@@ -381,3 +381,30 @@ async function fetchSmsLogs(limit = 3) {
   if (error) throw error;
   return data;
 }
+
+// ===== 천공 마커 사진 (pipe-photo 버킷 재사용, 경로: boring/{id}/) =====
+async function uploadBoringPhoto(boringId, file) {
+  const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `boring/${boringId}/${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, file, {
+    cacheControl: '3600', upsert: false
+  });
+  if (error) throw error;
+  return { path, url: getPipePhotoUrl(path) };
+}
+
+async function listBoringPhotos(boringId) {
+  const folder = `boring/${boringId}`;
+  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list(folder, {
+    sortBy: { column: 'name', order: 'desc' }
+  });
+  if (error || !data) return [];
+  return data
+    .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
+    .map(f => ({ path: `${folder}/${f.name}`, url: getPipePhotoUrl(`${folder}/${f.name}`) }));
+}
+
+async function deleteBoringPhoto(path) {
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).remove([path]);
+  if (error) throw error;
+}
