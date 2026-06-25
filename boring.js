@@ -189,10 +189,7 @@ window._onBoringDelClick = function(e) {
 
   allPts.forEach(pt => {
     if (hidden.has(pt.id)) return;
-    const dx = (pt.x - 50) * tr.scaleX;
-    const dy = (pt.y - 50) * tr.scaleY;
-    const fx = 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX;
-    const fy = 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
+    const { fx, fy } = _resolvePos(pt, tr, rad);
     const mx = (fx / 100) * W * zoom.scale + zoom.tx;
     const my = (fy / 100) * H * zoom.scale + zoom.ty;
     const dist = Math.hypot(clickX - mx, clickY - my);
@@ -207,6 +204,17 @@ window._onBoringDelClick = function(e) {
   else _hideMarker(closest.id);
   renderBoringPoints();
 };
+
+// 커스텀 마커는 transform 제외 (직접 클릭한 정확한 위치), 기본 마커만 PDF 보정 적용
+function _resolvePos(pt, tr, rad) {
+  if (pt.custom) return { fx: pt.x, fy: pt.y };
+  const dx = (pt.x - 50) * tr.scaleX;
+  const dy = (pt.y - 50) * tr.scaleY;
+  return {
+    fx: 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX,
+    fy: 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY,
+  };
+}
 
 // === 메인 렌더 ===
 function renderBoringPoints() {
@@ -235,11 +243,7 @@ function renderBoringPoints() {
   allPts.forEach(pt => {
     if (hidden.has(pt.id)) return;
 
-    const dx = (pt.x - 50) * tr.scaleX;
-    const dy = (pt.y - 50) * tr.scaleY;
-    const fx = 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX;
-    const fy = 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
-
+    const { fx, fy } = _resolvePos(pt, tr, rad);
     const cx = (fx / 100) * W * zoom.scale + zoom.tx;
     const cy = (fy / 100) * H * zoom.scale + zoom.ty;
 
@@ -386,15 +390,13 @@ window.applyBoringAboveLine = function(refId, state) {
   const tr  = _getBoringTransform();
   const rad = tr.rotation * Math.PI / 180;
   function tFy(pt) {
-    const dx = (pt.x - 50) * tr.scaleX;
-    const dy = (pt.y - 50) * tr.scaleY;
-    return 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
+    return _resolvePos(pt, tr, rad).fy;
   }
 
   const refY = tFy(ref);
   const m = _getBoringStateMap();
   let count = 0;
-  allPts.forEach(pt => { if (tFy(pt) < refY) { m[pt.id] = state; count++; } });
+  allPts.forEach(pt => { if (!pt.custom && tFy(pt) < refY) { m[pt.id] = state; count++; } });
   _saveBoringStateMap(m);
   renderBoringPoints();
   return count;
