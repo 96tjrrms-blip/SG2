@@ -1,6 +1,29 @@
 const BORING_STATE_KEY  = 'boring_state_v1';
 const BORING_CUSTOM_KEY = 'boring_custom';
 
+// LC-14(y=52.08) 기준선 위 → 기본값 영향무(2)
+const BORING_DEFAULT_STATES = {
+  "F-45":2,"F-46":2,"F-47":2,"F-48":2,"F-49":2,"F-50":2,"F-51":2,"H1-18":2,"H1-19":2,"H1-20":2,"H1-21":2,"H1-22":2,
+  "H1-23":2,"H1-24":2,"H1-25":2,"H1-26":2,"H1-27":2,"H1-28":2,"F-13":2,"F-14":2,"F-15":2,"F-16":2,"F-17":2,"F-18":2,
+  "F-19":2,"F-44":2,"F-52":2,"F-54":2,"F-55":2,"F-56":2,"F-57":2,"F-58":2,"F-59":2,"F-43":2,"H1-17":2,"F-20":2,
+  "F-25":2,"F-26":2,"F-27":2,"F-28":2,"F-29":2,"F-30":2,"F-31":2,"F-32":2,"F-33":2,"F-34":2,"F-35":2,"F-36":2,
+  "F-37":2,"F-38":2,"F-39":2,"F-40":2,"F-41":2,"F-42":2,"F-53":2,"F-8":2,"H1-29":2,"F-12":2,"LC-13":2,"F-60":2,
+  "H4-2":2,"H4-3":2,"H4-4":2,"H4-5":2,"H4-6":2,"H4-7":2,"H4-8":2,"H4-9":2,"H4-13":2,"H4-14":2,"H4-15":2,"H4-16":2,
+  "H4-17":2,"H4-18":2,"H4-19":2,"H4-20":2,"H4-21":2,"H4-22":2,"H4-23":2,"H4-24":2,"H4-25":2,"H4-26":2,"H1-1":2,"H1-2":2,
+  "H1-3":2,"H1-4":2,"H1-5":2,"H1-6":2,"H1-7":2,"H1-8":2,"H1-9":2,"H1-10":2,"H1-11":2,"H1-12":2,"H1-13":2,"F-7":2,
+  "H1-31":2,"H1-33":2,"F-11":2,"L-66":2,"L-67":2,"L-68":2,"L-69":2,"L-7":2,"F-2":2,"F-6":2,"F-10":2,"L-34":2,
+  "L-35":2,"L-36":2,"L-37":2,"L-31":2,"F-1":2,"F-5":2,"L-38":2,"E-3":2,"L-1":2,"L-2":2,"L-3":2,"L-4":2,
+  "L-5":2,"L-6":2,"L-30":2,"L-39":2,"L-40":2,"L-41":2,"L-42":2,"L-43":2,"L-44":2,"L-45":2,"L-46":2,"L-47":2,
+  "L-48":2,"L-49":2,"L-50":2,"L-51":2,"L-52":2,"L-53":2,"L-54":2,"L-55":2,"L-56":2,"L-57":2,"L-58":2,"L-59":2,
+  "L-60":2,"L-61":2,"L-63":2,"E-4":2,"S-1":2,"L-10":2,"L-11":2,"L-12":2,"L-13":2,"L-14":2,"L-15":2,"L-16":2,
+  "L-17":2,"L-18":2,"L-19":2,"L-20":2,"L-21":2,"L-22":2,"L-23":2,"L-24":2,"L-25":2,"L-26":2,"L-27":2,"L-28":2,
+  "L-29":2,"LC-15":2,"L-62":2,"E-5":2,"S-2":2,"S-3":2,"LC-1":2,"H1-37":2,"H1-41":2,"H1-42":2,"H1-43":2,"S-4":2,
+  "LC-3":2,"S-5":2,"RC1-3":2,"RC1-4":2,"RC1-5":2,"LC-2":2,"S-6":2,"S-7":2,"C-1":2,"S-8":2,"C-7":2,"C-8":2,
+  "C-9":2,"C-10":2,"C-11":2,"C-2":2,"S-9":2,"C-3":2,"H4-10":2,"H4-11":2,"H4-12":2,"H1-34":2,"H1-35":2,"L-32":2,
+  "L-33":2,"H1-36":2,"F-9":2,"L-8":2,"L-9":2,"F-3":2,"F-4":2,"LC-9":2,"LC-10":2,"LC-6":2,"LC-5":2,"H1-38":2,
+  "LC-4":2,
+};
+
 // === 3단계 색상 관리 ===
 function _getBoringStateMap() {
   try { return JSON.parse(localStorage.getItem(BORING_STATE_KEY) || '{}'); }
@@ -8,6 +31,11 @@ function _getBoringStateMap() {
 }
 function _saveBoringStateMap(m) {
   localStorage.setItem(BORING_STATE_KEY, JSON.stringify(m));
+}
+function _getBoringState(id) {
+  const m = _getBoringStateMap();
+  // localStorage에 명시적 값이 있으면 우선, 없으면 기본값 참조
+  return m[id] !== undefined ? m[id] : (BORING_DEFAULT_STATES[id] || 0);
 }
 
 window.setBoringState = function(id, state) {
@@ -67,7 +95,6 @@ function renderBoringPoints() {
 
   const customPts = _getCustomPoints();
   const allPts    = [...BORING_POINTS, ...customPts];
-  const stateMap  = _getBoringStateMap();
   const W = svg.clientWidth  || svg.parentElement.clientWidth;
   const H = svg.clientHeight || svg.parentElement.clientHeight;
   const tr  = _getBoringTransform();
@@ -80,8 +107,8 @@ function renderBoringPoints() {
     const fy = 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
     const cx = (fx / 100) * W;
     const cy = (fy / 100) * H;
-    const state    = stateMap[pt.id] || 0;
-    const { fill: fillColor, stroke: strokeColor, text: textColor } = _boringColors(state);
+    const state    = _getBoringState(pt.id);
+    const { fill: fillColor, stroke: strokeColor } = _boringColors(state);
     const isCustom = !!pt.custom;
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -131,13 +158,9 @@ function renderBoringPoints() {
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('font-size', '9');
     label.setAttribute('font-weight', '700');
-    label.setAttribute('fill', textColor);
+    label.setAttribute('fill', '#0f172a');
     label.setAttribute('font-family', 'sans-serif');
     label.setAttribute('text-rendering', 'geometricPrecision');
-    label.setAttribute('paint-order', 'stroke');
-    label.setAttribute('stroke', 'white');
-    label.setAttribute('stroke-width', '2');
-    label.setAttribute('stroke-linejoin', 'round');
     label.textContent = pt.id;
 
     g.append(outer, inner, symL, symR, symH, labelBg, label);
