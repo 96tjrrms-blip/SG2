@@ -77,10 +77,11 @@ function _getCustomPoints() {
   try { return JSON.parse(localStorage.getItem(BORING_CUSTOM_KEY) || '[]'); }
   catch { return []; }
 }
-function _addCustomPoint(id, x, y) {
+function _addCustomPoint(id, x, y, savedTransform) {
   const pts = _getCustomPoints();
   if (pts.some(p => p.id === id)) { alert('이미 존재하는 ID입니다: ' + id); return false; }
-  pts.push({ id, x, y, custom: true });
+  // x, y = 클릭한 화면 좌표(%), savedTransform = 추가 당시의 boring transform
+  pts.push({ id, x, y, custom: true, v2: true, savedTransform: savedTransform || null });
   localStorage.setItem(BORING_CUSTOM_KEY, JSON.stringify(pts));
   if (typeof upsertPipeSettings === 'function')
     upsertPipeSettings('_boring_custom', { colors: pts }).catch(() => {});
@@ -205,11 +206,25 @@ window._onBoringDelClick = function(e) {
   renderBoringPoints();
 };
 
-// 커스텀 마커는 transform 제외 (직접 클릭한 정확한 위치), 기본 마커만 PDF 보정 적용
+// 커스텀 마커: inverse(savedTransform) → forward(currentTransform)
+// 기본 마커: forward(currentTransform) 직접 적용
 function _resolvePos(pt, tr, rad) {
-  if (pt.custom) return { fx: pt.x, fy: pt.y };
-  const dx = (pt.x - 50) * tr.scaleX;
-  const dy = (pt.y - 50) * tr.scaleY;
+  let px = pt.x, py = pt.y;
+  if (pt.custom) {
+    const st = pt.savedTransform || { offsetX:0, offsetY:0, scaleX:1, scaleY:1, rotation:0 };
+    const sr  = st.rotation * Math.PI / 180;
+    const sc  = Math.cos(sr), ss = Math.sin(sr);
+    // savedTransform 역변환: 클릭 당시 화면좌표 → 사전변환 좌표
+    const u  = pt.x - st.offsetX - 50;
+    const v  = pt.y - st.offsetY - 50;
+    const dx =  u * sc + v * ss;
+    const dy = -u * ss + v * sc;
+    px = 50 + (st.scaleX ? dx / st.scaleX : dx);
+    py = 50 + (st.scaleY ? dy / st.scaleY : dy);
+  }
+  // currentTransform 정변환
+  const dx = (px - 50) * tr.scaleX;
+  const dy = (py - 50) * tr.scaleY;
   return {
     fx: 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX,
     fy: 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY,
@@ -370,13 +385,17 @@ window._onBoringAddClick = function(e) {
   if (!id || !id.trim()) return;
   const container = document.getElementById('map-container');
   if (!container) return;
-  const rect  = container.getBoundingClientRect();
-  const zoom  = (typeof getMapZoom === 'function') ? getMapZoom() : { scale:1, tx:0, ty:0 };
-  const rawX  = (e.clientX - rect.left - zoom.tx) / zoom.scale;
-  const rawY  = (e.clientY - rect.top  - zoom.ty) / zoom.scale;
-  const xPct  = +(rawX / container.clientWidth  * 100).toFixed(2);
-  const yPct  = +(rawY / container.clientHeight * 100).toFixed(2);
-  if (_addCustomPoint(id.trim(), xPct, yPct)) renderBoringPoints();
+  const rect = container.getBoundingClientRect();
+  const zoom = (typeof getMapZoom === 'function') ? getMapZoom() : { scale:1, tx:0, ty:0 };
+  const rawX = (e.clientX - rect.left - zoom.tx) / zoom.scale;
+  const rawY = (e.clientY - rect.top  - zoom.ty) / zoom.scale;
+  const sx = +(rawX / container.clientWidth  * 100).toFixed(2);
+  const sy = +(rawY / container.clientHeight * 100).toFixed(2);
+
+  // 클릭 당시 화면좌표(sx, sy)와 boring transform 스냅샷을 함께 저장
+  // 렌더링 시: inverse(savedTransform) → forward(currentTransform) 적용
+  // → 클릭 위치에 정확히 표시되고 transform 조정 시 기존 마커와 함께 이동
+  if (_addCustomPoint(id.trim(), sx, sy, _getBoringTransform())) renderBoringPoints();
 };
 
 // === LC-14 기준선 일괄 상태 변경 ===
@@ -396,7 +415,7 @@ window.applyBoringAboveLine = function(refId, state) {
   const refY = tFy(ref);
   const m = _getBoringStateMap();
   let count = 0;
-  allPts.forEach(pt => { if (!pt.custom && tFy(pt) < refY) { m[pt.id] = state; count++; } });
+  allPts.forEach(pt => { if (tFy(pt) < refY) { m[pt.id] = state; count++; } });
   _saveBoringStateMap(m);
   renderBoringPoints();
   return count;
