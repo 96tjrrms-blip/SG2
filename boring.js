@@ -86,17 +86,30 @@ function renderBoringPoints() {
     symH.setAttribute('x2',  2.5); symH.setAttribute('y2', 0);
     symH.setAttribute('stroke', strokeColor); symH.setAttribute('stroke-width', 1);
 
-    // 라벨 (위쪽)
+    // 라벨 배경 + 텍스트
+    const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const labelW = pt.id.length * 4.8 + 4;
+    labelBg.setAttribute('x', -(labelW / 2));
+    labelBg.setAttribute('y', -21);
+    labelBg.setAttribute('width', labelW);
+    labelBg.setAttribute('height', 10);
+    labelBg.setAttribute('rx', 2);
+    labelBg.setAttribute('fill', 'rgba(255,255,255,0.85)');
+
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('y', -11);
+    label.setAttribute('y', -13);
     label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-size', '7');
+    label.setAttribute('font-size', '8');
     label.setAttribute('font-weight', '700');
     label.setAttribute('fill', textColor);
     label.setAttribute('font-family', 'sans-serif');
+    label.setAttribute('paint-order', 'stroke');
+    label.setAttribute('stroke', 'white');
+    label.setAttribute('stroke-width', '2');
+    label.setAttribute('stroke-linejoin', 'round');
     label.textContent = pt.id;
 
-    g.append(outer, inner, symL, symR, symH, label);
+    g.append(outer, inner, symL, symR, symH, labelBg, label);
     g.addEventListener('click', (e) => {
       e.stopPropagation();
       _toggleBoringDone(pt.id);
