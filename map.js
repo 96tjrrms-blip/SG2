@@ -439,8 +439,17 @@ async function _syncSettingsFromSupabase() {
       localStorage.setItem(ZONE_KEY, JSON.stringify(rows['_zone'].colors));
     if (rows['_boring_transform']?.colors)
       localStorage.setItem('boring_transform', JSON.stringify(rows['_boring_transform'].colors));
+    if (rows['_boring_custom']?.colors)
+      localStorage.setItem('boring_custom', JSON.stringify(rows['_boring_custom'].colors));
+    if (rows['_boring_hidden']?.colors)
+      localStorage.setItem('boring_hidden_v1', JSON.stringify(rows['_boring_hidden'].colors));
+    if (rows['_boring_states']?.colors)
+      localStorage.setItem('boring_state_v1', JSON.stringify(rows['_boring_states'].colors));
     delete colorsAll['_zone'];
     delete colorsAll['_boring_transform'];
+    delete colorsAll['_boring_custom'];
+    delete colorsAll['_boring_hidden'];
+    delete colorsAll['_boring_states'];
     if (Object.keys(colorsAll).length)
       localStorage.setItem(PIPE_SETTINGS_KEY, JSON.stringify(colorsAll));
     if (Object.keys(photosAll).length)

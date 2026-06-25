@@ -32,6 +32,8 @@ function _getBoringStateMap() {
 }
 function _saveBoringStateMap(m) {
   localStorage.setItem(BORING_STATE_KEY, JSON.stringify(m));
+  if (typeof upsertPipeSettings === 'function')
+    upsertPipeSettings('_boring_states', { colors: m }).catch(() => {});
 }
 function _getBoringState(id) {
   const m = _getBoringStateMap();
@@ -58,10 +60,15 @@ function _getHiddenSet() {
 }
 function _hideMarker(id) {
   const h = _getHiddenSet(); h.add(id);
-  localStorage.setItem(BORING_HIDDEN_KEY, JSON.stringify([...h]));
+  const arr = [...h];
+  localStorage.setItem(BORING_HIDDEN_KEY, JSON.stringify(arr));
+  if (typeof upsertPipeSettings === 'function')
+    upsertPipeSettings('_boring_hidden', { colors: arr }).catch(() => {});
 }
 window.restoreAllHiddenMarkers = function() {
   localStorage.removeItem(BORING_HIDDEN_KEY);
+  if (typeof upsertPipeSettings === 'function')
+    upsertPipeSettings('_boring_hidden', { colors: [] }).catch(() => {});
   renderBoringPoints();
 };
 
@@ -75,10 +82,15 @@ function _addCustomPoint(id, x, y) {
   if (pts.some(p => p.id === id)) { alert('이미 존재하는 ID입니다: ' + id); return false; }
   pts.push({ id, x, y, custom: true });
   localStorage.setItem(BORING_CUSTOM_KEY, JSON.stringify(pts));
+  if (typeof upsertPipeSettings === 'function')
+    upsertPipeSettings('_boring_custom', { colors: pts }).catch(() => {});
   return true;
 }
 function _removeCustomPoint(id) {
-  localStorage.setItem(BORING_CUSTOM_KEY, JSON.stringify(_getCustomPoints().filter(p => p.id !== id)));
+  const pts = _getCustomPoints().filter(p => p.id !== id);
+  localStorage.setItem(BORING_CUSTOM_KEY, JSON.stringify(pts));
+  if (typeof upsertPipeSettings === 'function')
+    upsertPipeSettings('_boring_custom', { colors: pts }).catch(() => {});
 }
 
 // === 변환 ===
