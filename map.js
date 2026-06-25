@@ -85,6 +85,8 @@ function renderAllPipes() {
   _renderValves();
   _renderExposedLabels();
   _drawPickMarkers(); // 구간 선택 마커 (pick mode 중에만 표시)
+  if (typeof renderBoringPoints  === 'function') renderBoringPoints();
+  if (typeof renderParkingSpots  === 'function') renderParkingSpots();
 }
 
 // 해당 파이프 위에 있는 밸브들의 fraction 목록 반환 (오름차순)
@@ -435,7 +437,10 @@ async function _syncSettingsFromSupabase() {
     });
     if (rows['_zone']?.colors)
       localStorage.setItem(ZONE_KEY, JSON.stringify(rows['_zone'].colors));
+    if (rows['_boring_transform']?.colors)
+      localStorage.setItem('boring_transform', JSON.stringify(rows['_boring_transform'].colors));
     delete colorsAll['_zone'];
+    delete colorsAll['_boring_transform'];
     if (Object.keys(colorsAll).length)
       localStorage.setItem(PIPE_SETTINGS_KEY, JSON.stringify(colorsAll));
     if (Object.keys(photosAll).length)
@@ -1197,6 +1202,4 @@ function _drawPickMarkers() {
     svg.insertBefore(prevLine, defs ? defs.nextSibling : svg.firstChild);
   }
 
-  if (typeof renderBoringPoints  === 'function') renderBoringPoints();
-  if (typeof renderParkingSpots === 'function') renderParkingSpots();
 }

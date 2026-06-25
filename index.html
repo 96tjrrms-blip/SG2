@@ -83,6 +83,9 @@
           <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"
             style="position:absolute;top:0;left:0;width:100%;height:100%"></svg>
         </div>
+        <!-- 천공/주차 마커 오버레이 — zoom 컨테이너 밖에서 렌더링하여 항상 선명 -->
+        <svg id="overlay-svg" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:12;overflow:hidden"></svg>
         <div id="pipe-popup" class="pipe-popup" style="display:none"></div>
         <!-- 줌 컨트롤 -->
         <div id="map-zoom-ctrl" style="position:absolute;bottom:10px;right:10px;z-index:30;display:flex;flex-direction:column;gap:4px">
@@ -313,6 +316,7 @@
     const lbl = document.getElementById('map-zoom-label');
     if (lbl) lbl.textContent = Math.round(scale * 100) + '%';
     container().style.cursor = scale > 1 ? 'grab' : '';
+    document.dispatchEvent(new Event('map-zoom-changed'));
   }
 
   function clampPan() {
@@ -473,12 +477,17 @@
     document.getElementById('badj-sx-val').textContent  = sx.toFixed(2) + 'x';
     document.getElementById('badj-sy-val').textContent  = sy.toFixed(2) + 'x';
     document.getElementById('badj-rot-val').textContent = rot.toFixed(1) + '°';
-    localStorage.setItem('boring_transform', JSON.stringify({offsetX:ox, offsetY:oy, scaleX:sx, scaleY:sy, rotation:rot}));
+    const _bt = {offsetX:ox, offsetY:oy, scaleX:sx, scaleY:sy, rotation:rot};
+    localStorage.setItem('boring_transform', JSON.stringify(_bt));
+    if (typeof upsertPipeSettings === 'function')
+      upsertPipeSettings('_boring_transform', {colors: _bt}).catch(()=>{});
     if (typeof renderBoringPoints === 'function') renderBoringPoints();
   };
 
   window.resetBoringAdjust = function() {
     localStorage.removeItem('boring_transform');
+    if (typeof upsertPipeSettings === 'function')
+      upsertPipeSettings('_boring_transform', {colors: {offsetX:0, offsetY:0, scaleX:1, scaleY:1, rotation:0}}).catch(()=>{});
     document.getElementById('badj-ox').value  = 0;
     document.getElementById('badj-oy').value  = 0;
     document.getElementById('badj-sx').value  = 1;

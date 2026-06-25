@@ -34,7 +34,6 @@ function _saveBoringStateMap(m) {
 }
 function _getBoringState(id) {
   const m = _getBoringStateMap();
-  // localStorage에 명시적 값이 있으면 우선, 없으면 기본값 참조
   return m[id] !== undefined ? m[id] : (BORING_DEFAULT_STATES[id] || 0);
 }
 
@@ -84,19 +83,24 @@ function _getBoringTransform() {
   } catch { return { offsetX:0, offsetY:0, scaleX:1, scaleY:1, rotation:0 }; }
 }
 
-// === 메인 렌더 ===
+// === 메인 렌더 (overlay-svg 사용 — zoom 컨테이너 밖 → 항상 선명) ===
 function renderBoringPoints() {
-  const svg = document.getElementById('map-svg');
+  const svg = document.getElementById('overlay-svg');
   if (!svg) return;
   svg.querySelectorAll('.boring-marker').forEach(el => el.remove());
 
   const visible = localStorage.getItem('boring_visible') !== 'false';
   if (!visible || typeof BORING_POINTS === 'undefined' || !BORING_POINTS.length) return;
 
+  const container = document.getElementById('map-container');
+  if (!container) return;
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+  if (!W || !H) return;
+
+  const zoom = typeof getMapZoom === 'function' ? getMapZoom() : { scale:1, tx:0, ty:0 };
   const customPts = _getCustomPoints();
   const allPts    = [...BORING_POINTS, ...customPts];
-  const W = svg.clientWidth  || svg.parentElement.clientWidth;
-  const H = svg.clientHeight || svg.parentElement.clientHeight;
   const tr  = _getBoringTransform();
   const rad = tr.rotation * Math.PI / 180;
 
@@ -105,8 +109,11 @@ function renderBoringPoints() {
     const dy = (pt.y - 50) * tr.scaleY;
     const fx = 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX;
     const fy = 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
-    const cx = (fx / 100) * W;
-    const cy = (fy / 100) * H;
+
+    // 언줌 CSS픽셀 위치 → 현재 줌 적용한 스크린 위치
+    const cx = (fx / 100) * W * zoom.scale + zoom.tx;
+    const cy = (fy / 100) * H * zoom.scale + zoom.ty;
+
     const state    = _getBoringState(pt.id);
     const { fill: fillColor, stroke: strokeColor } = _boringColors(state);
     const isCustom = !!pt.custom;
@@ -114,6 +121,7 @@ function renderBoringPoints() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.classList.add('boring-marker');
     g.style.cursor = 'pointer';
+    g.style.pointerEvents = 'all';
     g.dataset.id   = pt.id;
     g.setAttribute('transform', `translate(${cx},${cy})`);
 
@@ -144,23 +152,26 @@ function renderBoringPoints() {
     symH.setAttribute('x2',  2.5); symH.setAttribute('y2', 0);
     symH.setAttribute('stroke', strokeColor); symH.setAttribute('stroke-width', 1);
 
-    const labelW  = pt.id.length * 5.2 + 6;
+    const labelW  = pt.id.length * 5.5 + 8;
     const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     labelBg.setAttribute('x', -(labelW / 2));
-    labelBg.setAttribute('y', -22);
+    labelBg.setAttribute('y', -23);
     labelBg.setAttribute('width',  labelW);
-    labelBg.setAttribute('height', 11);
+    labelBg.setAttribute('height', 12);
     labelBg.setAttribute('rx', 2);
-    labelBg.setAttribute('fill', 'rgba(255,255,255,0.9)');
+    labelBg.setAttribute('fill', 'rgba(255,255,255,0.95)');
+    labelBg.setAttribute('stroke', '#cbd5e1');
+    labelBg.setAttribute('stroke-width', 0.5);
 
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('y', -13);
     label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-size', '9');
+    label.setAttribute('font-size', '10');
     label.setAttribute('font-weight', '700');
     label.setAttribute('fill', '#0f172a');
     label.setAttribute('font-family', 'sans-serif');
     label.setAttribute('text-rendering', 'geometricPrecision');
+    label.setAttribute('shape-rendering', 'crispEdges');
     label.textContent = pt.id;
 
     g.append(outer, inner, symL, symR, symH, labelBg, label);
@@ -253,3 +264,15 @@ window._onBoringAddClick = function(e) {
   const yPct  = +(rawY / container.clientHeight * 100).toFixed(2);
   if (_addCustomPoint(id.trim(), xPct, yPct)) renderBoringPoints();
 };
+
+// === 줌/리사이즈 이벤트 → 재렌더 ===
+document.addEventListener('map-zoom-changed', renderBoringPoints);
+window.addEventListener('resize', function() {
+  clearTimeout(window._boringResizeT);
+  window._boringResizeT = setTimeout(renderBoringPoints, 150);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  _updateBoringBtn();
+  renderBoringPoints();
+});

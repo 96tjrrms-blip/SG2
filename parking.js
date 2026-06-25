@@ -17,52 +17,89 @@ function _removeParkingSpot(id) {
 }
 
 function renderParkingSpots() {
-  const svg = document.getElementById('map-svg');
+  const svg = document.getElementById('overlay-svg');
   if (!svg) return;
   svg.querySelectorAll('.parking-marker').forEach(el => el.remove());
 
   const visible = localStorage.getItem('parking_visible') !== 'false';
   if (!visible) return;
 
-  const W = svg.clientWidth  || svg.parentElement.clientWidth;
-  const H = svg.clientHeight || svg.parentElement.clientHeight;
+  const container = document.getElementById('map-container');
+  if (!container) return;
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+  if (!W || !H) return;
+
+  const zoom = typeof getMapZoom === 'function' ? getMapZoom() : { scale:1, tx:0, ty:0 };
 
   _getParkingSpots().forEach(spot => {
-    const cx = (spot.x / 100) * W;
-    const cy = (spot.y / 100) * H;
+    // 줌 적용 스크린 좌표
+    const cx = (spot.x / 100) * W * zoom.scale + zoom.tx;
+    const cy = (spot.y / 100) * H * zoom.scale + zoom.ty;
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.classList.add('parking-marker');
     g.dataset.id = spot.id;
     g.setAttribute('transform', `translate(${cx},${cy})`);
+    g.style.cursor = 'pointer';
+    g.style.pointerEvents = 'all';
 
+    // 초록 원
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('r', 14);
+    circle.setAttribute('r', 16);
     circle.setAttribute('fill', '#16a34a');
-    circle.setAttribute('fill-opacity', '0.88');
+    circle.setAttribute('fill-opacity', '0.9');
     circle.setAttribute('stroke', '#ffffff');
     circle.setAttribute('stroke-width', 2.5);
 
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('dominant-baseline', 'middle');
-    label.setAttribute('font-size', '14');
-    label.setAttribute('font-weight', '900');
-    label.setAttribute('fill', '#ffffff');
-    label.setAttribute('font-family', 'sans-serif');
-    label.textContent = 'P';
+    // P 글자
+    const pText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    pText.setAttribute('text-anchor', 'middle');
+    pText.setAttribute('dominant-baseline', 'middle');
+    pText.setAttribute('font-size', '16');
+    pText.setAttribute('font-weight', '900');
+    pText.setAttribute('fill', '#ffffff');
+    pText.setAttribute('font-family', 'sans-serif');
+    pText.setAttribute('text-rendering', 'geometricPrecision');
+    pText.textContent = 'P';
 
-    g.append(circle, label);
+    // "주차위치" 텍스트 박스 (원 아래)
+    const lblText  = '주차위치';
+    const lblW     = 58;
+    const lblH     = 22;
+    const lblY     = 22;
 
-    if (window._parkingEditMode) {
-      g.style.cursor = 'pointer';
-      g.title = '클릭하여 삭제';
-      g.addEventListener('click', e => {
-        e.stopPropagation();
+    const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    labelBg.setAttribute('x', -(lblW / 2));
+    labelBg.setAttribute('y', lblY);
+    labelBg.setAttribute('width', lblW);
+    labelBg.setAttribute('height', lblH);
+    labelBg.setAttribute('rx', 5);
+    labelBg.setAttribute('fill', 'rgba(255,255,255,0.95)');
+    labelBg.setAttribute('stroke', '#16a34a');
+    labelBg.setAttribute('stroke-width', 1.5);
+
+    const labelTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    labelTxt.setAttribute('y', lblY + lblH * 0.73);
+    labelTxt.setAttribute('text-anchor', 'middle');
+    labelTxt.setAttribute('fill', '#15803d');
+    labelTxt.setAttribute('font-size', '13');
+    labelTxt.setAttribute('font-weight', '800');
+    labelTxt.setAttribute('font-family', 'sans-serif');
+    labelTxt.setAttribute('text-rendering', 'geometricPrecision');
+    labelTxt.textContent = lblText;
+
+    g.append(circle, pText, labelBg, labelTxt);
+
+    // 클릭 → 삭제 (edit 모드 불필요, 항상 가능)
+    g.addEventListener('click', e => {
+      e.stopPropagation();
+      if (confirm('이 주차위치를 삭제할까요?')) {
         _removeParkingSpot(spot.id);
         renderParkingSpots();
-      });
-    }
+      }
+    });
+
     svg.appendChild(g);
   });
 }
@@ -113,6 +150,13 @@ window._onParkingAddClick = function(e) {
                   +(rawY / container.clientHeight * 100).toFixed(2));
   renderParkingSpots();
 };
+
+// 줌/리사이즈 이벤트 → 재렌더
+document.addEventListener('map-zoom-changed', renderParkingSpots);
+window.addEventListener('resize', function() {
+  clearTimeout(window._parkingResizeT);
+  window._parkingResizeT = setTimeout(renderParkingSpots, 150);
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   _updateParkingBtn();
