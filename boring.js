@@ -12,12 +12,13 @@ function _getBoringTransform() {
   try {
     const t = JSON.parse(localStorage.getItem('boring_transform') || '{}');
     return {
-      offsetX: t.offsetX !== undefined ? t.offsetX : 0,
-      offsetY: t.offsetY !== undefined ? t.offsetY : 0,
-      scaleX:  t.scaleX  !== undefined ? t.scaleX  : 1,
-      scaleY:  t.scaleY  !== undefined ? t.scaleY  : 1,
+      offsetX:  t.offsetX  !== undefined ? t.offsetX  : 0,
+      offsetY:  t.offsetY  !== undefined ? t.offsetY  : 0,
+      scaleX:   t.scaleX   !== undefined ? t.scaleX   : 1,
+      scaleY:   t.scaleY   !== undefined ? t.scaleY   : 1,
+      rotation: t.rotation !== undefined ? t.rotation : 0,
     };
-  } catch { return { offsetX:0, offsetY:0, scaleX:1, scaleY:1 }; }
+  } catch { return { offsetX:0, offsetY:0, scaleX:1, scaleY:1, rotation:0 }; }
 }
 
 function renderBoringPoints() {
@@ -34,10 +35,13 @@ function renderBoringPoints() {
   const W = svg.clientWidth  || svg.parentElement.clientWidth;
   const H = svg.clientHeight || svg.parentElement.clientHeight;
   const tr = _getBoringTransform();
+  const rad = tr.rotation * Math.PI / 180;
 
   BORING_POINTS.forEach(pt => {
-    const fx = (pt.x - 50) * tr.scaleX + 50 + tr.offsetX;
-    const fy = (pt.y - 50) * tr.scaleY + 50 + tr.offsetY;
+    const dx = (pt.x - 50) * tr.scaleX;
+    const dy = (pt.y - 50) * tr.scaleY;
+    const fx = 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX;
+    const fy = 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
     const cx = (fx / 100) * W;
     const cy = (fy / 100) * H;
     const isDone = done.has(pt.id);
