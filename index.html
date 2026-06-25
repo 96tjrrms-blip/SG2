@@ -441,7 +441,12 @@
     <button onclick="saveBoringData()" style="flex:2;padding:7px;border-radius:7px;border:1px solid #16a34a;background:#dcfce7;color:#15803d;cursor:pointer;font-size:12px;font-weight:700">💾 boring-data.js 저장</button>
     <button onclick="toggleBoringAdjust()" style="flex:1;padding:7px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;font-size:12px">닫기</button>
   </div>
-  <div style="margin-top:10px;font-size:10px;color:#94a3b8;text-align:center">조정 후 💾 저장 → 다운로드된 파일을 SG2 폴더에 덮어쓰기</div>
+  <div style="border-top:1px solid #e2e8f0;margin-top:12px;padding-top:10px">
+    <div style="font-size:11px;color:#475569;font-weight:600;margin-bottom:7px">일괄 상태 적용</div>
+    <button onclick="const n=applyBoringAboveLine('LC-14',2);alert('LC-14 위: '+n+'개 → 영향무 처리')" style="width:100%;padding:8px;border-radius:7px;border:1.5px solid #334155;background:#1e293b;color:#fff;cursor:pointer;font-size:12px;font-weight:700">■ LC-14 기준선 위 → 영향무</button>
+    <button onclick="const n=applyBoringAboveLine('LC-14',0);alert('LC-14 위: '+n+'개 초기화')" style="width:100%;padding:7px;border-radius:7px;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;cursor:pointer;font-size:11px;margin-top:5px">↺ LC-14 기준선 위 초기화</button>
+  </div>
+  <div style="margin-top:8px;font-size:10px;color:#94a3b8;text-align:center">조정 후 💾 저장 → 다운로드된 파일을 SG2 폴더에 덮어쓰기</div>
 </div>
 <script>
 (function() {
@@ -603,7 +608,7 @@
       </button>
       <button id="bp-color-2" onclick="setBoringColorState(2)"
         style="flex:1;padding:7px 0;border-radius:8px;border:1.5px solid #334155;background:#1e293b;color:#ffffff;font-weight:700;cursor:pointer;font-size:12px">
-        ■ 불가
+        ■ 영향무
       </button>
     </div>
   </div>

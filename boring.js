@@ -190,6 +190,33 @@ function toggleBoringEditMode() {
   if (overlay) overlay.style.display = window._boringEditMode ? 'block' : 'none';
 }
 
+// === LC-14 기준선 위의 마커 일괄 상태 변경 ===
+window.applyBoringAboveLine = function(refId, state) {
+  const allPts = typeof BORING_POINTS !== 'undefined'
+    ? [...BORING_POINTS, ..._getCustomPoints()]
+    : _getCustomPoints();
+  const ref = allPts.find(p => p.id === refId);
+  if (!ref) { alert('기준 마커를 찾을 수 없습니다: ' + refId); return; }
+
+  const tr  = _getBoringTransform();
+  const rad = tr.rotation * Math.PI / 180;
+  function transformedFy(pt) {
+    const dx = (pt.x - 50) * tr.scaleX;
+    const dy = (pt.y - 50) * tr.scaleY;
+    return 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
+  }
+
+  const refY = transformedFy(ref);
+  const m = _getBoringStateMap();
+  let count = 0;
+  allPts.forEach(pt => {
+    if (transformedFy(pt) < refY) { m[pt.id] = state; count++; }
+  });
+  _saveBoringStateMap(m);
+  renderBoringPoints();
+  return count;
+};
+
 window._onBoringAddClick = function(e) {
   const id = prompt('천공 마커 ID 입력 (예: H5-1):');
   if (!id || !id.trim()) return;
