@@ -1197,5 +1197,6 @@ function _drawPickMarkers() {
     svg.insertBefore(prevLine, defs ? defs.nextSibling : svg.firstChild);
   }
 
-  if (typeof renderBoringPoints === 'function') renderBoringPoints();
+  if (typeof renderBoringPoints  === 'function') renderBoringPoints();
+  if (typeof renderParkingSpots === 'function') renderParkingSpots();
 }

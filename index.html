@@ -49,8 +49,7 @@
         <button id="zone-toggle-btn" class="zone-btn" onclick="toggleZoneVisible()">🚧 공사구역 표시</button>
         <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
         <button id="boring-toggle-btn" class="zone-btn" onclick="toggleBoringVisible()">⊕ 천공위치 표시</button>
-        <button id="boring-edit-btn" class="zone-btn" onclick="toggleBoringEditMode()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">✏ 마커 추가</button>
-        <button class="zone-btn" onclick="toggleBoringAdjust()" style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc">🎚 천공 조정</button>
+        <button id="parking-toggle-btn" class="zone-btn" onclick="toggleParkingVisible()">🅿 주차위치 표시</button>
       </div>
       <button class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
         <span id="edit-arrow">▸</span> 편집
@@ -58,7 +57,9 @@
       <div id="edit-group" class="ctrl-group-items" style="display:none">
         <button class="zone-btn zone-btn-edit" onclick="startZoneEdit()">✏️ 구역 편집</button>
         <button class="zone-btn zone-btn-entrance" onclick="startEntranceEdit()">🚪 입구 편집</button>
-        <button id="coord-picker-btn" class="zone-btn" onclick="toggleCoordPicker()" style="background:#fef9c3;color:#713f12;border-color:#fde68a">📍 좌표 피커</button>
+        <button id="boring-edit-btn" class="zone-btn" onclick="toggleBoringEditMode()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">✏ 마커 추가</button>
+        <button class="zone-btn" onclick="toggleBoringAdjust()" style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc">🎚 천공 조정</button>
+        <button id="parking-edit-btn" class="zone-btn" onclick="toggleParkingEdit()" style="background:#f0fdf4;color:#15803d;border-color:#86efac">🅿 주차 편집</button>
       </div>
     </div>
     <div id="zone-edit-bar" class="zone-controls zone-edit-mode" style="display:none">
@@ -95,6 +96,9 @@
         <!-- 천공 마커 추가 오버레이 -->
         <div id="boring-add-overlay" onclick="_onBoringAddClick(event)"
           style="display:none;position:absolute;inset:0;z-index:19;cursor:crosshair;background:rgba(251,191,36,0.08)"></div>
+        <!-- 주차위치 추가 오버레이 -->
+        <div id="parking-add-overlay" onclick="_onParkingAddClick(event)"
+          style="display:none;position:absolute;inset:0;z-index:18;cursor:crosshair;background:rgba(22,163,74,0.06)"></div>
         <!-- 방향 표시 -->
         <div class="map-dir map-dir-left">
           <div class="map-dir-arrow">◀</div>
@@ -288,23 +292,10 @@
 <script src="mapConfig.js"></script>
 <script src="boring-data.js"></script>
 <script src="boring.js"></script>
+<script src="parking.js"></script>
 <script src="map.js"></script>
 <script src="app.js"></script>
 
-<!-- 좌표 피커 (기준점 설정용 임시 도구) -->
-<div id="coord-picker-overlay" style="display:none;position:fixed;inset:0;z-index:999;cursor:crosshair"></div>
-<div id="coord-badge" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;font-family:monospace;
-  font-size:14px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.4);min-width:320px;text-align:center">
-  <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">📍 지도 클릭 좌표 (기준점용)</div>
-  <div id="coord-text" style="font-size:16px;font-weight:700;letter-spacing:1px">-</div>
-  <div id="coord-log" style="margin-top:8px;font-size:11px;color:#cbd5e1;max-height:120px;overflow-y:auto;text-align:left"></div>
-  <div style="margin-top:8px;display:flex;gap:8px;justify-content:center">
-    <button onclick="clearCoordLog()" style="padding:4px 10px;border-radius:6px;border:1px solid #475569;background:#334155;color:#e2e8f0;cursor:pointer;font-size:11px">초기화</button>
-    <button onclick="copyCoordLog()" style="padding:4px 10px;border-radius:6px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;cursor:pointer;font-size:11px">복사</button>
-    <button onclick="toggleCoordPicker()" style="padding:4px 10px;border-radius:6px;border:1px solid #ef4444;background:#dc2626;color:#fff;cursor:pointer;font-size:11px">종료</button>
-  </div>
-</div>
 <!-- 지도 줌/패닝 -->
 <script>
 (function() {
@@ -522,53 +513,6 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     alert('boring-data.js 다운로드됨!\n\nSG2 폴더에 덮어쓰기 하면 영구 적용돼요.');
   };
-})();
-</script>
-
-<script>
-(function() {
-  let _pickerActive = false;
-  let _log = [];
-  let _clickCount = 0;
-
-  window.toggleCoordPicker = function() {
-    if (!_pickerActive && typeof mapZoomReset === 'function') mapZoomReset();
-    _pickerActive = !_pickerActive;
-    const overlay = document.getElementById('coord-picker-overlay');
-    const badge   = document.getElementById('coord-badge');
-    const btn     = document.getElementById('coord-picker-btn');
-    overlay.style.display = _pickerActive ? 'block' : 'none';
-    badge.style.display   = _pickerActive ? 'block' : 'none';
-    if (btn) btn.style.background = _pickerActive ? '#fde68a' : '#fef9c3';
-  };
-
-  window.clearCoordLog = function() {
-    _log = []; _clickCount = 0;
-    document.getElementById('coord-log').innerHTML = '';
-    document.getElementById('coord-text').textContent = '-';
-  };
-
-  window.copyCoordLog = function() {
-    const text = _log.join('\n');
-    navigator.clipboard.writeText(text).then(() => alert('클립보드에 복사됨!\n\n' + text));
-  };
-
-  document.getElementById('coord-picker-overlay').addEventListener('click', function(e) {
-    const container = document.getElementById('map-container');
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    const xPct = (px / rect.width  * 100).toFixed(2);
-    const yPct = (py / rect.height * 100).toFixed(2);
-    _clickCount++;
-    const line = `기준점${_clickCount}: x=${xPct}%, y=${yPct}%`;
-    _log.push(line);
-    document.getElementById('coord-text').textContent = `x=${xPct}%  y=${yPct}%`;
-    const logEl = document.getElementById('coord-log');
-    logEl.innerHTML += `<div style="padding:2px 0;border-top:1px solid #334155">${line}</div>`;
-    logEl.scrollTop = logEl.scrollHeight;
-  });
 })();
 </script>
 
