@@ -57,7 +57,11 @@
       <div id="edit-group" class="ctrl-group-items" style="display:none">
         <button class="zone-btn zone-btn-edit" onclick="startZoneEdit()">✏️ 구역 편집</button>
         <button class="zone-btn zone-btn-entrance" onclick="startEntranceEdit()">🚪 입구 편집</button>
-        <button id="boring-edit-btn" class="zone-btn" onclick="toggleBoringEditMode()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">✏ 마커 추가</button>
+        <button id="boring-edit-btn" class="zone-btn" onclick="toggleBoringMarkerEdit()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">✏ 마커 편집</button>
+        <div id="boring-marker-sub" style="display:none;gap:4px;flex-wrap:wrap">
+          <button id="boring-add-sub" class="zone-btn" onclick="setBoringMarkerMode('add')" style="font-size:11px;padding:4px 10px">✚ 추가</button>
+          <button id="boring-del-sub" class="zone-btn" onclick="setBoringMarkerMode('del')" style="font-size:11px;padding:4px 10px">✕ 삭제</button>
+        </div>
         <button class="zone-btn" onclick="toggleBoringAdjust()" style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc">🎚 천공 조정</button>
         <button id="parking-edit-btn" class="zone-btn" onclick="toggleParkingEdit()" style="background:#f0fdf4;color:#15803d;border-color:#86efac">🅿 주차 편집</button>
       </div>

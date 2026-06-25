@@ -1,5 +1,6 @@
 const BORING_STATE_KEY  = 'boring_state_v1';
 const BORING_CUSTOM_KEY = 'boring_custom';
+const BORING_HIDDEN_KEY = 'boring_hidden_v1';
 
 // LC-14(y=52.08) 기준선 위 → 기본값 영향무(2)
 const BORING_DEFAULT_STATES = {
@@ -24,7 +25,7 @@ const BORING_DEFAULT_STATES = {
   "LC-4":2,
 };
 
-// === 3단계 색상 관리 ===
+// === 색상 상태 ===
 function _getBoringStateMap() {
   try { return JSON.parse(localStorage.getItem(BORING_STATE_KEY) || '{}'); }
   catch { return {}; }
@@ -45,17 +46,30 @@ window.setBoringState = function(id, state) {
 };
 
 function _boringColors(state) {
-  if (state === 1) return { fill: '#dcfce7', stroke: '#16a34a', text: '#14532d' };
-  if (state === 2) return { fill: '#1e293b', stroke: '#0f172a', text: '#ffffff' };
-  return { fill: '#ffffff', stroke: '#1e293b', text: '#0f172a' };
+  if (state === 1) return { fill: '#dcfce7', stroke: '#16a34a' };
+  if (state === 2) return { fill: '#1e293b', stroke: '#0f172a' };
+  return { fill: '#ffffff', stroke: '#1e293b' };
 }
+
+// === 숨긴 마커 관리 ===
+function _getHiddenSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(BORING_HIDDEN_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function _hideMarker(id) {
+  const h = _getHiddenSet(); h.add(id);
+  localStorage.setItem(BORING_HIDDEN_KEY, JSON.stringify([...h]));
+}
+window.restoreAllHiddenMarkers = function() {
+  localStorage.removeItem(BORING_HIDDEN_KEY);
+  renderBoringPoints();
+};
 
 // === 커스텀 마커 관리 ===
 function _getCustomPoints() {
   try { return JSON.parse(localStorage.getItem(BORING_CUSTOM_KEY) || '[]'); }
   catch { return []; }
 }
-
 function _addCustomPoint(id, x, y) {
   const pts = _getCustomPoints();
   if (pts.some(p => p.id === id)) { alert('이미 존재하는 ID입니다: ' + id); return false; }
@@ -63,10 +77,8 @@ function _addCustomPoint(id, x, y) {
   localStorage.setItem(BORING_CUSTOM_KEY, JSON.stringify(pts));
   return true;
 }
-
 function _removeCustomPoint(id) {
-  const pts = _getCustomPoints().filter(p => p.id !== id);
-  localStorage.setItem(BORING_CUSTOM_KEY, JSON.stringify(pts));
+  localStorage.setItem(BORING_CUSTOM_KEY, JSON.stringify(_getCustomPoints().filter(p => p.id !== id)));
 }
 
 // === 변환 ===
@@ -83,7 +95,58 @@ function _getBoringTransform() {
   } catch { return { offsetX:0, offsetY:0, scaleX:1, scaleY:1, rotation:0 }; }
 }
 
-// === 메인 렌더 (overlay-svg 사용 — zoom 컨테이너 밖 → 항상 선명) ===
+// === 마커 편집 모드 ===
+window._boringMarkerMode = null; // null | 'add' | 'del'
+
+window.toggleBoringMarkerEdit = function() {
+  if (window._boringMarkerMode !== null) {
+    _exitBoringMarkerEdit();
+  } else {
+    const sub = document.getElementById('boring-marker-sub');
+    const btn = document.getElementById('boring-edit-btn');
+    if (sub) sub.style.display = 'flex';
+    if (btn) {
+      btn.style.background  = '#fef3c7';
+      btn.style.color       = '#92400e';
+      btn.style.borderColor = '#f59e0b';
+    }
+  }
+};
+
+window.setBoringMarkerMode = function(mode) {
+  window._boringMarkerMode = mode;
+  const overlay = document.getElementById('boring-add-overlay');
+  const addBtn  = document.getElementById('boring-add-sub');
+  const delBtn  = document.getElementById('boring-del-sub');
+
+  if (mode === 'add') {
+    if (overlay) overlay.style.display = 'block';
+    if (addBtn) { addBtn.style.background = '#fef3c7'; addBtn.style.color = '#92400e'; addBtn.style.borderColor = '#f59e0b'; }
+    if (delBtn) { delBtn.style.background = ''; delBtn.style.color = ''; delBtn.style.borderColor = ''; }
+  } else {
+    if (overlay) overlay.style.display = 'none';
+    if (delBtn) { delBtn.style.background = '#fee2e2'; delBtn.style.color = '#dc2626'; delBtn.style.borderColor = '#fca5a5'; }
+    if (addBtn) { addBtn.style.background = ''; addBtn.style.color = ''; addBtn.style.borderColor = ''; }
+  }
+  renderBoringPoints();
+};
+
+function _exitBoringMarkerEdit() {
+  window._boringMarkerMode = null;
+  const overlay = document.getElementById('boring-add-overlay');
+  const sub     = document.getElementById('boring-marker-sub');
+  const btn     = document.getElementById('boring-edit-btn');
+  const addBtn  = document.getElementById('boring-add-sub');
+  const delBtn  = document.getElementById('boring-del-sub');
+  if (overlay) overlay.style.display = 'none';
+  if (sub)     sub.style.display = 'none';
+  if (btn)     { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
+  if (addBtn)  { addBtn.style.background = ''; addBtn.style.color = ''; addBtn.style.borderColor = ''; }
+  if (delBtn)  { delBtn.style.background = ''; delBtn.style.color = ''; delBtn.style.borderColor = ''; }
+  renderBoringPoints();
+}
+
+// === 메인 렌더 ===
 function renderBoringPoints() {
   const svg = document.getElementById('overlay-svg');
   if (!svg) return;
@@ -98,19 +161,23 @@ function renderBoringPoints() {
   const H = container.clientHeight;
   if (!W || !H) return;
 
-  const zoom = typeof getMapZoom === 'function' ? getMapZoom() : { scale:1, tx:0, ty:0 };
+  const zoom   = typeof getMapZoom === 'function' ? getMapZoom() : { scale:1, tx:0, ty:0 };
+  const hidden = _getHiddenSet();
+  const isDelMode = window._boringMarkerMode === 'del';
+
   const customPts = _getCustomPoints();
   const allPts    = [...BORING_POINTS, ...customPts];
   const tr  = _getBoringTransform();
   const rad = tr.rotation * Math.PI / 180;
 
   allPts.forEach(pt => {
+    if (hidden.has(pt.id)) return;
+
     const dx = (pt.x - 50) * tr.scaleX;
     const dy = (pt.y - 50) * tr.scaleY;
     const fx = 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX;
     const fy = 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
 
-    // 언줌 CSS픽셀 위치 → 현재 줌 적용한 스크린 위치
     const cx = (fx / 100) * W * zoom.scale + zoom.tx;
     const cy = (fy / 100) * H * zoom.scale + zoom.ty;
 
@@ -120,37 +187,37 @@ function renderBoringPoints() {
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.classList.add('boring-marker');
-    g.style.cursor = 'pointer';
+    g.style.cursor = isDelMode ? 'crosshair' : 'pointer';
     g.style.pointerEvents = 'all';
-    g.dataset.id   = pt.id;
+    g.dataset.id = pt.id;
     g.setAttribute('transform', `translate(${cx},${cy})`);
 
     const outer = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     outer.setAttribute('r', 8);
-    outer.setAttribute('fill', fillColor);
-    outer.setAttribute('stroke', strokeColor);
-    outer.setAttribute('stroke-width', 1.5);
+    outer.setAttribute('fill', isDelMode ? 'rgba(239,68,68,0.15)' : fillColor);
+    outer.setAttribute('stroke', isDelMode ? '#ef4444' : strokeColor);
+    outer.setAttribute('stroke-width', isDelMode ? 2 : 1.5);
 
     const inner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     inner.setAttribute('r', 5);
     inner.setAttribute('fill', 'none');
-    inner.setAttribute('stroke', strokeColor);
+    inner.setAttribute('stroke', isDelMode ? '#ef4444' : strokeColor);
     inner.setAttribute('stroke-width', 1);
 
     const symL = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     symL.setAttribute('x1', -2.5); symL.setAttribute('y1', -3);
     symL.setAttribute('x2', -2.5); symL.setAttribute('y2',  3);
-    symL.setAttribute('stroke', strokeColor); symL.setAttribute('stroke-width', 1);
+    symL.setAttribute('stroke', isDelMode ? '#ef4444' : strokeColor); symL.setAttribute('stroke-width', 1);
 
     const symR = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     symR.setAttribute('x1', 2.5); symR.setAttribute('y1', -3);
     symR.setAttribute('x2', 2.5); symR.setAttribute('y2',  3);
-    symR.setAttribute('stroke', strokeColor); symR.setAttribute('stroke-width', 1);
+    symR.setAttribute('stroke', isDelMode ? '#ef4444' : strokeColor); symR.setAttribute('stroke-width', 1);
 
     const symH = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     symH.setAttribute('x1', -2.5); symH.setAttribute('y1', 0);
     symH.setAttribute('x2',  2.5); symH.setAttribute('y2', 0);
-    symH.setAttribute('stroke', strokeColor); symH.setAttribute('stroke-width', 1);
+    symH.setAttribute('stroke', isDelMode ? '#ef4444' : strokeColor); symH.setAttribute('stroke-width', 1);
 
     const labelW  = pt.id.length * 5.5 + 8;
     const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -159,8 +226,8 @@ function renderBoringPoints() {
     labelBg.setAttribute('width',  labelW);
     labelBg.setAttribute('height', 12);
     labelBg.setAttribute('rx', 2);
-    labelBg.setAttribute('fill', 'rgba(255,255,255,0.95)');
-    labelBg.setAttribute('stroke', '#cbd5e1');
+    labelBg.setAttribute('fill', isDelMode ? 'rgba(254,226,226,0.95)' : 'rgba(255,255,255,0.95)');
+    labelBg.setAttribute('stroke', isDelMode ? '#fca5a5' : '#cbd5e1');
     labelBg.setAttribute('stroke-width', 0.5);
 
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -168,15 +235,15 @@ function renderBoringPoints() {
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('font-size', '10');
     label.setAttribute('font-weight', '700');
-    label.setAttribute('fill', '#0f172a');
+    label.setAttribute('fill', isDelMode ? '#dc2626' : '#0f172a');
     label.setAttribute('font-family', 'sans-serif');
     label.setAttribute('text-rendering', 'geometricPrecision');
-    label.setAttribute('shape-rendering', 'crispEdges');
     label.textContent = pt.id;
 
     g.append(outer, inner, symL, symR, symH, labelBg, label);
 
-    if (isCustom) {
+    // 커스텀 마커 표시 (주황 점)
+    if (isCustom && !isDelMode) {
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', 6); dot.setAttribute('cy', -6);
       dot.setAttribute('r', 3);
@@ -186,10 +253,44 @@ function renderBoringPoints() {
       g.appendChild(dot);
     }
 
-    g.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (typeof openBoringPanel === 'function') openBoringPanel(pt.id, isCustom);
-    });
+    // 삭제 모드 X 배지
+    if (isDelMode) {
+      const xBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      xBg.setAttribute('cx', 7); xBg.setAttribute('cy', -7);
+      xBg.setAttribute('r', 5);
+      xBg.setAttribute('fill', '#ef4444');
+      xBg.setAttribute('stroke', '#fff');
+      xBg.setAttribute('stroke-width', 1);
+      const xTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      xTxt.setAttribute('x', 7); xTxt.setAttribute('y', -4);
+      xTxt.setAttribute('text-anchor', 'middle');
+      xTxt.setAttribute('font-size', '8');
+      xTxt.setAttribute('font-weight', '900');
+      xTxt.setAttribute('fill', '#fff');
+      xTxt.textContent = '✕';
+      g.append(xBg, xTxt);
+    }
+
+    // 클릭 핸들러
+    if (isDelMode) {
+      g.addEventListener('click', e => {
+        e.stopPropagation();
+        const action = isCustom ? '삭제' : '숨기기';
+        if (!confirm(`"${pt.id}" 마커를 ${action}할까요?${isCustom ? '' : '\n(기본 마커는 숨기기만 가능합니다)'}`)) return;
+        if (isCustom) {
+          _removeCustomPoint(pt.id);
+        } else {
+          _hideMarker(pt.id);
+        }
+        renderBoringPoints();
+      });
+    } else {
+      g.addEventListener('click', e => {
+        e.stopPropagation();
+        if (typeof openBoringPanel === 'function') openBoringPanel(pt.id, isCustom);
+      });
+    }
+
     svg.appendChild(g);
   });
 }
@@ -208,50 +309,9 @@ function _updateBoringBtn() {
   if (btn) btn.textContent = visible ? '⊕ 천공위치 숨기기' : '⊕ 천공위치 표시';
 }
 
-// === 추가 모드 ===
-window._boringEditMode = false;
-
-function toggleBoringEditMode() {
-  window._boringEditMode = !window._boringEditMode;
-  const btn     = document.getElementById('boring-edit-btn');
-  const overlay = document.getElementById('boring-add-overlay');
-  if (btn) {
-    btn.textContent   = window._boringEditMode ? '✏ 추가 ON' : '✏ 마커 추가';
-    btn.style.background  = window._boringEditMode ? '#fef3c7' : '';
-    btn.style.color       = window._boringEditMode ? '#92400e' : '';
-    btn.style.borderColor = window._boringEditMode ? '#f59e0b' : '';
-  }
-  if (overlay) overlay.style.display = window._boringEditMode ? 'block' : 'none';
-}
-
-// === LC-14 기준선 위의 마커 일괄 상태 변경 ===
-window.applyBoringAboveLine = function(refId, state) {
-  const allPts = typeof BORING_POINTS !== 'undefined'
-    ? [...BORING_POINTS, ..._getCustomPoints()]
-    : _getCustomPoints();
-  const ref = allPts.find(p => p.id === refId);
-  if (!ref) { alert('기준 마커를 찾을 수 없습니다: ' + refId); return; }
-
-  const tr  = _getBoringTransform();
-  const rad = tr.rotation * Math.PI / 180;
-  function transformedFy(pt) {
-    const dx = (pt.x - 50) * tr.scaleX;
-    const dy = (pt.y - 50) * tr.scaleY;
-    return 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
-  }
-
-  const refY = transformedFy(ref);
-  const m = _getBoringStateMap();
-  let count = 0;
-  allPts.forEach(pt => {
-    if (transformedFy(pt) < refY) { m[pt.id] = state; count++; }
-  });
-  _saveBoringStateMap(m);
-  renderBoringPoints();
-  return count;
-};
-
+// === 마커 추가 클릭 핸들러 ===
 window._onBoringAddClick = function(e) {
+  if (window._boringMarkerMode !== 'add') return;
   const id = prompt('천공 마커 ID 입력 (예: H5-1):');
   if (!id || !id.trim()) return;
   const container = document.getElementById('map-container');
@@ -265,7 +325,32 @@ window._onBoringAddClick = function(e) {
   if (_addCustomPoint(id.trim(), xPct, yPct)) renderBoringPoints();
 };
 
-// === 줌/리사이즈 이벤트 → 재렌더 ===
+// === LC-14 기준선 일괄 상태 변경 ===
+window.applyBoringAboveLine = function(refId, state) {
+  const allPts = typeof BORING_POINTS !== 'undefined'
+    ? [...BORING_POINTS, ..._getCustomPoints()]
+    : _getCustomPoints();
+  const ref = allPts.find(p => p.id === refId);
+  if (!ref) { alert('기준 마커를 찾을 수 없습니다: ' + refId); return; }
+
+  const tr  = _getBoringTransform();
+  const rad = tr.rotation * Math.PI / 180;
+  function tFy(pt) {
+    const dx = (pt.x - 50) * tr.scaleX;
+    const dy = (pt.y - 50) * tr.scaleY;
+    return 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
+  }
+
+  const refY = tFy(ref);
+  const m = _getBoringStateMap();
+  let count = 0;
+  allPts.forEach(pt => { if (tFy(pt) < refY) { m[pt.id] = state; count++; } });
+  _saveBoringStateMap(m);
+  renderBoringPoints();
+  return count;
+};
+
+// === 줌/리사이즈 재렌더 ===
 document.addEventListener('map-zoom-changed', renderBoringPoints);
 window.addEventListener('resize', function() {
   clearTimeout(window._boringResizeT);
