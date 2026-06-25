@@ -127,16 +127,19 @@ window.toggleBoringMarkerEdit = function() {
 
 window.setBoringMarkerMode = function(mode) {
   window._boringMarkerMode = mode;
-  const overlay = document.getElementById('boring-add-overlay');
-  const addBtn  = document.getElementById('boring-add-sub');
-  const delBtn  = document.getElementById('boring-del-sub');
+  const addOv  = document.getElementById('boring-add-overlay');
+  const delOv  = document.getElementById('boring-del-overlay');
+  const addBtn = document.getElementById('boring-add-sub');
+  const delBtn = document.getElementById('boring-del-sub');
 
   if (mode === 'add') {
-    if (overlay) overlay.style.display = 'block';
+    if (addOv) addOv.style.display = 'block';
+    if (delOv) delOv.style.display = 'none';
     if (addBtn) { addBtn.style.background = '#fef3c7'; addBtn.style.color = '#92400e'; addBtn.style.borderColor = '#f59e0b'; }
     if (delBtn) { delBtn.style.background = ''; delBtn.style.color = ''; delBtn.style.borderColor = ''; }
   } else {
-    if (overlay) overlay.style.display = 'none';
+    if (addOv) addOv.style.display = 'none';
+    if (delOv) delOv.style.display = 'block';
     if (delBtn) { delBtn.style.background = '#fee2e2'; delBtn.style.color = '#dc2626'; delBtn.style.borderColor = '#fca5a5'; }
     if (addBtn) { addBtn.style.background = ''; addBtn.style.color = ''; addBtn.style.borderColor = ''; }
   }
@@ -145,18 +148,65 @@ window.setBoringMarkerMode = function(mode) {
 
 function _exitBoringMarkerEdit() {
   window._boringMarkerMode = null;
-  const overlay = document.getElementById('boring-add-overlay');
-  const sub     = document.getElementById('boring-marker-sub');
-  const btn     = document.getElementById('boring-edit-btn');
-  const addBtn  = document.getElementById('boring-add-sub');
-  const delBtn  = document.getElementById('boring-del-sub');
-  if (overlay) overlay.style.display = 'none';
-  if (sub)     sub.style.display = 'none';
-  if (btn)     { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
-  if (addBtn)  { addBtn.style.background = ''; addBtn.style.color = ''; addBtn.style.borderColor = ''; }
-  if (delBtn)  { delBtn.style.background = ''; delBtn.style.color = ''; delBtn.style.borderColor = ''; }
+  const addOv = document.getElementById('boring-add-overlay');
+  const delOv = document.getElementById('boring-del-overlay');
+  const sub   = document.getElementById('boring-marker-sub');
+  const btn   = document.getElementById('boring-edit-btn');
+  const addBtn = document.getElementById('boring-add-sub');
+  const delBtn = document.getElementById('boring-del-sub');
+  if (addOv) addOv.style.display = 'none';
+  if (delOv) delOv.style.display = 'none';
+  if (sub)   sub.style.display = 'none';
+  if (btn)   { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
+  if (addBtn) { addBtn.style.background = ''; addBtn.style.color = ''; addBtn.style.borderColor = ''; }
+  if (delBtn) { delBtn.style.background = ''; delBtn.style.color = ''; delBtn.style.borderColor = ''; }
   renderBoringPoints();
 }
+
+// 삭제 오버레이 클릭 → 좌표 계산으로 가장 가까운 마커 찾아서 삭제
+window._onBoringDelClick = function(e) {
+  if (window._boringMarkerMode !== 'del') return;
+  const container = document.getElementById('map-container');
+  if (!container) return;
+
+  const rect  = container.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const clickY = e.clientY - rect.top;
+
+  const W    = container.clientWidth;
+  const H    = container.clientHeight;
+  const zoom = typeof getMapZoom === 'function' ? getMapZoom() : { scale:1, tx:0, ty:0 };
+  const tr   = _getBoringTransform();
+  const rad  = tr.rotation * Math.PI / 180;
+  const hidden = _getHiddenSet();
+
+  const customPts = _getCustomPoints();
+  const allPts = typeof BORING_POINTS !== 'undefined'
+    ? [...BORING_POINTS, ...customPts] : customPts;
+
+  const THRESHOLD = 20; // px
+  let closest = null, minDist = Infinity;
+
+  allPts.forEach(pt => {
+    if (hidden.has(pt.id)) return;
+    const dx = (pt.x - 50) * tr.scaleX;
+    const dy = (pt.y - 50) * tr.scaleY;
+    const fx = 50 + dx * Math.cos(rad) - dy * Math.sin(rad) + tr.offsetX;
+    const fy = 50 + dx * Math.sin(rad) + dy * Math.cos(rad) + tr.offsetY;
+    const mx = (fx / 100) * W * zoom.scale + zoom.tx;
+    const my = (fy / 100) * H * zoom.scale + zoom.ty;
+    const dist = Math.hypot(clickX - mx, clickY - my);
+    if (dist < THRESHOLD && dist < minDist) { minDist = dist; closest = pt; }
+  });
+
+  if (!closest) return;
+  const isCustom = !!closest.custom;
+  const action = isCustom ? '삭제' : '숨기기';
+  if (!confirm(`"${closest.id}" 마커를 ${action}할까요?${isCustom ? '' : '\n(기본 마커는 숨기기만 가능합니다)'}`)) return;
+  if (isCustom) _removeCustomPoint(closest.id);
+  else _hideMarker(closest.id);
+  renderBoringPoints();
+};
 
 // === 메인 렌더 ===
 function renderBoringPoints() {
@@ -283,20 +333,8 @@ function renderBoringPoints() {
       g.append(xBg, xTxt);
     }
 
-    // 클릭 핸들러
-    if (isDelMode) {
-      g.addEventListener('click', e => {
-        e.stopPropagation();
-        const action = isCustom ? '삭제' : '숨기기';
-        if (!confirm(`"${pt.id}" 마커를 ${action}할까요?${isCustom ? '' : '\n(기본 마커는 숨기기만 가능합니다)'}`)) return;
-        if (isCustom) {
-          _removeCustomPoint(pt.id);
-        } else {
-          _hideMarker(pt.id);
-        }
-        renderBoringPoints();
-      });
-    } else {
+    // 삭제 모드엔 오버레이가 클릭을 처리하므로 마커 자체엔 패널 핸들러만
+    if (!isDelMode) {
       g.addEventListener('click', e => {
         e.stopPropagation();
         if (typeof openBoringPanel === 'function') openBoringPanel(pt.id, isCustom);
