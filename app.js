@@ -547,7 +547,7 @@ window.openBoringPanel = async function(boringId, isCustom) {
   _renderBpColorState(stateMap[boringId] || 0);
 
   const delBtn = document.getElementById('bp-delete-btn');
-  if (delBtn) delBtn.style.display = isCustom ? 'block' : 'none';
+  if (delBtn) delBtn.style.display = 'block';
 
   const panel = document.getElementById('boring-panel');
   panel.style.display = 'block';
@@ -668,9 +668,13 @@ window.handleBoringPhotoUpload = async function(input) {
 };
 
 window.deleteCustomBoring = function() {
-  if (!_currentBoringId || !_currentBoringIsCustom) return;
+  if (!_currentBoringId) return;
   if (!confirm(`마커 "${_currentBoringId}"를 삭제할까요?`)) return;
-  if (typeof _removeCustomPoint === 'function') _removeCustomPoint(_currentBoringId);
+  if (_currentBoringIsCustom) {
+    if (typeof _removeCustomPoint === 'function') _removeCustomPoint(_currentBoringId);
+  } else {
+    if (typeof _hideMarker === 'function') _hideMarker(_currentBoringId);
+  }
   closeBoringPanel();
   if (typeof renderBoringPoints === 'function') renderBoringPoints();
 };
