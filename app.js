@@ -17,12 +17,15 @@ async function initDroneSlider() {
 function _renderDashDots() {
   const el = document.getElementById('dash-dots');
   if (!el) return;
-  const total = 1 + _dronePhotos.length; // slide 0 = 배관망도
+  // 사진 0장이어도 드론슬롯 dot는 항상 표시
+  const total = Math.max(2, 1 + _dronePhotos.length);
   const isMap = document.getElementById('drone-view').style.display === 'none';
   const active = isMap ? 0 : 1 + _droneIdx;
-  el.innerHTML = Array.from({ length: total }, (_, i) =>
-    `<span class="dash-dot${i === active ? ' active' : ''}" onclick="goDashSlide(${i})"></span>`
-  ).join('');
+  el.innerHTML = Array.from({ length: total }, (_, i) => {
+    const isEmpty = i > 0 && i > _dronePhotos.length;
+    return `<span class="dash-dot${i === active ? ' active' : ''}${isEmpty ? ' dash-dot-add' : ''}"
+      onclick="goDashSlide(${i})" title="${isEmpty ? '드론사진 추가' : ''}"></span>`;
+  }).join('');
 }
 
 function _renderDroneSlide() {
@@ -46,7 +49,7 @@ window.goDashSlide = function(idx) {
     document.getElementById('map-no-image').style.display = '';
     document.getElementById('drone-view').style.display = 'none';
   } else {
-    _droneIdx = Math.min(idx - 1, _dronePhotos.length - 1);
+    _droneIdx = Math.max(0, Math.min(idx - 1, _dronePhotos.length - 1));
     document.getElementById('map-container').style.display = 'none';
     document.getElementById('map-no-image').style.display = 'none';
     document.getElementById('drone-view').style.display = '';
