@@ -547,15 +547,7 @@ function openPhotoModal(segId, subSegId) {
   _renderPhotoGrid(segId, _photoModalSubId);
 }
 
-function openLightbox(encodedUrl) {
-  const lb = document.getElementById('lightbox');
-  document.getElementById('lightbox-img').src = decodeURIComponent(encodedUrl);
-  lb.style.display = 'flex';
-}
-function closeLightbox() {
-  document.getElementById('lightbox').style.display = 'none';
-  document.getElementById('lightbox-img').src = '';
-}
+
 
 function closePhotoModal() {
   document.getElementById('photo-modal').style.display = 'none';
@@ -576,10 +568,9 @@ async function _renderPhotoGrid(segId, subSegId) {
       const isRep = rep && rep.path === p.path;
       const ep    = encodeURIComponent(p.path);
       const ess   = encodeURIComponent(subSegId);
-      const eu    = encodeURIComponent(p.url);
       return `
         <div class="pm-photo-item ${isRep ? 'pm-rep' : ''}">
-          <img src="${p.url}" onclick="openLightbox('${eu}')" style="cursor:zoom-in">
+          <img src="${p.url}" onclick="openLightbox('${p.url}')" style="cursor:zoom-in">
           <div class="pm-photo-actions">
             <button class="${isRep ? 'pm-btn-rep-active' : 'pm-btn-rep'}" title="대표사진"
               onclick="setRepPhoto('${segId}','${ess}','${p.url}','${ep}')">★</button>
