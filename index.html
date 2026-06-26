@@ -603,10 +603,9 @@
 
   <!-- 업로드 -->
   <div style="padding:8px 18px 14px">
-    <label id="bp-upload-lbl" style="display:block;padding:9px;border-radius:8px;border:1.5px dashed #94a3b8;text-align:center;font-size:13px;color:#475569;cursor:pointer;background:#f8fafc">
+    <button id="bp-upload-lbl" onclick="document.getElementById('bp-photo-input').click()" style="display:block;width:100%;padding:9px;border-radius:8px;border:1.5px dashed #94a3b8;text-align:center;font-size:13px;color:#475569;cursor:pointer;background:#f8fafc">
       📷 사진 추가
-      <input type="file" accept="image/*" multiple style="display:none" onchange="handleBoringPhotoUpload(this)">
-    </label>
+    </button>
   </div>
 
   <!-- 커스텀 마커 삭제 -->
@@ -616,5 +615,6 @@
     </button>
   </div>
 </div>
+<input type="file" id="bp-photo-input" accept="image/*" multiple style="display:none" onchange="handleBoringPhotoUpload(this)">
 </body>
 </html>
