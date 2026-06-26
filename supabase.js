@@ -267,6 +267,37 @@ async function deletePipePhotoStorage(path) {
   if (error) throw error;
 }
 
+// ===== 드론사진 (pipe-photo 버킷 / drone/ 폴더) =====
+window.listDronePhotos = async function() {
+  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list('drone', {
+    sortBy: { column: 'name', order: 'asc' }
+  });
+  if (error || !data) return [];
+  return data
+    .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
+    .map(f => {
+      const path = `drone/${f.name}`;
+      const { data: urlData } = sb.storage.from(PIPE_PHOTO_BUCKET).getPublicUrl(path);
+      return { path, url: urlData.publicUrl };
+    });
+};
+
+window.uploadDronePhoto = async function(file) {
+  const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `drone/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, file, {
+    cacheControl: '3600', upsert: false
+  });
+  if (error) throw error;
+  const { data } = sb.storage.from(PIPE_PHOTO_BUCKET).getPublicUrl(path);
+  return { path, url: data.publicUrl };
+};
+
+window.deleteDronePhotoStorage = async function(path) {
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).remove([path]);
+  if (error) throw error;
+};
+
 // ── pipe_settings 테이블 (크로스디바이스 동기화) ──────────────
 async function fetchAllPipeSettings() {
   const { data, error } = await sb.from('pipe_settings').select('*');
