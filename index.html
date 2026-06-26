@@ -130,12 +130,14 @@
           <button id="drone-prev-btn" onclick="dronePrev()" style="width:32px;height:32px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.9);font-size:16px;cursor:pointer;line-height:1">‹</button>
           <button id="drone-next-btn" onclick="droneNext()" style="width:32px;height:32px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.9);font-size:16px;cursor:pointer;line-height:1">›</button>
         </div>
-        <button onclick="document.getElementById('drone-file-input').click()" style="position:absolute;bottom:10px;right:10px;z-index:20;padding:6px 12px;border-radius:6px;border:1px solid #0d2b5e;background:rgba(255,255,255,0.92);color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
-        <input type="file" id="drone-file-input" accept="image/*" multiple style="display:none" onchange="handleDroneUpload(this)">
       </div>
       </div><!-- /#dash-slider -->
-      <!-- dot 인디케이터 -->
-      <div id="dash-dots" style="text-align:center;padding:8px 0 4px"></div>
+      <!-- dot 인디케이터 + 드론사진 업로드 버튼 -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 0 4px">
+        <div id="dash-dots"></div>
+        <button onclick="document.getElementById('drone-file-input').click()" style="padding:4px 10px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:11px;font-weight:600;cursor:pointer">+ 드론사진 추가</button>
+        <input type="file" id="drone-file-input" accept="image/*" multiple style="display:none" onchange="handleDroneUpload(this)">
+      </div>
     </div>
   </div>
 
