@@ -372,7 +372,7 @@
     c.addEventListener('mousedown', function(e) {
       if (scale <= 1 || e.button !== 0) return;
       // 편집 오버레이/버튼이면 무시
-      if (e.target.closest('#zone-click-overlay,button,input')) return;
+      if (e.target.closest('#zone-click-overlay,button,input,.boring-marker,.parking-marker')) return;
       dragging = true;
       startX = e.clientX; startY = e.clientY;
       startTx = tx; startTy = ty;
