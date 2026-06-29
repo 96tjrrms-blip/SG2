@@ -237,6 +237,8 @@ function renderBoringPoints() {
   if (!svg) return;
   svg.querySelectorAll('.boring-marker').forEach(el => el.remove());
 
+  if (window.currentDashSite && window.currentDashSite !== '115st') return;
+
   const visible = localStorage.getItem('boring_visible') !== 'false';
   if (!visible || typeof BORING_POINTS === 'undefined' || !BORING_POINTS.length) return;
 

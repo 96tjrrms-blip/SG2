@@ -12,10 +12,10 @@ const DASH_SITES = [
 ];
 let currentDashSite = '115st';
 
-// 115 정거장 전용 ON/OFF 버튼
-const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'parking-toggle-btn', 'drone-toggle-btn'];
+// 115 정거장 전용 ON/OFF 버튼 (파킹/드론은 모든 현장 공통)
+const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'drone-toggle-btn'];
 // 115 정거장 전용 편집 버튼
-const _115_EDIT  = ['boring-edit-btn', 'boring-marker-sub', 'parking-edit-btn'];
+const _115_EDIT  = ['boring-edit-btn', 'boring-marker-sub'];
 
 function _updateDashControls() {
   const is115 = currentDashSite === '115st';
@@ -31,38 +31,36 @@ function _updateDashControls() {
   const adjustBtn = document.querySelector('.zone-btn[onclick="toggleBoringAdjust()"]');
   if (adjustBtn) adjustBtn.style.display = is115 ? '' : 'none';
 
-  // 천공/주차 마커 오버레이
-  const overlay = document.getElementById('overlay-svg');
-  if (overlay) overlay.style.display = is115 ? '' : 'none';
+  // pipe SVG (배관망도) - 115정거장만
+  const mapSvg = document.getElementById('map-svg');
+  if (mapSvg) mapSvg.style.display = is115 ? '' : 'none';
 }
 
 window.switchDashSite = function(siteId) {
   currentDashSite = siteId;
+  window.currentDashSite = siteId;
 
   document.querySelectorAll('.dash-site-tab').forEach(b => {
-    const on = b.dataset.site === siteId;
-    b.classList.toggle('active', on);
+    b.classList.toggle('active', b.dataset.site === siteId);
   });
 
-  // 드론뷰 열려 있으면 닫기
   if (_droneViewOpen) toggleDroneView();
 
   const site = DASH_SITES.find(s => s.id === siteId);
-  const mapCont  = document.getElementById('map-container');
-  const mapNoImg = document.getElementById('map-no-image');
-  const sitePhotoView = document.getElementById('site-photo-view');
 
   if (site.sitePhoto) {
-    // 환기구: 고정 사진 표시
-    mapCont.style.display        = 'none';
-    mapNoImg.style.display       = 'none';
-    sitePhotoView.style.display  = '';
-    document.getElementById('site-photo-img').src = site.sitePhoto;
+    // 환기구: map-container 유지, img src만 교체, pipe SVG 숨김
+    const mapImg   = document.getElementById('map-img');
+    const mapNoImg = document.getElementById('map-no-image');
+    mapImg.src = site.sitePhoto;
+    mapImg.style.display    = 'block';
+    mapNoImg.style.display  = 'none';
+    document.getElementById('map-container').style.display = '';
+    if (typeof mapZoomReset === 'function') mapZoomReset();
+    // 천공 마커 제거 (boring.js에서도 체크하지만 즉시 제거)
+    document.querySelectorAll('#overlay-svg .boring-marker').forEach(el => el.remove());
   } else {
-    // 115정거장: 지도 표시
-    sitePhotoView.style.display  = 'none';
-    mapCont.style.display        = '';
-    mapNoImg.style.display       = '';
+    // 115정거장: 정식 지도 로드
     if (typeof switchDashMap === 'function') switchDashMap(site.mapImg);
   }
 
