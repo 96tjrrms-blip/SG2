@@ -4,92 +4,75 @@ let currentItemId = null;   // field_items.id (DB의 bigint)
 let siteMap = {};           // { '115정거장': 1, '15환기구': 2, '16환기구': 3 }
 let fieldCache = {};        // { siteId: [ field_item rows ] }
 
-// ===== 드론사진 슬라이더 =====
-let _dronePhotos = [];    // [{ path, url }, ...]
-let _droneIdx   = 0;      // 드론사진 내 현재 인덱스 (0-based)
+// ===== 드론사진 =====
+let _dronePhotos = [];
+let _droneViewOpen = false;
 
-async function initDroneSlider() {
+async function initDroneView() {
   try { _dronePhotos = await listDronePhotos(); } catch(e) { _dronePhotos = []; }
-  _renderDashDots();
-  _renderDroneSlide();
+  if (_droneViewOpen) _renderDroneList();
 }
 
-function _renderDashDots() {
-  const el = document.getElementById('dash-dots');
-  if (!el) return;
-  // 사진 0장이어도 드론슬롯 dot는 항상 표시
-  const total = Math.max(2, 1 + _dronePhotos.length);
-  const isMap = document.getElementById('drone-view').style.display === 'none';
-  const active = isMap ? 0 : 1 + _droneIdx;
-  el.innerHTML = Array.from({ length: total }, (_, i) => {
-    const isEmpty = i > 0 && i > _dronePhotos.length;
-    return `<span class="dash-dot${i === active ? ' active' : ''}${isEmpty ? ' dash-dot-add' : ''}"
-      onclick="goDashSlide(${i})" title="${isEmpty ? '드론사진 추가' : ''}"></span>`;
+function _renderDroneList() {
+  const list = document.getElementById('drone-list');
+  const label = document.getElementById('drone-count-label');
+  if (!list) return;
+  if (label) label.textContent = _dronePhotos.length ? `${_dronePhotos.length}장` : '';
+  if (!_dronePhotos.length) {
+    list.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:32px 0;font-size:13px">드론사진이 없습니다<br><small>위 + 버튼으로 추가하세요</small></div>';
+    return;
+  }
+  list.innerHTML = _dronePhotos.map(p => {
+    const safe = p.url.replace(/'/g, '%27');
+    const safePath = p.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `<div style="position:relative;margin-bottom:10px;border-radius:6px;overflow:hidden;line-height:0">
+      <img src="${p.url}" onclick="openLightbox('${safe}')"
+        style="width:100%;display:block;cursor:zoom-in;border-radius:6px">
+      <button onclick="deleteDronePhoto('${safePath}')"
+        style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(239,68,68,0.85);color:#fff;font-size:14px;cursor:pointer;line-height:1">✕</button>
+    </div>`;
   }).join('');
 }
 
-function _renderDroneSlide() {
-  const area = document.getElementById('drone-slides');
-  if (!area) return;
-  if (!_dronePhotos.length) {
-    area.innerHTML = '<div style="color:#9ca3af;font-size:13px;text-align:center">드론사진이 없습니다<br><small style="opacity:.7">아래 + 버튼으로 추가하세요</small></div>';
-    return;
-  }
-  const p = _dronePhotos[_droneIdx];
-  const safe = p.url.replace(/'/g, '%27');
-  area.innerHTML = `<img src="${p.url}" onclick="openLightbox('${safe}')"
-    style="max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in;display:block">
-    <button onclick="deleteDroneSlide('${p.path.replace(/'/g, "\\'")}')"
-      style="position:absolute;top:8px;right:8px;z-index:20;width:28px;height:28px;border-radius:50%;border:none;background:rgba(239,68,68,0.85);color:#fff;font-size:14px;cursor:pointer;line-height:1">✕</button>`;
-}
-
-window.goDashSlide = function(idx) {
-  if (idx === 0) {
-    document.getElementById('map-container').style.display = '';
-    document.getElementById('map-no-image').style.display = '';
-    document.getElementById('drone-view').style.display = 'none';
+window.toggleDroneView = function() {
+  _droneViewOpen = !_droneViewOpen;
+  const btn = document.getElementById('drone-toggle-btn');
+  const mapCont = document.getElementById('map-container');
+  const mapNoImg = document.getElementById('map-no-image');
+  const droneView = document.getElementById('drone-view');
+  if (_droneViewOpen) {
+    mapCont.style.display = 'none';
+    mapNoImg.style.display = 'none';
+    droneView.style.display = '';
+    if (btn) { btn.style.background = '#0d2b5e'; btn.style.color = '#fff'; btn.style.borderColor = '#0d2b5e'; }
+    _renderDroneList();
   } else {
-    _droneIdx = Math.max(0, Math.min(idx - 1, _dronePhotos.length - 1));
-    document.getElementById('map-container').style.display = 'none';
-    document.getElementById('map-no-image').style.display = 'none';
-    document.getElementById('drone-view').style.display = '';
-    _renderDroneSlide();
+    mapCont.style.display = '';
+    mapNoImg.style.display = '';
+    droneView.style.display = 'none';
+    if (btn) { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
   }
-  _renderDashDots();
-};
-
-window.dronePrev = function() {
-  if (_droneIdx > 0) { _droneIdx--; _renderDroneSlide(); _renderDashDots(); }
-  else goDashSlide(0);
-};
-window.droneNext = function() {
-  if (_droneIdx < _dronePhotos.length - 1) { _droneIdx++; _renderDroneSlide(); _renderDashDots(); }
 };
 
 window.handleDroneUpload = async function(input) {
   const files = Array.from(input.files);
   if (!files.length) return;
-  const btn = document.querySelector('#drone-view button:last-of-type');
-  if (btn) btn.textContent = '업로드 중...';
+  const addBtn = document.querySelector('#drone-view button');
+  if (addBtn) addBtn.textContent = '업로드 중...';
   try {
     for (const f of files) await uploadDronePhoto(f);
     _dronePhotos = await listDronePhotos();
-    _droneIdx = _dronePhotos.length - 1;
-    _renderDroneSlide();
-    _renderDashDots();
+    _renderDroneList();
   } catch(e) { alert('업로드 실패: ' + e.message); }
-  finally { if (btn) btn.textContent = '+ 사진 추가'; input.value = ''; }
+  finally { if (addBtn) addBtn.textContent = '+ 사진 추가'; input.value = ''; }
 };
 
-window.deleteDroneSlide = async function(path) {
+window.deleteDronePhoto = async function(path) {
   if (!confirm('이 드론사진을 삭제할까요?')) return;
   try {
     await deleteDronePhotoStorage(path);
     _dronePhotos = await listDronePhotos();
-    if (!_dronePhotos.length) { goDashSlide(0); return; }
-    _droneIdx = Math.min(_droneIdx, _dronePhotos.length - 1);
-    _renderDroneSlide();
-    _renderDashDots();
+    _renderDroneList();
   } catch(e) { alert('삭제 실패: ' + e.message); }
 };
 
@@ -97,25 +80,6 @@ window.deleteDroneSlide = async function(path) {
 document.addEventListener('DOMContentLoaded', async () => {
   siteMap = await getSiteMap();
   navigate('dashboard');
-  // 드론뷰 스와이프 지원
-  const dv = document.getElementById('drone-view');
-  if (dv) {
-    let _tx = 0;
-    dv.addEventListener('touchstart', e => { _tx = e.touches[0].clientX; }, { passive: true });
-    dv.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - _tx;
-      if (Math.abs(dx) > 50) { if (dx < 0) droneNext(); else dronePrev(); }
-    }, { passive: true });
-  }
-  // 배관망도 → 드론사진 스와이프
-  const mc = document.getElementById('map-container');
-  if (mc) {
-    let _mx = 0;
-    mc.addEventListener('touchstart', e => { if (e.touches.length === 1) _mx = e.touches[0].clientX; }, { passive: true });
-    mc.addEventListener('touchend', e => {
-      if (_dronePhotos.length && e.changedTouches[0].clientX - _mx < -60) goDashSlide(1);
-    }, { passive: true });
-  }
 });
 
 // ===== 네비게이션 =====
@@ -174,7 +138,7 @@ async function calcSiteProgressFromCache(siteName) {
 // ===== 대시보드 =====
 async function renderDashboard() {
   initMap();
-  initDroneSlider();
+  initDroneView();
 }
 
 async function renderSmsLog() {
