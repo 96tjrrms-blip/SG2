@@ -80,22 +80,27 @@ function renderAllPipes() {
   if (!svg || !_mapReady) return;
   svg.innerHTML = '';
 
-  // 글로우 필터 정의
-  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-  const blur = _mapNatW / 500;
-  defs.innerHTML = `
-    <filter id="pipe-glow" x="-80%" y="-80%" width="260%" height="260%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="${blur}" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>`;
-  svg.appendChild(defs);
+  const is115 = !window.currentDashSite || window.currentDashSite === '115st';
 
-  PIPELINE_SEGMENTS.forEach(seg => svg.appendChild(_buildPipeGroup(seg)));
+  if (is115) {
+    // 글로우 필터 정의
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const blur = _mapNatW / 500;
+    defs.innerHTML = `
+      <filter id="pipe-glow" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="${blur}" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>`;
+    svg.appendChild(defs);
+
+    PIPELINE_SEGMENTS.forEach(seg => svg.appendChild(_buildPipeGroup(seg)));
+    _renderLabels();
+    _renderValves();
+    _renderExposedLabels();
+    _drawPickMarkers();
+  }
+
   _renderConstructionZone();
-  _renderLabels();
-  _renderValves();
-  _renderExposedLabels();
-  _drawPickMarkers(); // 구간 선택 마커 (pick mode 중에만 표시)
   if (typeof renderBoringPoints  === 'function') renderBoringPoints();
   if (typeof renderParkingSpots  === 'function') renderParkingSpots();
 }
@@ -437,8 +442,9 @@ function _saveSegmentColors(segId, data) {
   upsertPipeSettings(segId, { colors: data }).catch(() => {});
 }
 
-// 앱 시작 시 Supabase에서 설정 로드 → localStorage 덮어쓰기
+// 앱 시작 시 Supabase에서 설정 로드 → localStorage 덮어쓰기 (115정거장 전용)
 async function _syncSettingsFromSupabase() {
+  if (window.currentDashSite && window.currentDashSite !== '115st') return;
   try {
     const rows = await fetchAllPipeSettings();
     const colorsAll = {}, photosAll = {};
@@ -781,13 +787,20 @@ function _renderExposedLabels() {
 }
 
 // ── 공사구역 ──────────────────────────────────────────────────
+function _zoneKey() {
+  const s = window.currentDashSite || '115st';
+  return s === '115st' ? ZONE_KEY : `${ZONE_KEY}_${s}`;
+}
 function _loadZoneData() {
-  try { return JSON.parse(localStorage.getItem(ZONE_KEY) || '{"points":[],"visible":false}'); }
+  try { return JSON.parse(localStorage.getItem(_zoneKey()) || '{"points":[],"visible":false}'); }
   catch { return { points: [], visible: false }; }
 }
 function _saveZoneData(data) {
-  localStorage.setItem(ZONE_KEY, JSON.stringify(data));
-  upsertPipeSettings('_zone', { colors: data }).catch(() => {});
+  localStorage.setItem(_zoneKey(), JSON.stringify(data));
+  // Supabase 동기화는 115정거장만
+  if (!window.currentDashSite || window.currentDashSite === '115st') {
+    upsertPipeSettings('_zone', { colors: data }).catch(() => {});
+  }
 }
 
 function toggleZoneVisible() {
@@ -874,7 +887,7 @@ function _onZoneOverlayClick(e) {
       if (!d.entrances) d.entrances = [];
       d.entrances.push({ x, y });
     }
-    localStorage.setItem(ZONE_KEY, JSON.stringify(d));
+    localStorage.setItem(_zoneKey(), JSON.stringify(d));
   } else {
     _zoneEditPts.push([x, y]);
   }
@@ -889,7 +902,7 @@ function startEntranceEdit() {
   document.getElementById('zone-click-overlay').style.display = 'block';
   const d = _loadZoneData();
   d.visible = true;
-  localStorage.setItem(ZONE_KEY, JSON.stringify(d));
+  localStorage.setItem(_zoneKey(), JSON.stringify(d));
   _updateZoneBtn();
   renderAllPipes();
 }

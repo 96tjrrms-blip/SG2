@@ -1,11 +1,14 @@
 const PARKING_KEY = 'parking_spots';
 
+function _parkingKey()        { const s = window.currentDashSite || '115st'; return `${PARKING_KEY}_${s}`; }
+function _parkingVisibleKey() { const s = window.currentDashSite || '115st'; return `parking_visible_${s}`; }
+
 function _getParkingSpots() {
-  try { return JSON.parse(localStorage.getItem(PARKING_KEY) || '[]'); }
+  try { return JSON.parse(localStorage.getItem(_parkingKey()) || '[]'); }
   catch { return []; }
 }
 function _saveParkingSpots(spots) {
-  localStorage.setItem(PARKING_KEY, JSON.stringify(spots));
+  localStorage.setItem(_parkingKey(), JSON.stringify(spots));
 }
 function _addParkingSpot(x, y) {
   const spots = _getParkingSpots();
@@ -21,7 +24,7 @@ function renderParkingSpots() {
   if (!svg) return;
   svg.querySelectorAll('.parking-marker').forEach(el => el.remove());
 
-  const visible = localStorage.getItem('parking_visible') !== 'false';
+  const visible = localStorage.getItem(_parkingVisibleKey()) !== 'false';
   if (!visible) return;
 
   const container = document.getElementById('map-container');
@@ -105,14 +108,14 @@ function renderParkingSpots() {
 }
 
 function toggleParkingVisible() {
-  const cur = localStorage.getItem('parking_visible') !== 'false';
-  localStorage.setItem('parking_visible', cur ? 'false' : 'true');
+  const cur = localStorage.getItem(_parkingVisibleKey()) !== 'false';
+  localStorage.setItem(_parkingVisibleKey(), cur ? 'false' : 'true');
   _updateParkingBtn();
   renderParkingSpots();
 }
 
 function _updateParkingBtn() {
-  const visible = localStorage.getItem('parking_visible') !== 'false';
+  const visible = localStorage.getItem(_parkingVisibleKey()) !== 'false';
   const btn = document.getElementById('parking-toggle-btn');
   if (btn) btn.textContent = visible ? '🅿 주차위치 숨기기' : '🅿 주차위치 표시';
 }
@@ -132,8 +135,8 @@ function toggleParkingEdit() {
   }
   if (overlay) overlay.style.display = window._parkingEditMode ? 'block' : 'none';
 
-  if (window._parkingEditMode && localStorage.getItem('parking_visible') === 'false') {
-    localStorage.setItem('parking_visible', 'true');
+  if (window._parkingEditMode && localStorage.getItem(_parkingVisibleKey()) === 'false') {
+    localStorage.setItem(_parkingVisibleKey(), 'true');
     _updateParkingBtn();
   }
   renderParkingSpots();

@@ -30,10 +30,7 @@ function _updateDashControls() {
   });
   const adjustBtn = document.querySelector('.zone-btn[onclick="toggleBoringAdjust()"]');
   if (adjustBtn) adjustBtn.style.display = is115 ? '' : 'none';
-
-  // pipe SVG (배관망도) - 115정거장만
-  const mapSvg = document.getElementById('map-svg');
-  if (mapSvg) mapSvg.style.display = is115 ? '' : 'none';
+  // map-svg는 항상 표시 유지 (환기구에서도 구역·입구 표시용으로 필요)
 }
 
 window.switchDashSite = function(siteId) {
@@ -48,21 +45,11 @@ window.switchDashSite = function(siteId) {
 
   const site = DASH_SITES.find(s => s.id === siteId);
 
-  if (site.sitePhoto) {
-    // 환기구: map-container 유지, img src만 교체, pipe SVG 숨김
-    const mapImg   = document.getElementById('map-img');
-    const mapNoImg = document.getElementById('map-no-image');
-    mapImg.src = site.sitePhoto;
-    mapImg.style.display    = 'block';
-    mapNoImg.style.display  = 'none';
-    document.getElementById('map-container').style.display = '';
-    if (typeof mapZoomReset === 'function') mapZoomReset();
-    // 천공 마커 제거 (boring.js에서도 체크하지만 즉시 제거)
-    document.querySelectorAll('#overlay-svg .boring-marker').forEach(el => el.remove());
-  } else {
-    // 115정거장: 정식 지도 로드
-    if (typeof switchDashMap === 'function') switchDashMap(site.mapImg);
-  }
+  // 모든 현장: switchDashMap으로 통일 (환기구는 정적 사진 경로, 115st는 map.png)
+  // boring.js가 currentDashSite를 보고 마커를 스킵하므로 renderAllPipes만 호출하면 됨
+  const imgSrc = site.sitePhoto || site.mapImg;
+  if (typeof switchDashMap === 'function') switchDashMap(imgSrc);
+  if (typeof mapZoomReset === 'function') mapZoomReset();
 
   _updateDashControls();
   initDroneView();
