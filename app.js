@@ -13,7 +13,7 @@ const DASH_SITES = [
 let currentDashSite = '115st';
 
 // 115 정거장 전용 ON/OFF 버튼
-const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'parking-toggle-btn', 'drone-toggle-btn'];
+const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'parking-toggle-btn'];
 // 115 정거장 전용 편집 버튼
 const _115_EDIT  = ['boring-edit-btn', 'boring-marker-sub', 'parking-edit-btn'];
 
@@ -34,9 +34,6 @@ function _updateDashControls() {
   // 천공/주차 마커 오버레이
   const overlay = document.getElementById('overlay-svg');
   if (overlay) overlay.style.display = is115 ? '' : 'none';
-
-  // 드론뷰가 열려있으면 닫기
-  if (!is115 && _droneViewOpen) toggleDroneView();
 }
 
 window.switchDashSite = function(siteId) {
@@ -47,10 +44,14 @@ window.switchDashSite = function(siteId) {
     b.classList.toggle('active', on);
   });
 
+  // 드론뷰 열려 있으면 닫기
+  if (_droneViewOpen) toggleDroneView();
+
   const site = DASH_SITES.find(s => s.id === siteId);
   if (site && typeof switchDashMap === 'function') switchDashMap(site.mapImg);
 
   _updateDashControls();
+  initDroneView();
 };
 
 // ===== 드론사진 =====
@@ -58,7 +59,7 @@ let _dronePhotos = [];
 let _droneViewOpen = false;
 
 async function initDroneView() {
-  try { _dronePhotos = await listDronePhotos(); } catch(e) { _dronePhotos = []; }
+  try { _dronePhotos = await listDronePhotos(currentDashSite); } catch(e) { _dronePhotos = []; }
   if (_droneViewOpen) _renderDroneList();
 }
 
@@ -109,8 +110,8 @@ window.handleDroneUpload = async function(input) {
   const addBtn = document.querySelector('#drone-view button');
   if (addBtn) addBtn.textContent = '업로드 중...';
   try {
-    for (const f of files) await uploadDronePhoto(f);
-    _dronePhotos = await listDronePhotos();
+    for (const f of files) await uploadDronePhoto(f, currentDashSite);
+    _dronePhotos = await listDronePhotos(currentDashSite);
     _renderDroneList();
   } catch(e) { alert('업로드 실패: ' + e.message); }
   finally { if (addBtn) addBtn.textContent = '+ 사진 추가'; input.value = ''; }
@@ -120,7 +121,7 @@ window.deleteDronePhoto = async function(path) {
   if (!confirm('이 드론사진을 삭제할까요?')) return;
   try {
     await deleteDronePhotoStorage(path);
-    _dronePhotos = await listDronePhotos();
+    _dronePhotos = await listDronePhotos(currentDashSite);
     _renderDroneList();
   } catch(e) { alert('삭제 실패: ' + e.message); }
 };

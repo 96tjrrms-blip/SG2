@@ -267,24 +267,25 @@ async function deletePipePhotoStorage(path) {
   if (error) throw error;
 }
 
-// ===== 드론사진 (pipe-photo 버킷 / drone/ 폴더) =====
-window.listDronePhotos = async function() {
-  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list('drone', {
+// ===== 드론사진 (pipe-photo 버킷 / drone/{siteId}/ 폴더) =====
+window.listDronePhotos = async function(siteId) {
+  const folder = `drone/${siteId}`;
+  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list(folder, {
     sortBy: { column: 'name', order: 'asc' }
   });
   if (error || !data) return [];
   return data
     .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
     .map(f => {
-      const path = `drone/${f.name}`;
+      const path = `${folder}/${f.name}`;
       const { data: urlData } = sb.storage.from(PIPE_PHOTO_BUCKET).getPublicUrl(path);
       return { path, url: urlData.publicUrl };
     });
 };
 
-window.uploadDronePhoto = async function(file) {
-  const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
-  const path = `drone/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+window.uploadDronePhoto = async function(file, siteId) {
+  const folder = `drone/${siteId}`;
+  const path = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
   const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, file, {
     cacheControl: '3600', upsert: false
   });
