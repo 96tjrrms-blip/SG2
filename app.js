@@ -6,14 +6,14 @@ let fieldCache = {};
 
 // ===== 대시보드 현장 선택 =====
 const DASH_SITES = [
-  { id: 'S015',  label: '#S-015 환기구', mapImg: 'map_s015.png' },
-  { id: '115st', label: '115 정거장',   mapImg: 'map.png'      },
-  { id: 'S016',  label: '#S-016 환기구', mapImg: 'map_s016.png' },
+  { id: 'S015',  label: '#S-015 환기구', mapImg: null, sitePhoto: 'photo_s015.jpg.jpg' },
+  { id: '115st', label: '115 정거장',   mapImg: 'map.png',       sitePhoto: null        },
+  { id: 'S016',  label: '#S-016 환기구', mapImg: null, sitePhoto: 'photo_s016.jpg.JPG' },
 ];
 let currentDashSite = '115st';
 
 // 115 정거장 전용 ON/OFF 버튼
-const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'parking-toggle-btn'];
+const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'parking-toggle-btn', 'drone-toggle-btn'];
 // 115 정거장 전용 편집 버튼
 const _115_EDIT  = ['boring-edit-btn', 'boring-marker-sub', 'parking-edit-btn'];
 
@@ -48,7 +48,23 @@ window.switchDashSite = function(siteId) {
   if (_droneViewOpen) toggleDroneView();
 
   const site = DASH_SITES.find(s => s.id === siteId);
-  if (site && typeof switchDashMap === 'function') switchDashMap(site.mapImg);
+  const mapCont  = document.getElementById('map-container');
+  const mapNoImg = document.getElementById('map-no-image');
+  const sitePhotoView = document.getElementById('site-photo-view');
+
+  if (site.sitePhoto) {
+    // 환기구: 고정 사진 표시
+    mapCont.style.display        = 'none';
+    mapNoImg.style.display       = 'none';
+    sitePhotoView.style.display  = '';
+    document.getElementById('site-photo-img').src = site.sitePhoto;
+  } else {
+    // 115정거장: 지도 표시
+    sitePhotoView.style.display  = 'none';
+    mapCont.style.display        = '';
+    mapNoImg.style.display       = '';
+    if (typeof switchDashMap === 'function') switchDashMap(site.mapImg);
+  }
 
   _updateDashControls();
   initDroneView();
