@@ -38,7 +38,15 @@
   <!-- 대시보드 -->
   <div class="page active" id="page-dashboard">
     <div class="page-title">현장개요</div>
-    <div class="page-subtitle">인덕원~동탄 복선전철 제11공구</div>
+    <div class="page-subtitle" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span>인덕원~동탄 복선전철 제11공구</span>
+      <span style="color:#cbd5e1;font-size:11px">|</span>
+      <div style="display:flex;gap:4px">
+        <button class="dash-site-tab" data-site="S015" onclick="switchDashSite('S015')">#S-015 환기구</button>
+        <button class="dash-site-tab active" data-site="115st" onclick="switchDashSite('115st')">115 정거장</button>
+        <button class="dash-site-tab" data-site="S016" onclick="switchDashSite('S016')">#S-016 환기구</button>
+      </div>
+    </div>
 
     <!-- 공사구역 컨트롤 -->
     <div id="zone-toggle-bar" class="zone-controls" style="display:flex">

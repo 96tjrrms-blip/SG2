@@ -1,8 +1,57 @@
 // ===== 상태 관리 =====
 let currentSite = '115정거장';
-let currentItemId = null;   // field_items.id (DB의 bigint)
-let siteMap = {};           // { '115정거장': 1, '15환기구': 2, '16환기구': 3 }
-let fieldCache = {};        // { siteId: [ field_item rows ] }
+let currentItemId = null;
+let siteMap = {};
+let fieldCache = {};
+
+// ===== 대시보드 현장 선택 =====
+const DASH_SITES = [
+  { id: 'S015',  label: '#S-015 환기구', mapImg: 'map_s015.png' },
+  { id: '115st', label: '115 정거장',   mapImg: 'map.png'      },
+  { id: 'S016',  label: '#S-016 환기구', mapImg: 'map_s016.png' },
+];
+let currentDashSite = '115st';
+
+// 115 정거장 전용 ON/OFF 버튼
+const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'parking-toggle-btn', 'drone-toggle-btn'];
+// 115 정거장 전용 편집 버튼
+const _115_EDIT  = ['boring-edit-btn', 'boring-marker-sub', 'parking-edit-btn'];
+
+function _updateDashControls() {
+  const is115 = currentDashSite === '115st';
+
+  _115_ONOFF.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = is115 ? '' : 'none';
+  });
+  _115_EDIT.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = is115 ? '' : 'none';
+  });
+  const adjustBtn = document.querySelector('.zone-btn[onclick="toggleBoringAdjust()"]');
+  if (adjustBtn) adjustBtn.style.display = is115 ? '' : 'none';
+
+  // 천공/주차 마커 오버레이
+  const overlay = document.getElementById('overlay-svg');
+  if (overlay) overlay.style.display = is115 ? '' : 'none';
+
+  // 드론뷰가 열려있으면 닫기
+  if (!is115 && _droneViewOpen) toggleDroneView();
+}
+
+window.switchDashSite = function(siteId) {
+  currentDashSite = siteId;
+
+  document.querySelectorAll('.dash-site-tab').forEach(b => {
+    const on = b.dataset.site === siteId;
+    b.classList.toggle('active', on);
+  });
+
+  const site = DASH_SITES.find(s => s.id === siteId);
+  if (site && typeof switchDashMap === 'function') switchDashMap(site.mapImg);
+
+  _updateDashControls();
+};
 
 // ===== 드론사진 =====
 let _dronePhotos = [];
@@ -139,6 +188,7 @@ async function calcSiteProgressFromCache(siteName) {
 async function renderDashboard() {
   initMap();
   initDroneView();
+  _updateDashControls();
 }
 
 async function renderSmsLog() {

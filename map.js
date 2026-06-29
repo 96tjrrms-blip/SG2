@@ -11,6 +11,17 @@ let _zoneEdit     = false;
 let _zoneEditPts  = [];
 let _entranceEdit = false;
 
+window.switchDashMap = function(imgSrc) {
+  _mapReady = false;
+  const img   = document.getElementById('map-img');
+  const noImg = document.getElementById('map-no-image');
+  if (!img) return;
+  img.style.display  = 'none';
+  noImg.style.display = 'none';
+  img.src = imgSrc;
+  initMap();
+};
+
 // ── 초기화 ────────────────────────────────────────────────────
 function initMap() {
   const img = document.getElementById('map-img');
