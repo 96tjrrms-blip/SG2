@@ -133,9 +133,47 @@
       </div>
       <!-- 드론사진 뷰 (세로 나열) -->
       <div id="drone-view" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <!-- 헤더 -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:12px;color:#6b7280" id="drone-count-label"></span>
-          <button onclick="document.getElementById('drone-file-input').click()" style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
+          <div style="display:flex;gap:6px">
+            <button id="draw-toggle-btn" onclick="_toggleDrawToolbar()"
+              style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">✏️ 그리기</button>
+            <button onclick="document.getElementById('drone-file-input').click()"
+              style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
+          </div>
+        </div>
+        <!-- 그리기 툴바 -->
+        <div id="drone-draw-toolbar" style="display:none;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button id="draw-pen-btn" onclick="_setDrawTool('pen')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">✏️ 펜</button>
+            <button id="draw-eraser-btn" onclick="_setDrawTool('eraser')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">🧹 지우개</button>
+            <div style="display:flex;gap:3px;margin:0 2px">
+              <button class="draw-color-btn" data-color="#ef4444" onclick="_setDrawColor('#ef4444')" title="빨강"
+                style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#f97316" onclick="_setDrawColor('#f97316')" title="주황"
+                style="width:20px;height:20px;border-radius:50%;background:#f97316;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#eab308" onclick="_setDrawColor('#eab308')" title="노랑"
+                style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#22c55e" onclick="_setDrawColor('#22c55e')" title="초록"
+                style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#3b82f6" onclick="_setDrawColor('#3b82f6')" title="파랑"
+                style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#1e293b" onclick="_setDrawColor('#1e293b')" title="검정"
+                style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+            </div>
+            <button onclick="_clearAllDroneDrawings()" title="전체 초기화"
+              style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444;margin-left:auto">🗑 초기화</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:11px;color:#64748b;white-space:nowrap">굵기</span>
+            <input type="range" id="draw-size-input" min="2" max="24" value="4"
+              oninput="_setDrawSize(+this.value)"
+              style="flex:1;accent-color:#0d2b5e">
+            <span id="draw-size-label" style="font-size:11px;color:#475569;min-width:28px">4px</span>
+          </div>
         </div>
         <div id="drone-list"></div>
       </div>

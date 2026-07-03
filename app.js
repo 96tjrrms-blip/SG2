@@ -60,6 +60,135 @@ window.switchDashSite = function(siteId) {
 let _dronePhotos = [];
 let _droneViewOpen = false;
 
+// ── 드론 그리기 ──────────────────────────────────────────────
+const DRONE_DRAW_KEY = 'drone_draw_v1';
+let _drawMode   = null;        // null | 'pen' | 'eraser'
+let _drawColor  = '#ef4444';
+let _drawSize   = 4;
+let _droneStrokes = {};        // { [path]: [{tool,color,size,pts:[{x,y}]}] }
+try { _droneStrokes = JSON.parse(localStorage.getItem(DRONE_DRAW_KEY) || '{}'); } catch {}
+
+function _saveDroneDrawStrokes() {
+  localStorage.setItem(DRONE_DRAW_KEY, JSON.stringify(_droneStrokes));
+}
+
+function _drawStrokesOnCanvas(canvas, path) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  (_droneStrokes[path] || []).forEach(s => {
+    if (!s.pts.length) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (s.tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = (s.size || 4) * 4;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = s.color || '#ef4444';
+      ctx.lineWidth = s.size || 4;
+    }
+    ctx.beginPath();
+    if (s.pts.length === 1) {
+      ctx.arc(s.pts[0].x * W, s.pts[0].y * H, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fill();
+    } else {
+      ctx.moveTo(s.pts[0].x * W, s.pts[0].y * H);
+      s.pts.slice(1).forEach(p => ctx.lineTo(p.x * W, p.y * H));
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+
+function _initDroneCanvas(canvas) {
+  const path = canvas.dataset.path;
+  const img  = canvas.parentElement.querySelector('img');
+  const setup = () => {
+    const w = img.offsetWidth, h = img.offsetHeight;
+    if (w && h) { canvas.width = w; canvas.height = h; }
+    _drawStrokesOnCanvas(canvas, path);
+  };
+  if (img.complete && img.naturalHeight) setup();
+  else img.addEventListener('load', setup, { once: true });
+
+  let drawing = false, curStroke = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (!_drawMode) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    drawing = true;
+    const r = canvas.getBoundingClientRect();
+    const pt = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    curStroke = { tool: _drawMode, color: _drawColor, size: _drawSize, pts: [pt] };
+    if (!_droneStrokes[path]) _droneStrokes[path] = [];
+    _droneStrokes[path].push(curStroke);
+    _drawStrokesOnCanvas(canvas, path);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing || !curStroke) return;
+    const r = canvas.getBoundingClientRect();
+    curStroke.pts.push({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+    _drawStrokesOnCanvas(canvas, path);
+  });
+  canvas.addEventListener('pointerup', () => { if (drawing) { drawing = false; curStroke = null; _saveDroneDrawStrokes(); } });
+  canvas.addEventListener('pointercancel', () => { drawing = false; curStroke = null; });
+}
+
+function _updateDrawToolUI() {
+  const penBtn    = document.getElementById('draw-pen-btn');
+  const eraserBtn = document.getElementById('draw-eraser-btn');
+  if (penBtn)    { penBtn.style.background = _drawMode === 'pen' ? '#0d2b5e' : '#fff'; penBtn.style.color = _drawMode === 'pen' ? '#fff' : ''; penBtn.style.borderColor = _drawMode === 'pen' ? '#0d2b5e' : '#cbd5e1'; }
+  if (eraserBtn) { eraserBtn.style.background = _drawMode === 'eraser' ? '#0d2b5e' : '#fff'; eraserBtn.style.color = _drawMode === 'eraser' ? '#fff' : ''; eraserBtn.style.borderColor = _drawMode === 'eraser' ? '#0d2b5e' : '#cbd5e1'; }
+  document.querySelectorAll('.draw-color-btn').forEach(btn => {
+    btn.style.boxShadow = btn.dataset.color === _drawColor ? '0 0 0 3px #0d2b5e' : '0 0 0 1px #cbd5e1';
+  });
+  document.querySelectorAll('.drone-canvas').forEach(c => {
+    c.style.pointerEvents = _drawMode ? 'all' : 'none';
+    c.style.cursor = _drawMode ? 'crosshair' : '';
+  });
+}
+
+let _drawToolbarOpen = false;
+
+window._toggleDrawToolbar = function() {
+  _drawToolbarOpen = !_drawToolbarOpen;
+  const toolbar   = document.getElementById('drone-draw-toolbar');
+  const toggleBtn = document.getElementById('draw-toggle-btn');
+  if (toolbar)   toolbar.style.display = _drawToolbarOpen ? '' : 'none';
+  if (toggleBtn) { toggleBtn.style.background = _drawToolbarOpen ? '#0d2b5e' : '#fff'; toggleBtn.style.color = _drawToolbarOpen ? '#fff' : '#475569'; toggleBtn.style.borderColor = _drawToolbarOpen ? '#0d2b5e' : '#cbd5e1'; }
+  if (!_drawToolbarOpen) { _drawMode = null; _updateDrawToolUI(); }
+};
+
+window._setDrawTool = function(tool) {
+  _drawMode = _drawMode === tool ? null : tool;
+  _updateDrawToolUI();
+};
+
+window._setDrawColor = function(color) {
+  _drawColor = color;
+  if (_drawMode !== 'pen') _drawMode = 'pen';
+  _updateDrawToolUI();
+};
+
+window._setDrawSize = function(size) {
+  _drawSize = size;
+  const label = document.getElementById('draw-size-label');
+  if (label) label.textContent = size + 'px';
+};
+
+window._clearAllDroneDrawings = function() {
+  if (!confirm('현재 현장의 모든 드론사진 그림을 지울까요?')) return;
+  _dronePhotos.forEach(p => delete _droneStrokes[p.path]);
+  _saveDroneDrawStrokes();
+  document.querySelectorAll('.drone-canvas').forEach(c => {
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+  });
+};
+
 async function initDroneView() {
   try { _dronePhotos = await listDronePhotos(currentDashSite); } catch(e) { _dronePhotos = []; }
   if (_droneViewOpen) _renderDroneList();
@@ -75,15 +204,27 @@ function _renderDroneList() {
     return;
   }
   list.innerHTML = _dronePhotos.map(p => {
-    const safe = p.url.replace(/'/g, '%27');
+    const safe     = p.url.replace(/'/g, '%27');
     const safePath = p.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const safeDataPath = p.path.replace(/"/g, '&quot;');
     return `<div style="position:relative;margin-bottom:10px;border-radius:6px;overflow:hidden;line-height:0">
-      <img src="${p.url}" onclick="openLightbox('${safe}')"
-        style="width:100%;display:block;cursor:zoom-in;border-radius:6px">
+      <img src="${p.url}" data-lightbox="${safe}"
+        style="width:100%;display:block;border-radius:6px">
+      <canvas class="drone-canvas" data-path="${safeDataPath}"
+        style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
       <button onclick="deleteDronePhoto('${safePath}')"
         style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(239,68,68,0.85);color:#fff;font-size:14px;cursor:pointer;line-height:1">✕</button>
     </div>`;
   }).join('');
+
+  // 라이트박스 클릭 (그리기 모드 중엔 비활성)
+  list.querySelectorAll('img[data-lightbox]').forEach(img => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', () => { if (!_drawMode) openLightbox(img.dataset.lightbox); });
+  });
+  // 캔버스 초기화
+  list.querySelectorAll('.drone-canvas').forEach(c => _initDroneCanvas(c));
+  _updateDrawToolUI();
 }
 
 window.toggleDroneView = function() {
