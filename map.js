@@ -791,17 +791,30 @@ function _zoneKey() {
   const s = window.currentDashSite || '115st';
   return s === '115st' ? ZONE_KEY : `${ZONE_KEY}_${s}`;
 }
+function _supaZoneKey() {
+  const s = window.currentDashSite || '115st';
+  return s === '115st' ? '_zone' : `_zone_${s}`;
+}
 function _loadZoneData() {
   try { return JSON.parse(localStorage.getItem(_zoneKey()) || '{"points":[],"visible":false}'); }
   catch { return { points: [], visible: false }; }
 }
 function _saveZoneData(data) {
   localStorage.setItem(_zoneKey(), JSON.stringify(data));
-  // Supabase 동기화는 115정거장만
-  if (!window.currentDashSite || window.currentDashSite === '115st') {
-    upsertPipeSettings('_zone', { colors: data }).catch(() => {});
-  }
+  upsertPipeSettings(_supaZoneKey(), { colors: data }).catch(() => {});
 }
+
+// 현장 전환 시 Supabase에서 해당 현장 구역 데이터 로드
+window._syncZoneForSite = async function() {
+  try {
+    const rows = await fetchAllPipeSettings();
+    const key = _supaZoneKey();
+    if (rows[key]?.colors) {
+      localStorage.setItem(_zoneKey(), JSON.stringify(rows[key].colors));
+      renderAllPipes();
+    }
+  } catch(e) { /* silent */ }
+};
 
 function toggleZoneVisible() {
   const d = _loadZoneData();
@@ -887,7 +900,7 @@ function _onZoneOverlayClick(e) {
       if (!d.entrances) d.entrances = [];
       d.entrances.push({ x, y });
     }
-    localStorage.setItem(_zoneKey(), JSON.stringify(d));
+    _saveZoneData(d);
   } else {
     _zoneEditPts.push([x, y]);
   }
@@ -902,7 +915,7 @@ function startEntranceEdit() {
   document.getElementById('zone-click-overlay').style.display = 'block';
   const d = _loadZoneData();
   d.visible = true;
-  localStorage.setItem(_zoneKey(), JSON.stringify(d));
+  _saveZoneData(d);
   _updateZoneBtn();
   renderAllPipes();
 }

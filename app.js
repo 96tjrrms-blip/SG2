@@ -46,10 +46,11 @@ window.switchDashSite = function(siteId) {
   const site = DASH_SITES.find(s => s.id === siteId);
 
   // 모든 현장: switchDashMap으로 통일 (환기구는 정적 사진 경로, 115st는 map.png)
-  // boring.js가 currentDashSite를 보고 마커를 스킵하므로 renderAllPipes만 호출하면 됨
   const imgSrc = site.sitePhoto || site.mapImg;
   if (typeof switchDashMap === 'function') switchDashMap(imgSrc);
   if (typeof mapZoomReset === 'function') mapZoomReset();
+  // Supabase에서 이 현장의 최신 구역/입구 데이터를 가져와 적용
+  if (typeof _syncZoneForSite === 'function') _syncZoneForSite();
 
   _updateDashControls();
   initDroneView();
@@ -191,6 +192,7 @@ async function renderDashboard() {
   initMap();
   initDroneView();
   _updateDashControls();
+  if (typeof _syncZoneForSite === 'function') _syncZoneForSite();
 }
 
 async function renderSmsLog() {
