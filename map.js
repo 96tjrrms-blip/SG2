@@ -49,6 +49,7 @@ function initMap() {
     _syncSettingsFromSupabase();
     _updateZoneBtn();
     if (typeof _updateBoringBtn === 'function') _updateBoringBtn();
+    if (typeof window._initMapCanvas === 'function') window._initMapCanvas();
   };
 
   if (img.complete) {

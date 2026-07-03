@@ -59,6 +59,7 @@
         <button id="boring-toggle-btn" class="zone-btn" onclick="toggleBoringVisible()">⊕ 천공위치 표시</button>
         <button id="parking-toggle-btn" class="zone-btn" onclick="toggleParkingVisible()">🅿 주차위치 표시</button>
         <button id="drone-toggle-btn" class="zone-btn" onclick="toggleDroneView()">🚁 드론사진</button>
+        <button id="map-draw-toggle-btn" class="zone-btn" onclick="_toggleMapDraw()">✏️ 그림판</button>
       </div>
       <button class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
         <span id="edit-arrow">▸</span> 편집
@@ -95,6 +96,40 @@
           <img id="map-img" src="map.png" alt="위성지도" style="width:100%;display:none">
           <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"
             style="position:absolute;top:0;left:0;width:100%;height:100%"></svg>
+          <!-- 맵 그림판 캔버스 -->
+          <canvas id="map-draw-canvas"
+            style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:15"></canvas>
+        </div>
+        <!-- 맵 그림판 플로팅 툴바 -->
+        <div id="map-draw-toolbar" style="display:none;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(255,255,255,0.97);border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,0.18);white-space:nowrap">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center">
+            <button id="map-pen-btn" onclick="_setMapDrawTool('pen')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">✏️ 펜</button>
+            <button id="map-eraser-btn" onclick="_setMapDrawTool('eraser')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">🧹 지우개</button>
+            <div style="display:flex;gap:3px;margin:0 2px">
+              <button class="map-color-btn" data-color="#ef4444" onclick="_setMapDrawColor('#ef4444')" title="빨강"
+                style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="map-color-btn" data-color="#f97316" onclick="_setMapDrawColor('#f97316')" title="주황"
+                style="width:20px;height:20px;border-radius:50%;background:#f97316;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="map-color-btn" data-color="#eab308" onclick="_setMapDrawColor('#eab308')" title="노랑"
+                style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="map-color-btn" data-color="#22c55e" onclick="_setMapDrawColor('#22c55e')" title="초록"
+                style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="map-color-btn" data-color="#3b82f6" onclick="_setMapDrawColor('#3b82f6')" title="파랑"
+                style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="map-color-btn" data-color="#1e293b" onclick="_setMapDrawColor('#1e293b')" title="검정"
+                style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+            </div>
+            <button onclick="_clearMapDrawing()" title="전체 초기화"
+              style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444">🗑</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:11px;color:#64748b;white-space:nowrap">굵기</span>
+            <input type="range" id="map-draw-size" min="2" max="24" value="4"
+              oninput="_setMapDrawSize(+this.value)" style="flex:1;accent-color:#0d2b5e;min-width:100px">
+            <span id="map-draw-size-label" style="font-size:11px;color:#475569;min-width:28px">4px</span>
+          </div>
         </div>
         <!-- 천공/주차 마커 오버레이 — zoom 컨테이너 밖에서 렌더링하여 항상 선명 -->
         <svg id="overlay-svg" xmlns="http://www.w3.org/2000/svg"
@@ -427,7 +462,7 @@
     c.addEventListener('mousedown', function(e) {
       if (scale <= 1 || e.button !== 0) return;
       // 편집 오버레이/버튼이면 무시
-      if (e.target.closest('#zone-click-overlay,button,input,.boring-marker,.parking-marker')) return;
+      if (e.target.closest('#zone-click-overlay,button,input,.boring-marker,.parking-marker') || (window._mapDrawMode && e.target.id === 'map-draw-canvas')) return;
       dragging = true;
       startX = e.clientX; startY = e.clientY;
       startTx = tx; startTy = ty;

@@ -189,6 +189,142 @@ window._clearAllDroneDrawings = function() {
   });
 };
 
+// ===== 맵 그림판 =====
+const MAP_DRAW_KEY = 'map_draw_v1';
+window._mapDrawMode = null;   // null | 'pen' | 'eraser'
+let _mapDrawColor  = '#ef4444';
+let _mapDrawSize   = 4;
+let _mapStrokes    = {};      // { [siteId]: [{tool,color,size,pts:[{x,y}]}] }
+try { _mapStrokes = JSON.parse(localStorage.getItem(MAP_DRAW_KEY) || '{}'); } catch {}
+
+function _saveMapStrokes() {
+  localStorage.setItem(MAP_DRAW_KEY, JSON.stringify(_mapStrokes));
+}
+
+function _redrawMapCanvas() {
+  const canvas = document.getElementById('map-draw-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const strokes = _mapStrokes[currentDashSite] || [];
+  strokes.forEach(s => {
+    if (!s.pts.length) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (s.tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = (s.size || 4) * 4;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = s.color || '#ef4444';
+      ctx.lineWidth = s.size || 4;
+    }
+    ctx.beginPath();
+    if (s.pts.length === 1) {
+      ctx.arc(s.pts[0].x * W, s.pts[0].y * H, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fill();
+    } else {
+      ctx.moveTo(s.pts[0].x * W, s.pts[0].y * H);
+      s.pts.slice(1).forEach(p => ctx.lineTo(p.x * W, p.y * H));
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+
+window._initMapCanvas = function() {
+  const canvas = document.getElementById('map-draw-canvas');
+  const img    = document.getElementById('map-img');
+  if (!canvas || !img) return;
+  canvas.width  = img.offsetWidth  || img.naturalWidth  || 800;
+  canvas.height = img.offsetHeight || img.naturalHeight || 600;
+  _redrawMapCanvas();
+
+  // 이미 이벤트 달려있으면 중복 방지
+  if (canvas._drawInited) return;
+  canvas._drawInited = true;
+
+  let drawing = false, curStroke = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (!window._mapDrawMode) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    drawing = true;
+    const r = canvas.getBoundingClientRect();
+    const pt = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    curStroke = { tool: window._mapDrawMode, color: _mapDrawColor, size: _mapDrawSize, pts: [pt] };
+    if (!_mapStrokes[currentDashSite]) _mapStrokes[currentDashSite] = [];
+    _mapStrokes[currentDashSite].push(curStroke);
+    _redrawMapCanvas();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing || !curStroke) return;
+    const r = canvas.getBoundingClientRect();
+    curStroke.pts.push({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+    _redrawMapCanvas();
+  });
+  canvas.addEventListener('pointerup', () => {
+    if (!drawing) return;
+    drawing = false; curStroke = null;
+    _saveMapStrokes();
+  });
+  canvas.addEventListener('pointercancel', () => { drawing = false; curStroke = null; });
+};
+
+function _updateMapDrawUI() {
+  const penBtn    = document.getElementById('map-pen-btn');
+  const eraserBtn = document.getElementById('map-eraser-btn');
+  const canvas    = document.getElementById('map-draw-canvas');
+  if (penBtn)    { penBtn.style.background = window._mapDrawMode === 'pen' ? '#0d2b5e' : '#fff'; penBtn.style.color = window._mapDrawMode === 'pen' ? '#fff' : ''; penBtn.style.borderColor = window._mapDrawMode === 'pen' ? '#0d2b5e' : '#cbd5e1'; }
+  if (eraserBtn) { eraserBtn.style.background = window._mapDrawMode === 'eraser' ? '#0d2b5e' : '#fff'; eraserBtn.style.color = window._mapDrawMode === 'eraser' ? '#fff' : ''; eraserBtn.style.borderColor = window._mapDrawMode === 'eraser' ? '#0d2b5e' : '#cbd5e1'; }
+  document.querySelectorAll('.map-color-btn').forEach(btn => {
+    btn.style.boxShadow = btn.dataset.color === _mapDrawColor ? '0 0 0 3px #0d2b5e' : '0 0 0 1px #cbd5e1';
+  });
+  if (canvas) {
+    canvas.style.pointerEvents = window._mapDrawMode ? 'all' : 'none';
+    canvas.style.cursor = window._mapDrawMode ? 'crosshair' : '';
+    canvas.style.touchAction = window._mapDrawMode ? 'none' : '';
+  }
+}
+
+let _mapDrawToolbarOpen = false;
+
+window._toggleMapDraw = function() {
+  _mapDrawToolbarOpen = !_mapDrawToolbarOpen;
+  const toolbar   = document.getElementById('map-draw-toolbar');
+  const toggleBtn = document.getElementById('map-draw-toggle-btn');
+  if (toolbar)   toolbar.style.display = _mapDrawToolbarOpen ? '' : 'none';
+  if (toggleBtn) { toggleBtn.style.background = _mapDrawToolbarOpen ? '#0d2b5e' : ''; toggleBtn.style.color = _mapDrawToolbarOpen ? '#fff' : ''; }
+  if (!_mapDrawToolbarOpen) { window._mapDrawMode = null; _updateMapDrawUI(); }
+};
+
+window._setMapDrawTool = function(tool) {
+  window._mapDrawMode = window._mapDrawMode === tool ? null : tool;
+  _updateMapDrawUI();
+};
+
+window._setMapDrawColor = function(color) {
+  _mapDrawColor = color;
+  if (window._mapDrawMode !== 'pen') window._mapDrawMode = 'pen';
+  _updateMapDrawUI();
+};
+
+window._setMapDrawSize = function(size) {
+  _mapDrawSize = size;
+  const label = document.getElementById('map-draw-size-label');
+  if (label) label.textContent = size + 'px';
+};
+
+window._clearMapDrawing = function() {
+  if (!confirm('이 현장의 맵 그림을 모두 지울까요?')) return;
+  delete _mapStrokes[currentDashSite];
+  _saveMapStrokes();
+  _redrawMapCanvas();
+};
+
 async function initDroneView() {
   try { _dronePhotos = await listDronePhotos(currentDashSite); } catch(e) { _dronePhotos = []; }
   if (_droneViewOpen) _renderDroneList();
