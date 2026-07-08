@@ -55,11 +55,9 @@ window._renderCustomPipes = function() {
     }
   });
 
-  // 밸브
-  const r = Math.max(6, (window._mapNatW || 800) / 160);
-  data.valves.forEach(v => {
-    if (typeof _drawValveSymbol === 'function') _drawValveSymbol(svg, v.x, v.y, r, v.name);
-  });
+  // 밸브 (더 크게, 클릭 가능)
+  const r = Math.max(14, (window._mapNatW || 800) / 80);
+  data.valves.forEach(v => _drawCustomValveGroup(svg, v, r, siteId));
 
   // 편집 중 그리기 미리보기
   if (_peMode === 'draw' && _pePts.length) {
@@ -69,24 +67,45 @@ window._renderCustomPipes = function() {
 
 function _drawSimplePipeLine(svg, seg) {
   if (!seg.points || seg.points.length < 2) return;
+  const W  = window._mapNatW || 800;
+  const lw = Math.max(4, W / 200);
+
   const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  const pts = seg.points.map(p => p.join(',')).join(' ');
-  pl.setAttribute('points', pts);
+  pl.setAttribute('points', seg.points.map(p => p.join(',')).join(' '));
   pl.setAttribute('stroke', seg.color || '#facc15');
-  pl.setAttribute('stroke-width', Math.max(4, (window._mapNatW || 800) / 300));
+  pl.setAttribute('stroke-width', lw);
   pl.setAttribute('fill', 'none');
   pl.setAttribute('stroke-linecap', 'round');
   pl.setAttribute('stroke-linejoin', 'round');
   svg.appendChild(pl);
-  // 이름 레이블 (중간 지점)
+
+  // 레이블: _renderLabels 스타일 (배경 박스 + 텍스트)
+  const fontSize = Math.max(20, W / 55);
+  const pad = fontSize * 0.55;
   const mid = seg.points[Math.floor(seg.points.length / 2)];
+  const label = seg.name + (seg.관경 ? ' ' + seg.관경 : '');
+  const tw = label.length * fontSize * 0.62 + pad * 2;
+  const th = fontSize + pad * 2;
+  const rx = mid[0] - tw / 2;
+  const ry = mid[1] - th / 2 - fontSize * 1.2;
+
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bg.setAttribute('x', rx); bg.setAttribute('y', ry);
+  bg.setAttribute('width', tw); bg.setAttribute('height', th);
+  bg.setAttribute('rx', fontSize * 0.3);
+  bg.setAttribute('fill', seg.color || '#facc15');
+  bg.setAttribute('fill-opacity', '0.88');
+  bg.setAttribute('stroke', '#92400e');
+  bg.setAttribute('stroke-width', Math.max(1, fontSize * 0.08));
+  svg.appendChild(bg);
+
   const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  txt.setAttribute('x', mid[0]); txt.setAttribute('y', mid[1] - 12);
+  txt.setAttribute('x', mid[0]); txt.setAttribute('y', ry + th * 0.5 + fontSize * 0.35);
   txt.setAttribute('text-anchor', 'middle');
-  txt.setAttribute('fill', '#fff');
-  txt.setAttribute('font-size', Math.max(14, (window._mapNatW || 800) / 80));
+  txt.setAttribute('fill', '#1a1a2e');
+  txt.setAttribute('font-size', fontSize);
   txt.setAttribute('font-weight', '700');
-  txt.textContent = seg.name;
+  txt.textContent = label;
   svg.appendChild(txt);
 }
 
@@ -124,6 +143,49 @@ function _drawPipePreview(svg) {
     t.textContent = i + 1;
     svg.appendChild(t);
   });
+}
+
+// ── 클릭 가능 밸브 심볼 ──────────────────────────────────────
+function _drawCustomValveGroup(svg, v, r, siteId) {
+  const { x, y, name } = v;
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.style.cursor = 'pointer';
+  g.classList.add('custom-valve-group');
+
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.entries(attrs).forEach(([k, val]) => el.setAttribute(k, val));
+    g.appendChild(el);
+    return el;
+  };
+
+  mk('polygon', { points: `${x-r},${y-r} ${x},${y} ${x-r},${y+r}`,
+    fill: '#ef4444', stroke: '#fff', 'stroke-width': r * 0.18, 'stroke-linejoin': 'round' });
+  mk('polygon', { points: `${x+r},${y-r} ${x},${y} ${x+r},${y+r}`,
+    fill: '#ef4444', stroke: '#fff', 'stroke-width': r * 0.18, 'stroke-linejoin': 'round' });
+  mk('line', { x1: x - r, y1: y, x2: x + r, y2: y,
+    stroke: '#fff', 'stroke-width': r * 0.22 });
+  mk('line', { x1: x, y1: y - r, x2: x, y2: y - r * 1.9,
+    stroke: '#ef4444', 'stroke-width': r * 0.28 });
+  mk('circle', { cx: x, cy: y - r * 2.3, r: r * 0.5,
+    fill: 'none', stroke: '#ef4444', 'stroke-width': r * 0.28 });
+  // 투명 히트 영역
+  mk('circle', { cx: x, cy: y, r: r * 3, fill: 'transparent' });
+  // 이름 레이블
+  const lbl = mk('text', { x, y: y + r * 2.8,
+    'text-anchor': 'middle', fill: '#ef4444',
+    'font-size': r * 1.3, 'font-weight': '700',
+    'paint-order': 'stroke', stroke: '#000', 'stroke-width': r * 0.35 });
+  lbl.textContent = name;
+
+  g.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (typeof openPhotoModal === 'function') {
+      openPhotoModal(`_valve_${siteId}`, v.id, `🔧 ${name} 사진`);
+    }
+  });
+
+  svg.appendChild(g);
 }
 
 // ── 클릭 오버레이 핸들러 ──────────────────────────────────────

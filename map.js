@@ -69,6 +69,7 @@ function _setupMapDocListener() {
     if (
       !e.target.closest('#pipe-popup') &&
       !e.target.closest('.pipe-group') &&
+      !e.target.closest('.custom-valve-group') &&
       !e.target.closest('#color-modal')
     ) {
       hidePipePopup();
@@ -564,16 +565,16 @@ function _clearRepPhoto(segId, subSegId, path) {
 let _photoModalSegId  = null;
 let _photoModalSubId  = null;
 
-function openPhotoModal(segId, subSegId) {
+function openPhotoModal(segId, subSegId, titleOverride) {
   _photoModalSegId = segId;
   _photoModalSubId = subSegId || '_pipe';
   const seg = PIPELINE_SEGMENTS.find(s => s.id === segId);
   const saved = _getSegmentColors(segId);
   const segs  = saved.매달기구간 ?? [];
   const sub   = segs.find(s => s.id === _photoModalSubId);
-  let title = seg ? seg.name : segId;
-  if (sub) title += ` (${sub.from}m~${sub.to}m)`;
-  document.getElementById('pm-title').textContent = title + ' 사진';
+  let title = titleOverride || (seg ? seg.name : segId);
+  if (!titleOverride && sub) title += ` (${sub.from}m~${sub.to}m)`;
+  document.getElementById('pm-title').textContent = title + (titleOverride ? '' : ' 사진');
   document.getElementById('photo-modal').style.display = 'flex';
   _renderPhotoGrid(segId, _photoModalSubId);
 }
