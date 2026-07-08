@@ -270,7 +270,7 @@ window.renderRegulatorSpots = function() {
 
     g.addEventListener('click', e => {
       e.stopPropagation();
-      if (window._regulatorEditMode && confirm('이 정압기 마커를 삭제할까요?')) {
+      if (confirm('이 정압기 마커를 삭제할까요?')) {
         _saveRegulatorSpots(_getRegulatorSpots().filter(s => s.id !== spot.id));
         renderRegulatorSpots();
       }

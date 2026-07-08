@@ -62,7 +62,8 @@ window._renderCustomPipes = function() {
 function _drawSimplePipeLine(svg, seg) {
   if (!seg.points || seg.points.length < 2) return;
   const W  = window._mapNatW || 800;
-  const lw = Math.max(4, W / 200);
+  // 굵기: _buildPipeGroup과 동일 기준 (mapNatW/200), 최소 8
+  const lw = Math.max(8, W / 100);
 
   const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   pl.setAttribute('points', seg.points.map(p => p.join(',')).join(' '));
@@ -73,11 +74,12 @@ function _drawSimplePipeLine(svg, seg) {
   pl.setAttribute('stroke-linejoin', 'round');
   svg.appendChild(pl);
 
-  // 레이블: _renderLabels 스타일 (배경 박스 + 텍스트)
-  const fontSize = Math.max(20, W / 55);
-  const pad = fontSize * 0.55;
+  // 레이블: 밸브 글씨 크기와 동일 기준 (r*1.3), 이름만 표시
+  const r = Math.max(22, W / 32);
+  const fontSize = r * 1.3;
+  const pad = fontSize * 0.5;
   const mid = seg.points[Math.floor(seg.points.length / 2)];
-  const label = seg.name + (seg.관경 ? ' ' + seg.관경 : '');
+  const label = seg.name;
   const tw = label.length * fontSize * 0.62 + pad * 2;
   const th = fontSize + pad * 2;
   const rx = mid[0] - tw / 2;
