@@ -30,6 +30,9 @@ function _updateDashControls() {
   });
   const adjustBtn = document.querySelector('.zone-btn[onclick="toggleBoringAdjust()"]');
   if (adjustBtn) adjustBtn.style.display = is115 ? '' : 'none';
+  // 배관 편집 그룹: 환기구(S015/S016)에서만 표시
+  const pipeGroup = document.getElementById('pipe-edit-group');
+  if (pipeGroup) pipeGroup.style.display = is115 ? 'none' : 'flex';
   // map-svg는 항상 표시 유지 (환기구에서도 구역·입구 표시용으로 필요)
 }
 
@@ -49,8 +52,9 @@ window.switchDashSite = function(siteId) {
   const imgSrc = site.sitePhoto || site.mapImg;
   if (typeof switchDashMap === 'function') switchDashMap(imgSrc);
   if (typeof mapZoomReset === 'function') mapZoomReset();
-  // Supabase에서 이 현장의 최신 구역/입구 데이터를 가져와 적용
+  // Supabase에서 이 현장의 최신 구역/입구 + 커스텀 배관 데이터 로드
   if (typeof _syncZoneForSite === 'function') _syncZoneForSite();
+  if (typeof _loadCustomPipesForSite === 'function') _loadCustomPipesForSite(siteId);
 
   _updateDashControls();
   initDroneView();

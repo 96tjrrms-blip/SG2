@@ -50,6 +50,7 @@ function initMap() {
     _updateZoneBtn();
     if (typeof _updateBoringBtn === 'function') _updateBoringBtn();
     if (typeof window._initMapCanvas === 'function') window._initMapCanvas();
+    if (typeof window._loadCustomPipesForSite === 'function') window._loadCustomPipesForSite(window.currentDashSite || '115st');
   };
 
   if (img.complete) {
@@ -112,6 +113,7 @@ function renderAllPipes() {
     _drawPickMarkers();
   }
 
+  if (typeof window._renderCustomPipes === 'function') window._renderCustomPipes();
   _renderConstructionZone();
   if (typeof renderBoringPoints  === 'function') renderBoringPoints();
   if (typeof renderParkingSpots  === 'function') renderParkingSpots();

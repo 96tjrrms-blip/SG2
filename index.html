@@ -74,6 +74,12 @@
         </div>
         <button class="zone-btn" onclick="toggleBoringAdjust()" style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc">🎚 천공 조정</button>
         <button id="parking-edit-btn" class="zone-btn" onclick="toggleParkingEdit()" style="background:#f0fdf4;color:#15803d;border-color:#86efac">🅿 주차 편집</button>
+        <div id="pipe-edit-group" style="display:none;flex-direction:column;gap:4px;border-top:1px solid #e2e8f0;margin-top:4px;padding-top:4px">
+          <span style="font-size:10px;color:#94a3b8;font-weight:600;padding:0 2px">배관 편집</span>
+          <button class="zone-btn" onclick="startPipeDraw()" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">📐 배관 그리기</button>
+          <button class="zone-btn" onclick="startValveAdd()" style="background:#f0fdf4;color:#15803d;border-color:#86efac">🔧 밸브 추가</button>
+          <button class="zone-btn" onclick="showPipeList()" style="background:#fafafa;color:#475569;border-color:#cbd5e1">📋 목록 / 삭제</button>
+        </div>
       </div>
     </div>
     <div id="zone-edit-bar" class="zone-controls zone-edit-mode" style="display:none">
@@ -87,6 +93,18 @@
       <span class="zone-hint" style="color:#166534">🚪 입구 위치 클릭 → 추가 / 마커 클릭 → 삭제</span>
       <button class="zone-btn zone-btn-save" onclick="saveZone()">✓ 저장</button>
       <button class="zone-btn zone-btn-cancel" onclick="cancelEntranceEdit()">✕ 취소</button>
+    </div>
+    <!-- 배관 그리기 바 -->
+    <div id="pipe-draw-bar" class="zone-controls zone-edit-mode" style="display:none;border-color:#93c5fd;background:#eff6ff">
+      <span class="zone-hint" style="color:#1d4ed8">📐 지도 클릭으로 배관 경로 찍기</span>
+      <button class="zone-btn" onclick="undoPipePt()" style="background:#fff;color:#475569">↩ 되돌리기</button>
+      <button class="zone-btn zone-btn-save" onclick="finishPipeDraw()">✓ 구간 완료</button>
+      <button class="zone-btn zone-btn-cancel" onclick="cancelPipeDraw()">✕ 취소</button>
+    </div>
+    <!-- 밸브 추가 바 -->
+    <div id="pipe-valve-bar" class="zone-controls zone-edit-mode" style="display:none;border-color:#86efac;background:#f0fdf4">
+      <span class="zone-hint" style="color:#15803d">🔧 밸브 위치 클릭</span>
+      <button class="zone-btn zone-btn-cancel" onclick="cancelValveAdd()">✕ 완료</button>
     </div>
 
     <div class="card" style="padding:16px">
@@ -153,6 +171,9 @@
         <!-- 주차위치 추가 오버레이 -->
         <div id="parking-add-overlay" onclick="_onParkingAddClick(event)"
           style="display:none;position:absolute;inset:0;z-index:18;cursor:crosshair;background:rgba(22,163,74,0.06)"></div>
+        <!-- 배관 그리기 오버레이 -->
+        <div id="pipe-draw-overlay" onclick="_onPipeOverlayClick(event)"
+          style="display:none;position:absolute;inset:0;z-index:21;cursor:crosshair;background:rgba(29,78,216,0.05)"></div>
         <!-- 방향 표시 -->
         <div class="map-dir map-dir-left">
           <div class="map-dir-arrow">◀</div>
@@ -212,6 +233,54 @@
         </div>
         <div id="drone-list"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- 배관 구간 저장 모달 -->
+  <div id="pipe-seg-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.45);align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:300px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:#0d2b5e">📐 배관 구간 저장</div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:12px" id="psm-pts-count"></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label style="font-size:12px;font-weight:600;color:#475569">이름
+          <input id="psm-name" type="text" placeholder="예: 메인관" value=""
+            style="width:100%;margin-top:4px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box">
+        </label>
+        <label style="font-size:12px;font-weight:600;color:#475569">관경
+          <select id="psm-diam" style="width:100%;margin-top:4px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;box-sizing:border-box">
+            <option>25A</option><option>32A</option><option>40A</option><option>50A</option>
+            <option>65A</option><option>80A</option><option selected>100A</option>
+            <option>125A</option><option>150A</option><option>200A</option>
+          </select>
+        </label>
+        <label style="font-size:12px;font-weight:600;color:#475569">색상
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <button class="psm-color-swatch" data-c="#facc15" onclick="_psmPickColor(this)" style="width:24px;height:24px;border-radius:50%;background:#facc15;border:3px solid #0d2b5e;cursor:pointer;padding:0" title="노랑"></button>
+            <button class="psm-color-swatch" data-c="#ef4444" onclick="_psmPickColor(this)" style="width:24px;height:24px;border-radius:50%;background:#ef4444;border:2px solid #e2e8f0;cursor:pointer;padding:0" title="빨강"></button>
+            <button class="psm-color-swatch" data-c="#3b82f6" onclick="_psmPickColor(this)" style="width:24px;height:24px;border-radius:50%;background:#3b82f6;border:2px solid #e2e8f0;cursor:pointer;padding:0" title="파랑"></button>
+            <button class="psm-color-swatch" data-c="#22c55e" onclick="_psmPickColor(this)" style="width:24px;height:24px;border-radius:50%;background:#22c55e;border:2px solid #e2e8f0;cursor:pointer;padding:0" title="초록"></button>
+            <button class="psm-color-swatch" data-c="#f97316" onclick="_psmPickColor(this)" style="width:24px;height:24px;border-radius:50%;background:#f97316;border:2px solid #e2e8f0;cursor:pointer;padding:0" title="주황"></button>
+            <button class="psm-color-swatch" data-c="#a855f7" onclick="_psmPickColor(this)" style="width:24px;height:24px;border-radius:50%;background:#a855f7;border:2px solid #e2e8f0;cursor:pointer;padding:0" title="보라"></button>
+            <input id="psm-color" type="hidden" value="#facc15">
+          </div>
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="savePipeSegment()" style="flex:2;padding:9px;border-radius:8px;border:none;background:#0d2b5e;color:#fff;font-weight:700;cursor:pointer;font-size:13px">저장</button>
+        <button onclick="cancelPipeSegModal()" style="flex:1;padding:9px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;font-size:13px">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 배관 목록/삭제 모달 -->
+  <div id="pipe-list-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.45);align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:320px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:12px;color:#0d2b5e">📋 배관 목록</div>
+      <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px">배관 구간</div>
+      <div id="plm-segs"></div>
+      <div style="font-size:12px;font-weight:600;color:#64748b;margin:10px 0 6px">밸브</div>
+      <div id="plm-vals"></div>
+      <button onclick="closePipeListModal()" style="width:100%;margin-top:14px;padding:9px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;color:#475569;cursor:pointer;font-size:13px">닫기</button>
     </div>
   </div>
 
@@ -394,6 +463,7 @@
 <script src="boring.js"></script>
 <script src="parking.js"></script>
 <script src="map.js"></script>
+<script src="pipe-editor.js"></script>
 <script src="app.js"></script>
 
 <!-- 지도 줌/패닝 -->
@@ -462,7 +532,7 @@
     c.addEventListener('mousedown', function(e) {
       if (scale <= 1 || e.button !== 0) return;
       // 편집 오버레이/버튼이면 무시
-      if (e.target.closest('#zone-click-overlay,button,input,.boring-marker,.parking-marker') || (window._mapDrawMode && e.target.id === 'map-draw-canvas')) return;
+      if (e.target.closest('#zone-click-overlay,#pipe-draw-overlay,button,input,.boring-marker,.parking-marker') || (window._mapDrawMode && e.target.id === 'map-draw-canvas')) return;
       dragging = true;
       startX = e.clientX; startY = e.clientY;
       startTx = tx; startTy = ty;
@@ -620,6 +690,13 @@
     alert('boring-data.js 다운로드됨!\n\nSG2 폴더에 덮어쓰기 하면 영구 적용돼요.');
   };
 })();
+
+// 배관 세그먼트 모달 색상 선택
+window._psmPickColor = function(btn) {
+  document.querySelectorAll('.psm-color-swatch').forEach(b => b.style.border = '2px solid #e2e8f0');
+  btn.style.border = '3px solid #0d2b5e';
+  document.getElementById('psm-color').value = btn.dataset.c;
+};
 </script>
 
 <!-- 천공 마커 패널 -->
