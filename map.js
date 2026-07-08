@@ -75,15 +75,26 @@ function _setupMapDocListener() {
   });
 }
 
+// ── 현장 식별 헬퍼 ───────────────────────────────────────────
+// currentDashSite(앱 ID) → mapConfig.js site 필드 값
+function _getSiteName() {
+  const m = { '115st': '115정거장', 'S015': 'S015', 'S016': 'S016' };
+  return m[window.currentDashSite || '115st'] || '115정거장';
+}
+// site 필드 없는 기존 항목은 '115정거장' 소속으로 처리
+function _filterBySite(arr) {
+  const s = _getSiteName();
+  return arr.filter(item => (item.site || '115정거장') === s);
+}
+
 // ── SVG 렌더링 ────────────────────────────────────────────────
 function renderAllPipes() {
   const svg = document.getElementById('map-svg');
   if (!svg || !_mapReady) return;
   svg.innerHTML = '';
 
-  const is115 = !window.currentDashSite || window.currentDashSite === '115st';
-
-  if (is115) {
+  const siteSegs = _filterBySite(PIPELINE_SEGMENTS);
+  if (siteSegs.length) {
     // 글로우 필터 정의
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     const blur = _mapNatW / 500;
@@ -94,7 +105,7 @@ function renderAllPipes() {
       </filter>`;
     svg.appendChild(defs);
 
-    PIPELINE_SEGMENTS.forEach(seg => svg.appendChild(_buildPipeGroup(seg)));
+    siteSegs.forEach(seg => svg.appendChild(_buildPipeGroup(seg)));
     _renderLabels();
     _renderValves();
     _renderExposedLabels();
@@ -110,7 +121,7 @@ function renderAllPipes() {
 function _valveFractionsOnPipe(seg) {
   if (typeof VALVE_POSITIONS === 'undefined' || !VALVE_POSITIONS.length) return [];
   const threshold = _mapNatW / 30; // 화면 너비의 1/30 픽셀 이내면 파이프 위로 판단
-  return VALVE_POSITIONS
+  return _filterBySite(VALVE_POSITIONS)
     .map(v => {
       const t = _closestFractionOnPolyline(seg.points, v.x, v.y);
       const [cx, cy] = _pointAtFraction(seg.points, t);
@@ -726,7 +737,7 @@ function _renderExposedLabels() {
   const pad = fs * 0.5;
   const arr = fs * 0.9;
 
-  PIPELINE_SEGMENTS.forEach(seg => {
+  _filterBySite(PIPELINE_SEGMENTS).forEach(seg => {
     if (!seg.노출길이) return;
     const saved = _getSegmentColors(seg.id);
     const segs  = saved.매달기구간 ?? seg.매달기구간;
@@ -1036,7 +1047,7 @@ function _renderValves() {
   const svg = document.getElementById('map-svg');
   if (!svg) return;
   const r = Math.max(6, _mapNatW / 160);
-  VALVE_POSITIONS.forEach(v => _drawValveSymbol(svg, v.x, v.y, r, v.name));
+  _filterBySite(VALVE_POSITIONS).forEach(v => _drawValveSymbol(svg, v.x, v.y, r, v.name));
 }
 
 function _drawValveSymbol(svg, x, y, r, name) {
@@ -1074,7 +1085,7 @@ function _renderLabels() {
   if (!svg || typeof MAP_LABELS === 'undefined' || !MAP_LABELS.length) return;
   const fontSize = Math.max(20, _mapNatW / 55);
   const pad = fontSize * 0.55;
-  MAP_LABELS.forEach(lb => {
+  _filterBySite(MAP_LABELS).forEach(lb => {
     const tw = lb.text.length * fontSize * 0.62 + pad * 2;
     const th = fontSize + pad * 2;
     const rx = lb.x - tw / 2, ry = lb.y - th / 2;
