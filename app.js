@@ -111,13 +111,13 @@ function _renderGasExposureList(siteId) {
   if (!list) return;
   const items = _gasExposureCache[siteId] || [];
   if (!items.length) {
-    list.innerHTML = '<span style="color:#a8a29e;font-size:11px">-</span>';
+    list.innerHTML = '<span style="color:rgba(255,255,255,0.4);font-size:13px;line-height:normal">-</span>';
     return;
   }
   list.innerHTML = items.map(item =>
-    `<div style="display:flex;align-items:center;gap:5px">` +
-    `<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#f97316;flex-shrink:0;margin-top:1px"></span>` +
-    `<span>${item}</span></div>`
+    `<div style="display:flex;align-items:center;gap:6px;line-height:normal">` +
+    `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#fb923c;flex-shrink:0"></span>` +
+    `<span style="line-height:normal">${item}</span></div>`
   ).join('');
 }
 
