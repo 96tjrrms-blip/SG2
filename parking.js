@@ -236,7 +236,7 @@ window.renderRegulatorSpots = function() {
 
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('r', 18);
-    circle.setAttribute('fill', '#1d4ed8');
+    circle.setAttribute('fill', '#ef4444');
     circle.setAttribute('fill-opacity', '0.92');
     circle.setAttribute('stroke', '#ffffff');
     circle.setAttribute('stroke-width', 2.5);
@@ -244,27 +244,29 @@ window.renderRegulatorSpots = function() {
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     icon.setAttribute('text-anchor', 'middle');
     icon.setAttribute('dominant-baseline', 'middle');
-    icon.setAttribute('font-size', '15');
+    icon.setAttribute('font-size', '16');
+    icon.setAttribute('font-weight', '900');
     icon.setAttribute('fill', '#ffffff');
     icon.setAttribute('font-family', 'sans-serif');
-    icon.textContent = '⚙';
+    icon.textContent = 'G';
 
-    const lblW = 62, lblH = 22, lblY = 22;
+    const lblText = '반송공원 정압기';
+    const lblW = 100, lblH = 22, lblY = 22;
     const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     bg.setAttribute('x', -(lblW / 2)); bg.setAttribute('y', lblY);
     bg.setAttribute('width', lblW); bg.setAttribute('height', lblH);
     bg.setAttribute('rx', 5);
     bg.setAttribute('fill', 'rgba(255,255,255,0.95)');
-    bg.setAttribute('stroke', '#1d4ed8'); bg.setAttribute('stroke-width', 1.5);
+    bg.setAttribute('stroke', '#ef4444'); bg.setAttribute('stroke-width', 1.5);
 
     const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     lbl.setAttribute('y', lblY + lblH * 0.73);
     lbl.setAttribute('text-anchor', 'middle');
-    lbl.setAttribute('fill', '#1d4ed8');
-    lbl.setAttribute('font-size', '13');
+    lbl.setAttribute('fill', '#ef4444');
+    lbl.setAttribute('font-size', '11');
     lbl.setAttribute('font-weight', '800');
     lbl.setAttribute('font-family', 'sans-serif');
-    lbl.textContent = '정압기';
+    lbl.textContent = lblText;
 
     g.append(circle, icon, bg, lbl);
 
