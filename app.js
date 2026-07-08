@@ -33,6 +33,9 @@ function _updateDashControls() {
   // 배관 편집 그룹: 환기구(S015/S016)에서만 표시
   const pipeGroup = document.getElementById('pipe-edit-group');
   if (pipeGroup) pipeGroup.style.display = is115 ? 'none' : 'flex';
+  // 정압기 그룹: S016에서만 표시
+  const regGroup = document.getElementById('regulator-edit-group');
+  if (regGroup) regGroup.style.display = currentDashSite === 'S016' ? 'flex' : 'none';
   // map-svg는 항상 표시 유지 (환기구에서도 구역·입구 표시용으로 필요)
 }
 
@@ -52,9 +55,11 @@ window.switchDashSite = function(siteId) {
   const imgSrc = site.sitePhoto || site.mapImg;
   if (typeof switchDashMap === 'function') switchDashMap(imgSrc);
   if (typeof mapZoomReset === 'function') mapZoomReset();
-  // Supabase에서 이 현장의 최신 구역/입구 + 커스텀 배관 데이터 로드
+  // Supabase에서 최신 데이터 로드 (구역/입구, 커스텀 배관, 주차, 정압기)
   if (typeof _syncZoneForSite === 'function') _syncZoneForSite();
   if (typeof _loadCustomPipesForSite === 'function') _loadCustomPipesForSite(siteId);
+  if (typeof window._syncParkingForSite === 'function') window._syncParkingForSite(siteId);
+  if (typeof window._syncRegulatorForSite === 'function') window._syncRegulatorForSite(siteId);
 
   _updateDashControls();
   initDroneView();

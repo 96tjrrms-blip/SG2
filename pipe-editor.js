@@ -46,17 +46,11 @@ window._renderCustomPipes = function() {
   if (!svg) return;
   const data = _peData(siteId);
 
-  // 배관 세그먼트
-  data.segments.forEach(seg => {
-    if (typeof _buildPipeGroup === 'function') {
-      svg.appendChild(_buildPipeGroup(seg));
-    } else {
-      _drawSimplePipeLine(svg, seg);
-    }
-  });
+  // 배관 세그먼트 (커스텀 파이프는 항상 _drawSimplePipeLine — 레이블 포함)
+  data.segments.forEach(seg => _drawSimplePipeLine(svg, seg));
 
-  // 밸브 (더 크게, 클릭 가능)
-  const r = Math.max(14, (window._mapNatW || 800) / 80);
+  // 밸브 (크게, 클릭 가능)
+  const r = Math.max(22, (window._mapNatW || 800) / 32);
   data.valves.forEach(v => _drawCustomValveGroup(svg, v, r, siteId));
 
   // 편집 중 그리기 미리보기

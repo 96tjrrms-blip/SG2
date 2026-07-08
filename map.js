@@ -118,6 +118,7 @@ function renderAllPipes() {
   _renderConstructionZone();
   if (typeof renderBoringPoints  === 'function') renderBoringPoints();
   if (typeof renderParkingSpots  === 'function') renderParkingSpots();
+  if (typeof renderRegulatorSpots === 'function') renderRegulatorSpots();
 }
 
 // 해당 파이프 위에 있는 밸브들의 fraction 목록 반환 (오름차순)
@@ -913,7 +914,8 @@ function _onZoneOverlayClick(e) {
       d.entrances.splice(idx, 1);
     } else {
       if (!d.entrances) d.entrances = [];
-      d.entrances.push({ x, y });
+      const note = (prompt('입구 메모 입력 (선택, 예: P/W:1116)', '') || '').trim();
+      d.entrances.push({ x, y, note });
     }
     _saveZoneData(d);
   } else {
@@ -1031,7 +1033,7 @@ function _renderConstructionZone() {
     et.setAttribute('font-weight', '800');
     et.setAttribute('paint-order', 'stroke');
     et.setAttribute('stroke', '#fff'); et.setAttribute('stroke-width', er * 0.4);
-    et.textContent = '입구';
+    et.textContent = en.note ? `입구 (${en.note})` : '입구';
     svg.appendChild(et);
     // 편집 중엔 삭제 안내 원
     if (_entranceEdit) {

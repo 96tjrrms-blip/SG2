@@ -74,6 +74,11 @@
         </div>
         <button class="zone-btn" onclick="toggleBoringAdjust()" style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc">🎚 천공 조정</button>
         <button id="parking-edit-btn" class="zone-btn" onclick="toggleParkingEdit()" style="background:#f0fdf4;color:#15803d;border-color:#86efac">🅿 주차 편집</button>
+        <!-- S016 전용: 정압기 마커 -->
+        <div id="regulator-edit-group" style="display:none;flex-direction:column;gap:4px;border-top:1px solid #e2e8f0;margin-top:4px;padding-top:4px">
+          <span style="font-size:10px;color:#94a3b8;font-weight:600;padding:0 2px">정압기</span>
+          <button id="regulator-edit-btn" class="zone-btn" onclick="toggleRegulatorEdit()" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">⚙ 정압기 편집</button>
+        </div>
         <div id="pipe-edit-group" style="display:none;flex-direction:column;gap:4px;border-top:1px solid #e2e8f0;margin-top:4px;padding-top:4px">
           <span style="font-size:10px;color:#94a3b8;font-weight:600;padding:0 2px">배관 편집</span>
           <button class="zone-btn" onclick="startPipeDraw()" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">📐 배관 그리기</button>
@@ -171,6 +176,9 @@
         <!-- 주차위치 추가 오버레이 -->
         <div id="parking-add-overlay" onclick="_onParkingAddClick(event)"
           style="display:none;position:absolute;inset:0;z-index:18;cursor:crosshair;background:rgba(22,163,74,0.06)"></div>
+        <!-- 정압기 추가 오버레이 -->
+        <div id="regulator-add-overlay" onclick="_onRegulatorAddClick(event)"
+          style="display:none;position:absolute;inset:0;z-index:18;cursor:crosshair;background:rgba(29,78,216,0.05)"></div>
         <!-- 배관 그리기 오버레이 -->
         <div id="pipe-draw-overlay" onclick="_onPipeOverlayClick(event)"
           style="display:none;position:absolute;inset:0;z-index:21;cursor:crosshair;background:rgba(29,78,216,0.05)"></div>
