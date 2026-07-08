@@ -66,6 +66,7 @@
       </button>
       <div id="edit-group" class="ctrl-group-items" style="display:none">
         <button class="zone-btn zone-btn-edit" onclick="startZoneEdit()">✏️ 구역 편집</button>
+        <button class="zone-btn" onclick="startLabelMove()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">🔤 텍스트 이동</button>
         <button class="zone-btn zone-btn-entrance" onclick="startEntranceEdit()">🚪 입구 편집</button>
         <button id="boring-edit-btn" class="zone-btn" onclick="toggleBoringMarkerEdit()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">✏ 마커 편집</button>
         <div id="boring-marker-sub" style="display:none;gap:4px;flex-wrap:wrap">
@@ -99,14 +100,11 @@
       <button class="zone-btn zone-btn-save" onclick="saveZone()">✓ 저장</button>
       <button class="zone-btn zone-btn-cancel" onclick="cancelEntranceEdit()">✕ 취소</button>
     </div>
-    <!-- 구역 이동 바 (환기구 현장에서 구역 표시 중 노출) -->
-    <div id="zone-nudge-bar" class="zone-controls" style="display:none;flex-wrap:wrap;gap:4px;background:#fff7ed;border-color:#f97316">
-      <span style="font-size:11px;color:#c2410c;font-weight:600;width:100%;padding:0 2px">🗺️ 구역 이동 (클릭당 ~50px)</span>
-      <button class="zone-btn" onclick="nudgeZone(-50,0)"  style="padding:4px 10px;font-size:13px">◀</button>
-      <button class="zone-btn" onclick="nudgeZone(0,-50)"  style="padding:4px 10px;font-size:13px">▲</button>
-      <button class="zone-btn" onclick="nudgeZone(0,50)"   style="padding:4px 10px;font-size:13px">▼</button>
-      <button class="zone-btn" onclick="nudgeZone(50,0)"   style="padding:4px 10px;font-size:13px">▶</button>
-      <button class="zone-btn" onclick="nudgeZone(0,0,true)" style="font-size:11px;color:#6b7280;padding:4px 8px">초기화</button>
+    <!-- 현재공사구역 텍스트 이동 바 -->
+    <div id="label-move-bar" class="zone-controls zone-edit-mode" style="display:none;border-color:#f97316;background:#fff7ed">
+      <span class="zone-hint" style="color:#c2410c">📍 '현재공사구역' 텍스트를 놓을 위치 클릭</span>
+      <button class="zone-btn" onclick="resetLabelPos()" style="color:#6b7280">↩ 초기화</button>
+      <button class="zone-btn zone-btn-cancel" onclick="cancelLabelMove()">✕ 취소</button>
     </div>
     <!-- 배관 그리기 바 -->
     <div id="pipe-draw-bar" class="zone-controls zone-edit-mode" style="display:none;border-color:#93c5fd;background:#eff6ff">

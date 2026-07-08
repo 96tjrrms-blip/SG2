@@ -37,7 +37,6 @@ function _updateDashControls() {
   const regGroup = document.getElementById('regulator-edit-group');
   if (regGroup) regGroup.style.display = currentDashSite === 'S016' ? 'flex' : 'none';
   // map-svg는 항상 표시 유지 (환기구에서도 구역·입구 표시용으로 필요)
-  if (typeof window._updateNudgeBar === 'function') window._updateNudgeBar();
 }
 
 window.switchDashSite = function(siteId) {
