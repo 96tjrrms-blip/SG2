@@ -37,6 +37,7 @@ function _updateDashControls() {
   const regGroup = document.getElementById('regulator-edit-group');
   if (regGroup) regGroup.style.display = currentDashSite === 'S016' ? 'flex' : 'none';
   // map-svg는 항상 표시 유지 (환기구에서도 구역·입구 표시용으로 필요)
+  _updateSiteInfoOverlay();
 }
 
 window.switchDashSite = function(siteId) {
@@ -60,9 +61,123 @@ window.switchDashSite = function(siteId) {
   if (typeof _loadCustomPipesForSite === 'function') _loadCustomPipesForSite(siteId);
   if (typeof window._syncParkingForSite === 'function') window._syncParkingForSite(siteId);
   if (typeof window._syncRegulatorForSite === 'function') window._syncRegulatorForSite(siteId);
+  if (typeof window._syncGasExposureForSite === 'function') window._syncGasExposureForSite(siteId);
 
   _updateDashControls();
   initDroneView();
+};
+
+// ===== 현장 주소 / 도시가스 노출현황 =====
+const _SITE_DEFAULT_ADDR = {
+  '115st': '화성시 병점구 능동 464-4',
+  'S015': '화성시 병점구 기산동 35-1',
+  'S016': '화성시 동탄구 반송동 59'
+};
+// S015/S016은 주소 고정 (편집 불필요)
+const _SITE_ADDR_EDITABLE = { '115st': true, 'S015': false, 'S016': false };
+
+function _getSiteAddress(siteId) {
+  return localStorage.getItem(`_site_address_${siteId}`) || _SITE_DEFAULT_ADDR[siteId] || '';
+}
+
+window.openAddressModal = function() {
+  if (!_SITE_ADDR_EDITABLE[currentDashSite]) return;
+  const input = document.getElementById('address-input');
+  if (input) input.value = _getSiteAddress(currentDashSite);
+  const modal = document.getElementById('address-modal');
+  if (modal) modal.style.display = 'flex';
+  setTimeout(() => { if (input) input.focus(); }, 50);
+};
+
+window.closeAddressModal = function() {
+  const modal = document.getElementById('address-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.saveAddress = function() {
+  const input = document.getElementById('address-input');
+  if (!input) return;
+  const val = input.value.trim();
+  localStorage.setItem(`_site_address_${currentDashSite}`, val);
+  const chip = document.getElementById('map-address-text');
+  if (chip) chip.textContent = val || '-';
+  closeAddressModal();
+};
+
+let _gasExposureCache = {};
+
+function _renderGasExposureList(siteId) {
+  const list = document.getElementById('gas-exposure-list');
+  if (!list) return;
+  const items = _gasExposureCache[siteId] || [];
+  if (!items.length) {
+    list.innerHTML = '<span style="color:#a8a29e;font-size:11px">-</span>';
+    return;
+  }
+  list.innerHTML = items.map(item =>
+    `<div style="display:flex;align-items:center;gap:5px">` +
+    `<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#f97316;flex-shrink:0;margin-top:1px"></span>` +
+    `<span>${item}</span></div>`
+  ).join('');
+}
+
+function _updateSiteInfoOverlay() {
+  const addrText = document.getElementById('map-address-text');
+  if (addrText) addrText.textContent = _getSiteAddress(currentDashSite) || '-';
+  // 편집 아이콘: 115st만 표시
+  const editIcon = document.getElementById('address-edit-icon');
+  const chip = document.getElementById('map-address-chip');
+  const editable = _SITE_ADDR_EDITABLE[currentDashSite];
+  if (editIcon) editIcon.style.display = editable ? 'inline' : 'none';
+  if (chip) chip.style.cursor = editable ? 'pointer' : 'default';
+  const siteId = currentDashSite;
+  try { _gasExposureCache[siteId] = JSON.parse(localStorage.getItem(`_gasexposure_${siteId}`) || '[]'); }
+  catch { _gasExposureCache[siteId] = []; }
+  _renderGasExposureList(siteId);
+}
+
+window._syncGasExposureForSite = async function(siteId) {
+  try {
+    const rows = await fetchAllPipeSettings();
+    const key = `_gasexposure_${siteId}`;
+    if (rows[key]?.colors?.items) {
+      _gasExposureCache[siteId] = rows[key].colors.items;
+      localStorage.setItem(`_gasexposure_${siteId}`, JSON.stringify(rows[key].colors.items));
+    } else {
+      try { _gasExposureCache[siteId] = JSON.parse(localStorage.getItem(`_gasexposure_${siteId}`) || '[]'); }
+      catch { _gasExposureCache[siteId] = []; }
+    }
+  } catch {
+    try { _gasExposureCache[siteId] = JSON.parse(localStorage.getItem(`_gasexposure_${siteId}`) || '[]'); }
+    catch { _gasExposureCache[siteId] = []; }
+  }
+  _renderGasExposureList(siteId);
+};
+
+window.openGasExposureModal = function() {
+  const items = _gasExposureCache[currentDashSite] || [];
+  const ta = document.getElementById('gas-items-textarea');
+  if (ta) ta.value = items.join('\n');
+  const modal = document.getElementById('gas-exposure-modal');
+  if (modal) modal.style.display = 'flex';
+};
+
+window.closeGasExposureModal = function() {
+  const modal = document.getElementById('gas-exposure-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.saveGasExposure = async function() {
+  const ta = document.getElementById('gas-items-textarea');
+  if (!ta) return;
+  const items = ta.value.split('\n').map(l => l.trim()).filter(Boolean);
+  const siteId = currentDashSite;
+  _gasExposureCache[siteId] = items;
+  localStorage.setItem(`_gasexposure_${siteId}`, JSON.stringify(items));
+  try { await upsertPipeSettings(`_gasexposure_${siteId}`, { colors: { items } }); }
+  catch(e) { console.warn('gas exposure save failed:', e); }
+  _renderGasExposureList(siteId);
+  closeGasExposureModal();
 };
 
 // ===== 드론사진 =====
@@ -479,6 +594,7 @@ async function renderDashboard() {
   initDroneView();
   _updateDashControls();
   if (typeof _syncZoneForSite === 'function') _syncZoneForSite();
+  if (typeof window._syncGasExposureForSite === 'function') window._syncGasExposureForSite(currentDashSite);
 }
 
 async function renderSmsLog() {
