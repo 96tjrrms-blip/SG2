@@ -114,8 +114,9 @@ function renderAllPipes() {
     _drawPickMarkers();
   }
 
-  if (typeof window._renderCustomPipes === 'function') window._renderCustomPipes();
+  // 구역 먼저, 그 위에 배관/밸브/레이블
   _renderConstructionZone();
+  if (typeof window._renderCustomPipes === 'function') window._renderCustomPipes();
   if (typeof renderBoringPoints  === 'function') renderBoringPoints();
   if (typeof renderParkingSpots  === 'function') renderParkingSpots();
   if (typeof renderRegulatorSpots === 'function') renderRegulatorSpots();
@@ -838,11 +839,13 @@ function toggleZoneVisible() {
   _saveZoneData(d);
   renderAllPipes();
   _updateZoneBtn();
+  if (typeof window._updateNudgeBar === 'function') window._updateNudgeBar();
 }
 function _updateZoneBtn() {
   const d = _loadZoneData();
   const btn = document.getElementById('zone-toggle-btn');
   if (btn) btn.textContent = d.visible ? '🚧 공사구역 숨기기' : '🚧 공사구역 표시';
+  if (typeof window._updateNudgeBar === 'function') window._updateNudgeBar();
 }
 
 function toggleCtrlGroup(id) {
@@ -906,10 +909,11 @@ function _onZoneOverlayClick(e) {
   const y = Math.round((e.clientY - rect.top)  * (_mapNatH / img.clientHeight));
 
   if (_entranceEdit) {
-    // 기존 마커 근처 클릭 → 삭제
+    // 기존 마커 근처 클릭 → 삭제 (offset 적용 후 좌표 비교)
     const d = _loadZoneData();
+    const ox = d.offsetX || 0, oy = d.offsetY || 0;
     const threshold = Math.max(20, _mapNatW / 80);
-    const idx = (d.entrances || []).findIndex(e => Math.hypot(e.x - x, e.y - y) < threshold);
+    const idx = (d.entrances || []).findIndex(e => Math.hypot((e.x + ox) - x, (e.y + oy) - y) < threshold);
     if (idx >= 0) {
       d.entrances.splice(idx, 1);
     } else {
@@ -943,6 +947,23 @@ function cancelEntranceEdit() {
   document.getElementById('zone-click-overlay').style.display = 'none';
   renderAllPipes();
 }
+
+window.nudgeZone = function(dx, dy, reset) {
+  const d = _loadZoneData();
+  if (reset) { d.offsetX = 0; d.offsetY = 0; }
+  else { d.offsetX = Math.round((d.offsetX || 0) + dx); d.offsetY = Math.round((d.offsetY || 0) + dy); }
+  _saveZoneData(d);
+  renderAllPipes();
+};
+
+// zone-nudge-bar 표시 여부 갱신 (환기구 + 구역 표시 중)
+window._updateNudgeBar = function() {
+  const bar = document.getElementById('zone-nudge-bar');
+  if (!bar) return;
+  const is115 = (window.currentDashSite || '115st') === '115st';
+  const d = _loadZoneData();
+  bar.style.display = (!is115 && d.visible) ? 'flex' : 'none';
+};
 
 function _renderConstructionZone() {
   const svg = document.getElementById('map-svg');
@@ -986,8 +1007,11 @@ function _renderConstructionZone() {
   const d = _loadZoneData();
   if (!d.visible || d.points.length < 3) return;
 
+  const ox = d.offsetX || 0;
+  const oy = d.offsetY || 0;
+
   const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-  poly.setAttribute('points', d.points.map(p => p.join(',')).join(' '));
+  poly.setAttribute('points', d.points.map(p => [p[0] + ox, p[1] + oy].join(',')).join(' '));
   poly.setAttribute('fill', 'rgba(251,146,60,0.18)');
   poly.setAttribute('stroke', '#f97316');
   poly.setAttribute('stroke-width', sw * 1.5);
@@ -996,8 +1020,8 @@ function _renderConstructionZone() {
   svg.appendChild(poly);
 
   // 중앙 라벨
-  const cx = d.points.reduce((s, p) => s + p[0], 0) / d.points.length;
-  const cy = d.points.reduce((s, p) => s + p[1], 0) / d.points.length;
+  const cx = d.points.reduce((s, p) => s + p[0], 0) / d.points.length + ox;
+  const cy = d.points.reduce((s, p) => s + p[1], 0) / d.points.length + oy;
   const fs = Math.max(18, _mapNatW / 100);
   const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
   lbl.setAttribute('x', cx); lbl.setAttribute('y', cy + fs * 0.35);
@@ -1013,7 +1037,8 @@ function _renderConstructionZone() {
   const entrances = d.entrances || [];
   const er = Math.max(10, _mapNatW / 140);
   const eColor = _entranceEdit ? '#16a34a' : '#22c55e';
-  entrances.forEach(en => {
+  entrances.forEach(enRaw => {
+    const en = { ...enRaw, x: enRaw.x + ox, y: enRaw.y + oy };
     // 깃대
     const pole = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     pole.setAttribute('x1', en.x); pole.setAttribute('y1', en.y);

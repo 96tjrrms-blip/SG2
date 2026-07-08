@@ -62,8 +62,7 @@ window._renderCustomPipes = function() {
 function _drawSimplePipeLine(svg, seg) {
   if (!seg.points || seg.points.length < 2) return;
   const W  = window._mapNatW || 800;
-  // 굵기: _buildPipeGroup과 동일 기준 (mapNatW/200), 최소 8
-  const lw = Math.max(8, W / 100);
+  const lw = Math.max(16, W / 50);
 
   const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   pl.setAttribute('points', seg.points.map(p => p.join(',')).join(' '));
@@ -74,7 +73,7 @@ function _drawSimplePipeLine(svg, seg) {
   pl.setAttribute('stroke-linejoin', 'round');
   svg.appendChild(pl);
 
-  // 레이블: 밸브 글씨 크기와 동일 기준 (r*1.3), 이름만 표시
+  // 레이블: 밸브 글씨와 동일 크기(r*1.3), 이름만 표시, 위치 선택 가능
   const r = Math.max(22, W / 32);
   const fontSize = r * 1.3;
   const pad = fontSize * 0.5;
@@ -82,8 +81,17 @@ function _drawSimplePipeLine(svg, seg) {
   const label = seg.name;
   const tw = label.length * fontSize * 0.62 + pad * 2;
   const th = fontSize + pad * 2;
-  const rx = mid[0] - tw / 2;
-  const ry = mid[1] - th / 2 - fontSize * 1.2;
+
+  // 위치: above(위)/below(아래)/left(왼)/right(오른) — 기본 위
+  const side = seg.labelSide || 'above';
+  let anchorX = mid[0], anchorY = mid[1];
+  if      (side === 'above') { anchorY = mid[1] - th / 2 - fontSize * 1.5; }
+  else if (side === 'below') { anchorY = mid[1] + th / 2 + fontSize * 1.5; }
+  else if (side === 'left')  { anchorX = mid[0] - tw / 2 - fontSize * 1.5; }
+  else                       { anchorX = mid[0] + tw / 2 + fontSize * 1.5; }
+
+  const rx = anchorX - tw / 2;
+  const ry = anchorY - th / 2;
 
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   bg.setAttribute('x', rx); bg.setAttribute('y', ry);
@@ -96,7 +104,7 @@ function _drawSimplePipeLine(svg, seg) {
   svg.appendChild(bg);
 
   const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  txt.setAttribute('x', mid[0]); txt.setAttribute('y', ry + th * 0.5 + fontSize * 0.35);
+  txt.setAttribute('x', anchorX); txt.setAttribute('y', anchorY + fontSize * 0.35);
   txt.setAttribute('text-anchor', 'middle');
   txt.setAttribute('fill', '#1a1a2e');
   txt.setAttribute('font-size', fontSize);
@@ -262,6 +270,7 @@ window.savePipeSegment = function() {
   const name  = document.getElementById('psm-name').value.trim() || '배관';
   const diam  = document.getElementById('psm-diam').value || '100A';
   const color = document.getElementById('psm-color').value || '#facc15';
+  const labelSide = document.getElementById('psm-label-side').value || 'above';
   const siteId = window.currentDashSite || '115st';
 
   const seg = {
@@ -269,6 +278,7 @@ window.savePipeSegment = function() {
     name, site: siteId,
     관경: diam,
     color,
+    labelSide,
     points: [..._pePts],
     매달기구간: [],
     노출길이: 0
@@ -306,10 +316,22 @@ window.showPipeList = function() {
   const modal  = document.getElementById('pipe-list-modal');
   if (!modal) return;
 
+  const sideLabel = { above:'위', below:'아래', left:'왼쪽', right:'오른쪽' };
   const segs = data.segments.map(s =>
-    `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9">
-      <span style="font-size:13px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.color};margin-right:6px"></span>${s.name} (${s.관경 || ''})</span>
-      <button onclick="_deletePipeSeg('${s.id}')" style="padding:3px 10px;border-radius:5px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:11px;cursor:pointer">삭제</button>
+    `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.color};margin-right:6px"></span>${s.name}</span>
+        <button onclick="_deletePipeSeg('${s.id}')" style="padding:3px 10px;border-radius:5px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:11px;cursor:pointer">삭제</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+        <span style="font-size:11px;color:#94a3b8">레이블 위치:</span>
+        <select onchange="_changeLabelSide('${s.id}',this.value)" style="font-size:11px;padding:2px 5px;border:1px solid #e2e8f0;border-radius:4px">
+          <option value="above" ${(s.labelSide||'above')==='above'?'selected':''}>위</option>
+          <option value="below" ${s.labelSide==='below'?'selected':''}>아래</option>
+          <option value="left"  ${s.labelSide==='left'?'selected':''}>왼쪽</option>
+          <option value="right" ${s.labelSide==='right'?'selected':''}>오른쪽</option>
+        </select>
+      </div>
     </div>`
   ).join('') || '<div style="color:#9ca3af;font-size:13px;padding:8px 0">배관 없음</div>';
 
@@ -340,6 +362,16 @@ window._deleteValve = function(id) {
   _peData(siteId).valves = _peData(siteId).valves.filter(v => v.id !== id);
   _peSaveLocal(); _peSaveSupabase(siteId);
   showPipeList();
+  if (typeof renderAllPipes === 'function') renderAllPipes();
+};
+
+window._changeLabelSide = function(segId, side) {
+  const siteId = window.currentDashSite || '115st';
+  const seg = _peData(siteId).segments.find(s => s.id === segId);
+  if (!seg) return;
+  seg.labelSide = side;
+  _peSaveLocal();
+  _peSaveSupabase(siteId);
   if (typeof renderAllPipes === 'function') renderAllPipes();
 };
 
