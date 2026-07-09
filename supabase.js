@@ -331,6 +331,38 @@ window.deleteExcavPhotoStorage = async function(path) {
   if (error) throw error;
 };
 
+// ===== 공사사진 (pipe-photo 버킷 / construction/{siteId}/ 폴더) =====
+window.listConstrPhotos = async function(siteId) {
+  const folder = `construction/${siteId}`;
+  const { data, error } = await sb.storage.from(PIPE_PHOTO_BUCKET).list(folder, {
+    sortBy: { column: 'name', order: 'asc' }
+  });
+  if (error || !data) return [];
+  return data
+    .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
+    .map(f => {
+      const path = `${folder}/${f.name}`;
+      const { data: urlData } = sb.storage.from(PIPE_PHOTO_BUCKET).getPublicUrl(path);
+      return { path, url: urlData.publicUrl };
+    });
+};
+
+window.uploadConstrPhoto = async function(file, siteId) {
+  const folder = `construction/${siteId}`;
+  const path = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, file, {
+    cacheControl: '3600', upsert: false
+  });
+  if (error) throw error;
+  const { data } = sb.storage.from(PIPE_PHOTO_BUCKET).getPublicUrl(path);
+  return { path, url: data.publicUrl };
+};
+
+window.deleteConstrPhotoStorage = async function(path) {
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).remove([path]);
+  if (error) throw error;
+};
+
 // ── pipe_settings 테이블 (크로스디바이스 동기화) ──────────────
 async function fetchAllPipeSettings() {
   const { data, error } = await sb.from('pipe_settings').select('*');

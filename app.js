@@ -756,73 +756,166 @@ window._moveDronePhoto = function(index, dir) {
   _renderDroneList();
 };
 
-async function initDroneView() {
-  try { _dronePhotos = await listDronePhotos(currentDashSite); } catch(e) { _dronePhotos = []; }
-  _dronePhotos = _applyDroneOrder(_dronePhotos, currentDashSite);
-  _droneReorderMode = false;
-  const btn = document.getElementById('drone-reorder-btn');
-  if (btn) { btn.style.background = '#fff'; btn.style.color = '#475569'; btn.style.borderColor = '#cbd5e1'; btn.textContent = '⇅ 순서 변경'; }
-  if (_droneViewOpen) _renderDroneList();
+// ── 슬라이드쇼 ────────────────────────────────────────────────
+let _droneSlideIndex = 0;
+let _slideCanvasReady = false;
+let _droneSubTab = 'drone';
+
+function _initSlideCanvas() {
+  if (_slideCanvasReady) return;
+  _slideCanvasReady = true;
+  const canvas = document.getElementById('drone-slide-canvas');
+  const img    = document.getElementById('drone-slide-img');
+  if (!canvas || !img) return;
+  img.addEventListener('load', () => {
+    canvas.width  = img.offsetWidth;
+    canvas.height = img.offsetHeight;
+    _drawStrokesOnCanvas(canvas, canvas.dataset.path);
+  });
+  let drawing = false, curStroke = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (!_drawMode) return;
+    const path = canvas.dataset.path;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    drawing = true;
+    const r = canvas.getBoundingClientRect();
+    const pt = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    curStroke = { tool: _drawMode, color: _drawColor, size: _drawSize, pts: [pt] };
+    if (!_droneStrokes[path]) _droneStrokes[path] = [];
+    _droneStrokes[path].push(curStroke);
+    _drawStrokesOnCanvas(canvas, path);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing || !curStroke) return;
+    const path = canvas.dataset.path;
+    const r = canvas.getBoundingClientRect();
+    curStroke.pts.push({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+    _drawStrokesOnCanvas(canvas, path);
+  });
+  canvas.addEventListener('pointerup',     () => { if (drawing) { drawing = false; curStroke = null; _saveDroneDrawStrokes(); } });
+  canvas.addEventListener('pointercancel', () => { drawing = false; curStroke = null; });
 }
 
-function _renderDroneList() {
-  const list = document.getElementById('drone-list');
-  const label = document.getElementById('drone-count-label');
-  if (!list) return;
-  if (label) label.textContent = _dronePhotos.length ? `${_dronePhotos.length}장` : '';
+function _renderDroneSlide() {
+  _initSlideCanvas();
+  const empty   = document.getElementById('drone-slide-empty');
+  const content = document.getElementById('drone-slide-content');
   if (!_dronePhotos.length) {
-    list.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:32px 0;font-size:13px">드론사진이 없습니다<br><small>위 + 버튼으로 추가하세요</small></div>';
+    if (empty)   empty.style.display = '';
+    if (content) content.style.display = 'none';
     return;
   }
-  const n = _dronePhotos.length;
-  list.innerHTML = _dronePhotos.map((p, i) => {
-    const safe        = p.url.replace(/'/g, '%27');
-    const safePath    = p.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const safeDataPath = p.path.replace(/"/g, '&quot;');
-    const reorderBtns = _droneReorderMode ? `
-      <div style="position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:4px">
-        <button onclick="_moveDronePhoto(${i},-1)" ${i===0?'disabled':''}
-          style="width:34px;height:34px;border-radius:7px;border:none;font-size:18px;line-height:1;cursor:${i===0?'default':'pointer'};
-            background:${i===0?'rgba(0,0,0,0.18)':'rgba(15,23,42,0.78)'};color:${i===0?'rgba(255,255,255,0.25)':'#fff'}">▲</button>
-        <button onclick="_moveDronePhoto(${i},1)" ${i===n-1?'disabled':''}
-          style="width:34px;height:34px;border-radius:7px;border:none;font-size:18px;line-height:1;cursor:${i===n-1?'default':'pointer'};
-            background:${i===n-1?'rgba(0,0,0,0.18)':'rgba(15,23,42,0.78)'};color:${i===n-1?'rgba(255,255,255,0.25)':'#fff'}">▼</button>
-      </div>` : '';
-    return `<div style="position:relative;margin-bottom:10px;border-radius:6px;overflow:hidden;line-height:0">
-      ${reorderBtns}
-      <img src="${p.url}" data-lightbox="${safe}"
-        style="width:100%;display:block;border-radius:6px">
-      <canvas class="drone-canvas" data-path="${safeDataPath}"
-        style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
-      ${!_droneReorderMode ? `<button onclick="deleteDronePhoto('${safePath}')"
-        style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(239,68,68,0.85);color:#fff;font-size:14px;cursor:pointer;line-height:1">✕</button>` : ''}
-    </div>`;
-  }).join('');
-
-  // 라이트박스 클릭 (그리기/순서변경 모드 중엔 비활성)
-  list.querySelectorAll('img[data-lightbox]').forEach(img => {
-    img.style.cursor = _droneReorderMode ? 'default' : 'zoom-in';
-    img.addEventListener('click', () => { if (!_drawMode && !_droneReorderMode) openLightbox(img.dataset.lightbox); });
-  });
-  // 캔버스 초기화
-  list.querySelectorAll('.drone-canvas').forEach(c => _initDroneCanvas(c));
+  if (empty)   empty.style.display = 'none';
+  if (content) content.style.display = '';
+  _droneSlideIndex = Math.max(0, Math.min(_droneSlideIndex, _dronePhotos.length - 1));
+  const p      = _dronePhotos[_droneSlideIndex];
+  const img    = document.getElementById('drone-slide-img');
+  const canvas = document.getElementById('drone-slide-canvas');
+  canvas.dataset.path = p.path;
+  img.src = p.url;
+  if (img.complete && img.naturalHeight) {
+    const w = img.offsetWidth, h = img.offsetHeight;
+    if (w > 0 && h > 0) { canvas.width = w; canvas.height = h; }
+    _drawStrokesOnCanvas(canvas, p.path);
+  }
+  document.getElementById('drone-slide-counter').textContent = `${_droneSlideIndex + 1} / ${_dronePhotos.length}장`;
+  document.getElementById('slide-prev-btn').disabled = _droneSlideIndex === 0;
+  document.getElementById('slide-next-btn').disabled = _droneSlideIndex === _dronePhotos.length - 1;
   _updateDrawToolUI();
+}
+
+window._slideMove = function(dir) {
+  _droneSlideIndex = Math.max(0, Math.min(_droneSlideIndex + dir, _dronePhotos.length - 1));
+  _renderDroneSlide();
+};
+
+window._deleteCurrDronePhoto = function() {
+  if (!_dronePhotos.length) return;
+  deleteDronePhoto(_dronePhotos[_droneSlideIndex].path);
+};
+
+// ── 서브탭 ────────────────────────────────────────────────────
+window.showDroneSubTab = function(tab) {
+  _droneSubTab = tab;
+  const isDrone = tab === 'drone';
+  const dp = document.getElementById('drone-panel');
+  const cp = document.getElementById('constr-panel');
+  if (dp) dp.style.display = isDrone ? '' : 'none';
+  if (cp) cp.style.display = isDrone ? 'none' : '';
+  const db = document.getElementById('subtab-drone');
+  const cb = document.getElementById('subtab-constr');
+  if (db) { db.style.color = isDrone ? '#0d2b5e' : '#6b7280'; db.style.borderBottomColor = isDrone ? '#0d2b5e' : 'transparent'; db.style.fontWeight = isDrone ? '700' : '600'; }
+  if (cb) { cb.style.color = isDrone ? '#6b7280' : '#0d2b5e'; cb.style.borderBottomColor = isDrone ? 'transparent' : '#0d2b5e'; cb.style.fontWeight = isDrone ? '600' : '700'; }
+  if (tab === 'constr') _renderConstrGrid();
+};
+
+// ── 드론 리스트 렌더 (슬라이드 or 순서변경 리스트) ───────────
+function _renderDroneList() {
+  const label = document.getElementById('drone-count-label');
+  if (label) label.textContent = _dronePhotos.length ? `총 ${_dronePhotos.length}장` : '';
+
+  if (_droneReorderMode) {
+    document.getElementById('drone-slide-view').style.display = 'none';
+    const reorderList = document.getElementById('drone-reorder-list');
+    reorderList.style.display = '';
+    if (!_dronePhotos.length) {
+      reorderList.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:24px 0;font-size:13px">드론사진이 없습니다</div>';
+      return;
+    }
+    const n = _dronePhotos.length;
+    reorderList.innerHTML = _dronePhotos.map((p, i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f1f5f9">
+        <span style="font-size:11px;color:#9ca3af;width:18px;text-align:right;flex-shrink:0">${i+1}</span>
+        <img src="${p.url}" style="width:48px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0">
+        <div style="flex:1;min-width:0;font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.path.split('/').pop().replace(/^\d+_/, '')}</div>
+        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+          <button onclick="_moveDronePhoto(${i},-1)" ${i===0?'disabled':''}
+            style="width:28px;height:22px;border-radius:4px;border:1px solid #cbd5e1;font-size:11px;line-height:1;cursor:${i===0?'default':'pointer'};background:${i===0?'#f9fafb':'#fff'};color:${i===0?'#d1d5db':'#374151'}">▲</button>
+          <button onclick="_moveDronePhoto(${i},1)" ${i===n-1?'disabled':''}
+            style="width:28px;height:22px;border-radius:4px;border:1px solid #cbd5e1;font-size:11px;line-height:1;cursor:${i===n-1?'default':'pointer'};background:${i===n-1?'#f9fafb':'#fff'};color:${i===n-1?'#d1d5db':'#374151'}">▼</button>
+        </div>
+      </div>`).join('');
+  } else {
+    document.getElementById('drone-reorder-list').style.display = 'none';
+    document.getElementById('drone-slide-view').style.display = '';
+    _renderDroneSlide();
+  }
+}
+
+async function initDroneView() {
+  try {
+    [_dronePhotos, _constrPhotos] = await Promise.all([
+      listDronePhotos(currentDashSite).catch(() => []),
+      listConstrPhotos(currentDashSite).catch(() => []),
+    ]);
+  } catch(e) { _dronePhotos = []; _constrPhotos = []; }
+  _dronePhotos = _applyDroneOrder(_dronePhotos, currentDashSite);
+  _droneReorderMode = false;
+  _droneSlideIndex  = 0;
+  const btn = document.getElementById('drone-reorder-btn');
+  if (btn) { btn.style.background = '#fff'; btn.style.color = '#475569'; btn.style.borderColor = '#cbd5e1'; btn.textContent = '⇅ 순서 변경'; }
+  if (_droneViewOpen) {
+    showDroneSubTab(_droneSubTab || 'drone');
+    _renderDroneList();
+  }
 }
 
 window.toggleDroneView = function() {
   _droneViewOpen = !_droneViewOpen;
-  const btn = document.getElementById('drone-toggle-btn');
-  const mapCont = document.getElementById('map-container');
+  const btn      = document.getElementById('drone-toggle-btn');
+  const mapCont  = document.getElementById('map-container');
   const mapNoImg = document.getElementById('map-no-image');
   const droneView = document.getElementById('drone-view');
   if (_droneViewOpen) {
-    mapCont.style.display = 'none';
+    mapCont.style.display  = 'none';
     mapNoImg.style.display = 'none';
     droneView.style.display = '';
     if (btn) { btn.style.background = '#0d2b5e'; btn.style.color = '#fff'; btn.style.borderColor = '#0d2b5e'; }
+    showDroneSubTab(_droneSubTab || 'drone');
     _renderDroneList();
   } else {
-    mapCont.style.display = '';
+    mapCont.style.display  = '';
     mapNoImg.style.display = '';
     droneView.style.display = 'none';
     if (btn) { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
@@ -832,7 +925,7 @@ window.toggleDroneView = function() {
 window.handleDroneUpload = async function(input) {
   const files = Array.from(input.files);
   if (!files.length) return;
-  const addBtn = document.querySelector('#drone-view button');
+  const addBtn = document.querySelector('#drone-panel button:last-of-type');
   if (addBtn) addBtn.textContent = '업로드 중...';
   try {
     for (const f of files) await uploadDronePhoto(f, currentDashSite);
@@ -846,12 +939,94 @@ window.deleteDronePhoto = async function(path) {
   if (!confirm('이 드론사진을 삭제할까요?')) return;
   try {
     await deleteDronePhotoStorage(path);
-    // 저장된 순서에서도 제거
     const remaining = _getDroneOrder(currentDashSite).filter(p => p !== path);
     localStorage.setItem(`drone_order_v1_${currentDashSite}`, JSON.stringify(remaining));
     _dronePhotos = _applyDroneOrder(await listDronePhotos(currentDashSite), currentDashSite);
+    if (_droneSlideIndex >= _dronePhotos.length) _droneSlideIndex = Math.max(0, _dronePhotos.length - 1);
     _renderDroneList();
   } catch(e) { alert('삭제 실패: ' + e.message); }
+};
+
+// ── 공사사진 ──────────────────────────────────────────────────
+let _constrPhotos = [];
+let _constrSize   = 180;
+
+window._setConstrSize = function(size) {
+  _constrSize = size;
+  const label = document.getElementById('constr-size-label');
+  if (label) label.textContent = size + 'px';
+  document.querySelectorAll('.constr-thumb').forEach(el => {
+    el.style.width  = size + 'px';
+    el.style.height = size + 'px';
+  });
+};
+
+function _renderConstrGrid() {
+  const grid = document.getElementById('constr-grid');
+  if (!grid) return;
+  if (!_constrPhotos.length) {
+    grid.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:32px 0;font-size:13px;width:100%">공사사진이 없습니다<br><small>위 + 버튼으로 추가하세요</small></div>';
+    return;
+  }
+  const s = _constrSize;
+  grid.innerHTML = _constrPhotos.map((p, i) => {
+    const safePath = p.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `<div class="constr-thumb" onclick="openConstrLightbox(${i})"
+      style="width:${s}px;height:${s}px;border-radius:8px;overflow:hidden;cursor:zoom-in;
+        background:#e2e8f0;flex-shrink:0;position:relative;box-shadow:0 1px 4px rgba(0,0,0,0.1)">
+      <img src="${p.url}" style="width:100%;height:100%;object-fit:cover;display:block">
+      <button onclick="event.stopPropagation();deleteConstrPhoto('${safePath}')"
+        style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;
+          background:rgba(239,68,68,0.85);color:#fff;font-size:12px;cursor:pointer;line-height:1;padding:0">✕</button>
+    </div>`;
+  }).join('');
+}
+
+window.handleConstrUpload = async function(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const addBtn = document.querySelector('#constr-panel button');
+  if (addBtn) addBtn.textContent = '업로드 중...';
+  try {
+    for (const f of files) await uploadConstrPhoto(f, currentDashSite);
+    _constrPhotos = await listConstrPhotos(currentDashSite);
+    _renderConstrGrid();
+  } catch(e) { alert('업로드 실패: ' + e.message); }
+  finally { input.value = ''; if (addBtn) addBtn.textContent = '+ 사진 추가'; }
+};
+
+window.deleteConstrPhoto = async function(path) {
+  if (!confirm('이 공사사진을 삭제할까요?')) return;
+  try {
+    await deleteConstrPhotoStorage(path);
+    _constrPhotos = await listConstrPhotos(currentDashSite);
+    _renderConstrGrid();
+  } catch(e) { alert('삭제 실패: ' + e.message); }
+};
+
+// ── 라이트박스 확장 (공사사진 내비게이션) ────────────────────
+let _lbPhotos = null;
+let _lbIndex  = 0;
+
+function _applyLbNav() {
+  document.getElementById('lightbox-img').src = _lbPhotos[_lbIndex].url;
+  document.getElementById('lb-prev').disabled = _lbIndex === 0;
+  document.getElementById('lb-next').disabled = _lbIndex === _lbPhotos.length - 1;
+}
+
+window.openConstrLightbox = function(index) {
+  _lbPhotos = _constrPhotos;
+  _lbIndex  = index;
+  _applyLbNav();
+  document.getElementById('lightbox').style.display = 'flex';
+  document.getElementById('lb-prev').style.display = '';
+  document.getElementById('lb-next').style.display = '';
+};
+
+window._lbMove = function(dir) {
+  if (!_lbPhotos) return;
+  _lbIndex = Math.max(0, Math.min(_lbIndex + dir, _lbPhotos.length - 1));
+  _applyLbNav();
 };
 
 // ===== 초기화 =====
@@ -1258,12 +1433,18 @@ function openLightbox(url) {
   const lb  = document.getElementById('lightbox');
   const img = document.getElementById('lightbox-img');
   if (!lb || !img) return;
+  _lbPhotos = null;
   img.src = url;
   lb.style.display = 'flex';
+  const prev = document.getElementById('lb-prev');
+  const next = document.getElementById('lb-next');
+  if (prev) prev.style.display = 'none';
+  if (next) next.style.display = 'none';
 }
 function closeLightbox() {
   const lb = document.getElementById('lightbox');
   if (lb) lb.style.display = 'none';
+  _lbPhotos = null;
 }
 
 // ===== 천공 마커 패널 =====
