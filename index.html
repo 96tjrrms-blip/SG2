@@ -234,8 +234,29 @@
       <div id="map-no-image" class="map-no-image">
         map.png 파일을 프로젝트 폴더에 추가하면 배관 위치도가 표시됩니다.
       </div>
-      <!-- 전체 위치도 (Leaflet) -->
-      <div id="site-overview-map" class="map-container" style="display:none"></div>
+      <!-- 전체 위치도 -->
+      <div id="site-overview-map" class="map-container" style="display:none;position:relative;padding:0;">
+        <iframe id="samchully-map-frame"
+          src="https://smart.samchully.co.kr:8543/smartWorkSite/dataDistribution.do"
+          style="width:100%;height:100%;border:none;display:block;"
+          allowfullscreen>
+        </iframe>
+        <div id="map-frame-error" style="display:none;position:absolute;inset:0;
+          background:rgba(15,23,42,0.92);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;gap:16px;color:#f1f5f9;font-size:15px;text-align:center;padding:24px;">
+          <div style="font-size:40px;">🔒</div>
+          <div style="font-weight:700;font-size:17px;">지도를 불러올 수 없습니다</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;">
+            브라우저에서 스마트배관망 시스템에 먼저 로그인 후<br>다시 시도해주세요.
+          </div>
+          <a href="https://smart.samchully.co.kr:8543/smartWorkSite/dataDistribution.do"
+            target="_blank"
+            style="margin-top:8px;padding:10px 22px;background:#3b82f6;color:#fff;
+              border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+            새 탭에서 열기 →
+          </a>
+        </div>
+      </div>
       <!-- 드론사진 뷰 (세로 나열) -->
       <div id="drone-view" style="display:none">
         <!-- 헤더 -->
