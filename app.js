@@ -717,8 +717,51 @@ window._clearMapDrawing = function() {
   _redrawMapCanvas();
 };
 
+// ── 드론 순서 ─────────────────────────────────────────────────
+let _droneReorderMode = false;
+
+function _getDroneOrder(siteId) {
+  try { return JSON.parse(localStorage.getItem(`drone_order_v1_${siteId}`) || '[]'); } catch { return []; }
+}
+
+function _saveDroneOrder(siteId) {
+  localStorage.setItem(`drone_order_v1_${siteId}`, JSON.stringify(_dronePhotos.map(p => p.path)));
+}
+
+function _applyDroneOrder(photos, siteId) {
+  const order = _getDroneOrder(siteId);
+  if (!order.length) return photos;
+  const ordered = order.map(p => photos.find(ph => ph.path === p)).filter(Boolean);
+  const rest = photos.filter(ph => !order.includes(ph.path));
+  return [...ordered, ...rest];
+}
+
+window._toggleDroneReorder = function() {
+  _droneReorderMode = !_droneReorderMode;
+  const btn = document.getElementById('drone-reorder-btn');
+  if (btn) {
+    btn.style.background = _droneReorderMode ? '#0d2b5e' : '#fff';
+    btn.style.color = _droneReorderMode ? '#fff' : '#475569';
+    btn.style.borderColor = _droneReorderMode ? '#0d2b5e' : '#cbd5e1';
+    btn.textContent = _droneReorderMode ? '✓ 완료' : '⇅ 순서 변경';
+  }
+  _renderDroneList();
+};
+
+window._moveDronePhoto = function(index, dir) {
+  const newIdx = index + dir;
+  if (newIdx < 0 || newIdx >= _dronePhotos.length) return;
+  [_dronePhotos[index], _dronePhotos[newIdx]] = [_dronePhotos[newIdx], _dronePhotos[index]];
+  _saveDroneOrder(currentDashSite);
+  _renderDroneList();
+};
+
 async function initDroneView() {
   try { _dronePhotos = await listDronePhotos(currentDashSite); } catch(e) { _dronePhotos = []; }
+  _dronePhotos = _applyDroneOrder(_dronePhotos, currentDashSite);
+  _droneReorderMode = false;
+  const btn = document.getElementById('drone-reorder-btn');
+  if (btn) { btn.style.background = '#fff'; btn.style.color = '#475569'; btn.style.borderColor = '#cbd5e1'; btn.textContent = '⇅ 순서 변경'; }
   if (_droneViewOpen) _renderDroneList();
 }
 
@@ -731,24 +774,35 @@ function _renderDroneList() {
     list.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:32px 0;font-size:13px">드론사진이 없습니다<br><small>위 + 버튼으로 추가하세요</small></div>';
     return;
   }
-  list.innerHTML = _dronePhotos.map(p => {
-    const safe     = p.url.replace(/'/g, '%27');
-    const safePath = p.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const n = _dronePhotos.length;
+  list.innerHTML = _dronePhotos.map((p, i) => {
+    const safe        = p.url.replace(/'/g, '%27');
+    const safePath    = p.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const safeDataPath = p.path.replace(/"/g, '&quot;');
+    const reorderBtns = _droneReorderMode ? `
+      <div style="position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:4px">
+        <button onclick="_moveDronePhoto(${i},-1)" ${i===0?'disabled':''}
+          style="width:34px;height:34px;border-radius:7px;border:none;font-size:18px;line-height:1;cursor:${i===0?'default':'pointer'};
+            background:${i===0?'rgba(0,0,0,0.18)':'rgba(15,23,42,0.78)'};color:${i===0?'rgba(255,255,255,0.25)':'#fff'}">▲</button>
+        <button onclick="_moveDronePhoto(${i},1)" ${i===n-1?'disabled':''}
+          style="width:34px;height:34px;border-radius:7px;border:none;font-size:18px;line-height:1;cursor:${i===n-1?'default':'pointer'};
+            background:${i===n-1?'rgba(0,0,0,0.18)':'rgba(15,23,42,0.78)'};color:${i===n-1?'rgba(255,255,255,0.25)':'#fff'}">▼</button>
+      </div>` : '';
     return `<div style="position:relative;margin-bottom:10px;border-radius:6px;overflow:hidden;line-height:0">
+      ${reorderBtns}
       <img src="${p.url}" data-lightbox="${safe}"
         style="width:100%;display:block;border-radius:6px">
       <canvas class="drone-canvas" data-path="${safeDataPath}"
         style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
-      <button onclick="deleteDronePhoto('${safePath}')"
-        style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(239,68,68,0.85);color:#fff;font-size:14px;cursor:pointer;line-height:1">✕</button>
+      ${!_droneReorderMode ? `<button onclick="deleteDronePhoto('${safePath}')"
+        style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(239,68,68,0.85);color:#fff;font-size:14px;cursor:pointer;line-height:1">✕</button>` : ''}
     </div>`;
   }).join('');
 
-  // 라이트박스 클릭 (그리기 모드 중엔 비활성)
+  // 라이트박스 클릭 (그리기/순서변경 모드 중엔 비활성)
   list.querySelectorAll('img[data-lightbox]').forEach(img => {
-    img.style.cursor = 'zoom-in';
-    img.addEventListener('click', () => { if (!_drawMode) openLightbox(img.dataset.lightbox); });
+    img.style.cursor = _droneReorderMode ? 'default' : 'zoom-in';
+    img.addEventListener('click', () => { if (!_drawMode && !_droneReorderMode) openLightbox(img.dataset.lightbox); });
   });
   // 캔버스 초기화
   list.querySelectorAll('.drone-canvas').forEach(c => _initDroneCanvas(c));
@@ -782,7 +836,7 @@ window.handleDroneUpload = async function(input) {
   if (addBtn) addBtn.textContent = '업로드 중...';
   try {
     for (const f of files) await uploadDronePhoto(f, currentDashSite);
-    _dronePhotos = await listDronePhotos(currentDashSite);
+    _dronePhotos = _applyDroneOrder(await listDronePhotos(currentDashSite), currentDashSite);
     _renderDroneList();
   } catch(e) { alert('업로드 실패: ' + e.message); }
   finally { if (addBtn) addBtn.textContent = '+ 사진 추가'; input.value = ''; }
@@ -792,7 +846,10 @@ window.deleteDronePhoto = async function(path) {
   if (!confirm('이 드론사진을 삭제할까요?')) return;
   try {
     await deleteDronePhotoStorage(path);
-    _dronePhotos = await listDronePhotos(currentDashSite);
+    // 저장된 순서에서도 제거
+    const remaining = _getDroneOrder(currentDashSite).filter(p => p !== path);
+    localStorage.setItem(`drone_order_v1_${currentDashSite}`, JSON.stringify(remaining));
+    _dronePhotos = _applyDroneOrder(await listDronePhotos(currentDashSite), currentDashSite);
     _renderDroneList();
   } catch(e) { alert('삭제 실패: ' + e.message); }
 };
