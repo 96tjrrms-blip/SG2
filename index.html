@@ -44,6 +44,7 @@
       <span>인덕원~동탄 복선전철 제11공구</span>
       <span style="color:#cbd5e1;font-size:11px">|</span>
       <div style="display:flex;gap:4px">
+        <button class="dash-site-tab" id="excav-tab" onclick="showExcavView()">🚧 굴착공사현황</button>
         <button class="dash-site-tab" id="overview-map-tab" onclick="showOverviewMap()">📍 전체 위치도</button>
         <button class="dash-site-tab" data-site="S015" onclick="switchDashSite('S015')">#S-015 환기구</button>
         <button class="dash-site-tab active" data-site="115st" onclick="switchDashSite('115st')">115 정거장</button>
@@ -256,6 +257,50 @@
             새 탭에서 열기 →
           </a>
         </div>
+      </div>
+      <!-- 굴착공사현황 뷰 -->
+      <div id="excav-view" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;color:#6b7280" id="excav-count-label"></span>
+          <div style="display:flex;gap:6px">
+            <button id="excav-draw-toggle-btn" onclick="_toggleExcavToolbar()"
+              style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">✏️ 그리기</button>
+            <button onclick="document.getElementById('excav-file-input').click()"
+              style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
+          </div>
+        </div>
+        <div id="excav-draw-toolbar" style="display:none;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button id="excav-pen-btn" onclick="_setExcavTool('pen')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">✏️ 펜</button>
+            <button id="excav-eraser-btn" onclick="_setExcavTool('eraser')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">🧹 지우개</button>
+            <div style="display:flex;gap:3px;margin:0 2px">
+              <button class="excav-color-btn" data-color="#ef4444" onclick="_setExcavColor('#ef4444')" title="빨강"
+                style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="excav-color-btn" data-color="#f97316" onclick="_setExcavColor('#f97316')" title="주황"
+                style="width:20px;height:20px;border-radius:50%;background:#f97316;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="excav-color-btn" data-color="#eab308" onclick="_setExcavColor('#eab308')" title="노랑"
+                style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="excav-color-btn" data-color="#22c55e" onclick="_setExcavColor('#22c55e')" title="초록"
+                style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="excav-color-btn" data-color="#3b82f6" onclick="_setExcavColor('#3b82f6')" title="파랑"
+                style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="excav-color-btn" data-color="#1e293b" onclick="_setExcavColor('#1e293b')" title="검정"
+                style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+            </div>
+            <button onclick="_clearAllExcavDrawings()" title="전체 초기화"
+              style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444;margin-left:auto">🗑 초기화</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:11px;color:#64748b;white-space:nowrap">굵기</span>
+            <input type="range" id="excav-size-input" min="2" max="24" value="4"
+              oninput="_setExcavSize(+this.value)"
+              style="flex:1;accent-color:#0d2b5e">
+            <span id="excav-size-label" style="font-size:11px;color:#475569;min-width:28px">4px</span>
+          </div>
+        </div>
+        <div id="excav-list"></div>
       </div>
       <!-- 드론사진 뷰 (세로 나열) -->
       <div id="drone-view" style="display:none">
@@ -876,5 +921,6 @@ window._psmPickColor = function(btn) {
 </div>
 <input type="file" id="bp-photo-input" accept="image/*" multiple style="display:none" onchange="handleBoringPhotoUpload(this)">
 <input type="file" id="drone-file-input" accept="image/*" multiple style="display:none" onchange="handleDroneUpload(this)">
+<input type="file" id="excav-file-input" accept="image/*" multiple style="display:none" onchange="handleExcavUpload(this)">
 </body>
 </html>

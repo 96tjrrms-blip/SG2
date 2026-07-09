@@ -62,6 +62,7 @@ window.switchDashSite = function(siteId) {
   });
 
   if (_droneViewOpen) toggleDroneView();
+  _closeExcavView();
 
   const site = DASH_SITES.find(s => s.id === siteId);
 
@@ -80,6 +81,217 @@ window.switchDashSite = function(siteId) {
   initDroneView();
 };
 
+// ===== 굴착공사현황 =====
+let _excavPhotos = [];
+const EXCAV_DRAW_KEY = 'excav_draw_v1';
+let _excavMode  = null;
+let _excavColor = '#ef4444';
+let _excavSize  = 4;
+let _excavStrokes = {};
+try { _excavStrokes = JSON.parse(localStorage.getItem(EXCAV_DRAW_KEY) || '{}'); } catch {}
+let _excavToolbarOpen = false;
+
+function _saveExcavStrokes() {
+  localStorage.setItem(EXCAV_DRAW_KEY, JSON.stringify(_excavStrokes));
+}
+
+function _drawExcavStrokes(canvas, path) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  (_excavStrokes[path] || []).forEach(s => {
+    if (!s.pts.length) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (s.tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = (s.size || 4) * 4;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = s.color || '#ef4444';
+      ctx.lineWidth = s.size || 4;
+    }
+    ctx.beginPath();
+    if (s.pts.length === 1) {
+      ctx.arc(s.pts[0].x * W, s.pts[0].y * H, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fill();
+    } else {
+      ctx.moveTo(s.pts[0].x * W, s.pts[0].y * H);
+      s.pts.slice(1).forEach(p => ctx.lineTo(p.x * W, p.y * H));
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+
+function _initExcavCanvas(canvas) {
+  const path = canvas.dataset.path;
+  const img  = canvas.parentElement.querySelector('img');
+  const setup = () => {
+    const w = img.offsetWidth, h = img.offsetHeight;
+    if (w && h) { canvas.width = w; canvas.height = h; }
+    _drawExcavStrokes(canvas, path);
+  };
+  if (img.complete && img.naturalHeight) setup();
+  else img.addEventListener('load', setup, { once: true });
+
+  let drawing = false, curStroke = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (!_excavMode) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    drawing = true;
+    const r = canvas.getBoundingClientRect();
+    const pt = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    curStroke = { tool: _excavMode, color: _excavColor, size: _excavSize, pts: [pt] };
+    if (!_excavStrokes[path]) _excavStrokes[path] = [];
+    _excavStrokes[path].push(curStroke);
+    _drawExcavStrokes(canvas, path);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing || !curStroke) return;
+    const r = canvas.getBoundingClientRect();
+    curStroke.pts.push({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+    _drawExcavStrokes(canvas, path);
+  });
+  canvas.addEventListener('pointerup', () => { if (drawing) { drawing = false; curStroke = null; _saveExcavStrokes(); } });
+  canvas.addEventListener('pointercancel', () => { drawing = false; curStroke = null; });
+}
+
+function _updateExcavDrawUI() {
+  const penBtn    = document.getElementById('excav-pen-btn');
+  const eraserBtn = document.getElementById('excav-eraser-btn');
+  if (penBtn)    { penBtn.style.background = _excavMode === 'pen' ? '#0d2b5e' : '#fff'; penBtn.style.color = _excavMode === 'pen' ? '#fff' : ''; penBtn.style.borderColor = _excavMode === 'pen' ? '#0d2b5e' : '#cbd5e1'; }
+  if (eraserBtn) { eraserBtn.style.background = _excavMode === 'eraser' ? '#0d2b5e' : '#fff'; eraserBtn.style.color = _excavMode === 'eraser' ? '#fff' : ''; eraserBtn.style.borderColor = _excavMode === 'eraser' ? '#0d2b5e' : '#cbd5e1'; }
+  document.querySelectorAll('.excav-color-btn').forEach(btn => {
+    btn.style.boxShadow = btn.dataset.color === _excavColor ? '0 0 0 3px #0d2b5e' : '0 0 0 1px #cbd5e1';
+  });
+  document.querySelectorAll('.excav-canvas').forEach(c => {
+    c.style.pointerEvents = _excavMode ? 'all' : 'none';
+    c.style.cursor = _excavMode ? 'crosshair' : '';
+  });
+}
+
+window._toggleExcavToolbar = function() {
+  _excavToolbarOpen = !_excavToolbarOpen;
+  const toolbar   = document.getElementById('excav-draw-toolbar');
+  const toggleBtn = document.getElementById('excav-draw-toggle-btn');
+  if (toolbar)   toolbar.style.display = _excavToolbarOpen ? '' : 'none';
+  if (toggleBtn) { toggleBtn.style.background = _excavToolbarOpen ? '#0d2b5e' : '#fff'; toggleBtn.style.color = _excavToolbarOpen ? '#fff' : '#475569'; toggleBtn.style.borderColor = _excavToolbarOpen ? '#0d2b5e' : '#cbd5e1'; }
+  if (!_excavToolbarOpen) { _excavMode = null; _updateExcavDrawUI(); }
+};
+
+window._setExcavTool = function(tool) {
+  _excavMode = _excavMode === tool ? null : tool;
+  _updateExcavDrawUI();
+};
+
+window._setExcavColor = function(color) {
+  _excavColor = color;
+  if (_excavMode !== 'pen') _excavMode = 'pen';
+  _updateExcavDrawUI();
+};
+
+window._setExcavSize = function(size) {
+  _excavSize = size;
+  const label = document.getElementById('excav-size-label');
+  if (label) label.textContent = size + 'px';
+};
+
+window._clearAllExcavDrawings = function() {
+  if (!confirm('모든 굴착공사현황 사진의 그림을 지울까요?')) return;
+  _excavPhotos.forEach(p => delete _excavStrokes[p.path]);
+  _saveExcavStrokes();
+  document.querySelectorAll('.excav-canvas').forEach(c => {
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+  });
+};
+
+function _renderExcavList() {
+  const list  = document.getElementById('excav-list');
+  const label = document.getElementById('excav-count-label');
+  if (!list) return;
+  if (label) label.textContent = _excavPhotos.length ? `${_excavPhotos.length}장` : '';
+  if (!_excavPhotos.length) {
+    list.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:32px 0;font-size:13px">사진이 없습니다<br><small>위 + 버튼으로 추가하세요</small></div>';
+    return;
+  }
+  list.innerHTML = _excavPhotos.map(p => {
+    const safe     = p.url.replace(/'/g, '%27');
+    const safePath = p.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const safeDataPath = p.path.replace(/"/g, '&quot;');
+    return `<div style="position:relative;margin-bottom:12px;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.1)">
+      <img src="${safe}" style="width:100%;display:block;border-radius:6px">
+      <canvas class="excav-canvas" data-path="${safeDataPath}"
+        style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
+      <button onclick="deleteExcavPhoto('${safePath}')"
+        style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.55);border:none;border-radius:50%;width:26px;height:26px;color:#fff;font-size:14px;cursor:pointer;line-height:1;padding:0">✕</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.excav-canvas').forEach(c => _initExcavCanvas(c));
+  _updateExcavDrawUI();
+}
+
+function _closeExcavView() {
+  const view = document.getElementById('excav-view');
+  if (view) view.style.display = 'none';
+  if (_excavToolbarOpen) {
+    _excavToolbarOpen = false;
+    _excavMode = null;
+  }
+}
+
+window.showExcavView = function() {
+  document.querySelectorAll('.dash-site-tab').forEach(b => b.classList.remove('active'));
+  const tab = document.getElementById('excav-tab');
+  if (tab) tab.classList.add('active');
+
+  document.getElementById('map-container').style.display = 'none';
+  const mn = document.getElementById('map-no-image');
+  if (mn) mn.style.display = 'none';
+  const ov = document.getElementById('site-overview-map');
+  if (ov) ov.style.display = 'none';
+  if (_droneViewOpen) toggleDroneView();
+
+  document.getElementById('excav-view').style.display = '';
+
+  ['zone-toggle-bar','pipe-edit-group','regulator-edit-group',
+   'map-address-chip','gas-exposure-card'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  listExcavPhotos().then(photos => {
+    _excavPhotos = photos;
+    _renderExcavList();
+  }).catch(() => { _excavPhotos = []; _renderExcavList(); });
+};
+
+window.handleExcavUpload = async function(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const addBtn = document.querySelector('#excav-view button:last-of-type');
+  if (addBtn) addBtn.textContent = '업로드 중...';
+  try {
+    for (const f of files) await uploadExcavPhoto(f);
+    _excavPhotos = await listExcavPhotos();
+    _renderExcavList();
+  } catch(e) { alert('업로드 실패: ' + e.message); }
+  finally { input.value = ''; if (addBtn) addBtn.textContent = '+ 사진 추가'; }
+};
+
+window.deleteExcavPhoto = async function(path) {
+  if (!confirm('이 사진을 삭제할까요?')) return;
+  try {
+    await deleteExcavPhotoStorage(path);
+    _excavPhotos = await listExcavPhotos();
+    _renderExcavList();
+  } catch(e) { alert('삭제 실패: ' + e.message); }
+};
+
 // ===== 전체 위치도 (스마트배관망 iframe) =====
 window.showOverviewMap = function() {
   // 탭 active 처리
@@ -95,6 +307,7 @@ window.showOverviewMap = function() {
   if (mn) mn.style.display = 'none';
   if (ov) ov.style.display = '';
   if (_droneViewOpen) toggleDroneView();
+  _closeExcavView();
 
   // 편집 컨트롤 전체 숨김
   ['zone-toggle-bar','pipe-edit-group','regulator-edit-group',
