@@ -299,6 +299,16 @@ window.deleteDronePhotoStorage = async function(path) {
   if (error) throw error;
 };
 
+window.moveDroneToConstr = async function(dronePath, siteId) {
+  const filename   = dronePath.split('/').pop();
+  const constrPath = `construction/${siteId}/${filename}`;
+  const { error: copyErr } = await sb.storage.from(PIPE_PHOTO_BUCKET).copy(dronePath, constrPath);
+  if (copyErr) throw copyErr;
+  const { error: delErr } = await sb.storage.from(PIPE_PHOTO_BUCKET).remove([dronePath]);
+  if (delErr) throw delErr;
+  return constrPath;
+};
+
 // ===== 굴착공사현황 사진 (pipe-photo 버킷 / excavation/ 폴더) =====
 window.listExcavPhotos = async function() {
   const folder = 'excavation';

@@ -835,6 +835,28 @@ window._deleteCurrDronePhoto = function() {
   deleteDronePhoto(_dronePhotos[_droneSlideIndex].path);
 };
 
+window._moveCurrDroneToConstr = async function() {
+  if (!_dronePhotos.length) return;
+  const p = _dronePhotos[_droneSlideIndex];
+  const btn = document.querySelector('button[onclick="_moveCurrDroneToConstr()"]');
+  if (btn) btn.textContent = '이동 중...';
+  try {
+    await moveDroneToConstr(p.path, currentDashSite);
+    const remaining = _getDroneOrder(currentDashSite).filter(op => op !== p.path);
+    localStorage.setItem(`drone_order_v1_${currentDashSite}`, JSON.stringify(remaining));
+    [_dronePhotos, _constrPhotos] = await Promise.all([
+      listDronePhotos(currentDashSite).catch(() => []),
+      listConstrPhotos(currentDashSite).catch(() => []),
+    ]);
+    _dronePhotos = _applyDroneOrder(_dronePhotos, currentDashSite);
+    if (_droneSlideIndex >= _dronePhotos.length) _droneSlideIndex = Math.max(0, _dronePhotos.length - 1);
+    _renderDroneList();
+  } catch(e) {
+    alert('이동 실패: ' + e.message);
+    if (btn) btn.textContent = '📷 공사사진으로 이동';
+  }
+};
+
 // ── 서브탭 ────────────────────────────────────────────────────
 window.showDroneSubTab = function(tab) {
   _droneSubTab = tab;
