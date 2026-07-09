@@ -460,6 +460,9 @@ let _drawSize   = 4;
 let _droneStrokes = {};        // { [path]: [{tool,color,size,pts:[{x,y}]}] }
 try { _droneStrokes = JSON.parse(localStorage.getItem(DRONE_DRAW_KEY) || '{}'); } catch {}
 
+// 배관/밸브 오버레이 모드 (선언은 여기서 — 초기화는 오버레이 블록에서)
+let _overlayMode = null;
+
 function _saveDroneDrawStrokes() {
   localStorage.setItem(DRONE_DRAW_KEY, JSON.stringify(_droneStrokes));
 }
@@ -537,9 +540,10 @@ function _updateDrawToolUI() {
   document.querySelectorAll('.draw-color-btn').forEach(btn => {
     btn.style.boxShadow = btn.dataset.color === _drawColor ? '0 0 0 3px #0d2b5e' : '0 0 0 1px #cbd5e1';
   });
+  const activeDraw = _drawMode && !_overlayMode;
   document.querySelectorAll('.drone-canvas').forEach(c => {
-    c.style.pointerEvents = _drawMode ? 'all' : 'none';
-    c.style.cursor = _drawMode ? 'crosshair' : '';
+    c.style.pointerEvents = activeDraw ? 'all' : 'none';
+    c.style.cursor = activeDraw ? 'crosshair' : '';
   });
 }
 
@@ -556,6 +560,7 @@ window._toggleDrawToolbar = function() {
 
 window._setDrawTool = function(tool) {
   _drawMode = _drawMode === tool ? null : tool;
+  if (_drawMode && _overlayMode) { _overlayMode = null; _updateOverlayUI(); }
   _updateDrawToolUI();
 };
 
@@ -768,9 +773,11 @@ function _initSlideCanvas() {
   const img    = document.getElementById('drone-slide-img');
   if (!canvas || !img) return;
   img.addEventListener('load', () => {
-    canvas.width  = img.offsetWidth;
-    canvas.height = img.offsetHeight;
+    const w = img.offsetWidth, h = img.offsetHeight;
+    canvas.width  = w; canvas.height = h;
     _drawStrokesOnCanvas(canvas, canvas.dataset.path);
+    const oc = document.getElementById('drone-overlay-canvas');
+    if (oc) { oc.width = w; oc.height = h; _renderOverlayCanvas(oc, oc.dataset.path); }
   });
   let drawing = false, curStroke = null;
   canvas.addEventListener('pointerdown', e => {
@@ -797,8 +804,217 @@ function _initSlideCanvas() {
   canvas.addEventListener('pointercancel', () => { drawing = false; curStroke = null; });
 }
 
+// ── 드론 배관/밸브 오버레이 ───────────────────────────────────
+let _droneOverlay   = {};
+let _overlayVisible = true;
+let _overlayEditOpen = false;
+// _overlayMode declared above with draw vars
+let _overlayColor   = '#3b82f6';
+let _overlayWidth   = 6;
+let _overlayCanvasReady = false;
+let _pipeStart      = null;
+let _lastOverlayType = null;
+
+function _overlayKey(siteId) { return `drone_overlay_v1_${siteId}`; }
+
+function _loadOverlayData(siteId) {
+  try { _droneOverlay = JSON.parse(localStorage.getItem(_overlayKey(siteId)) || '{}'); } catch { _droneOverlay = {}; }
+}
+
+function _saveOverlayData() {
+  localStorage.setItem(_overlayKey(currentDashSite), JSON.stringify(_droneOverlay));
+}
+
+function _renderOverlayCanvas(canvas, path) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!_overlayVisible || !path || !_droneOverlay[path]) return;
+  const W = canvas.width, H = canvas.height;
+  const data = _droneOverlay[path];
+
+  (data.pipes || []).forEach(p => {
+    ctx.save();
+    ctx.strokeStyle = p.color || '#3b82f6';
+    ctx.lineWidth   = p.width || 6;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p.x1 * W, p.y1 * H);
+    ctx.lineTo(p.x2 * W, p.y2 * H);
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  (data.valves || []).forEach(v => {
+    const x = v.x * W, y = v.y * H, r = v.size || 10;
+    ctx.save();
+    // diamond shape
+    ctx.beginPath();
+    ctx.moveTo(x,     y - r);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x,     y + r);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+    ctx.fillStyle   = v.color || '#ef4444';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+    // cross inside
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.45, y); ctx.lineTo(x + r * 0.45, y);
+    ctx.moveTo(x, y - r * 0.45); ctx.lineTo(x, y + r * 0.45);
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
+function _syncOverlayCanvasSize() {
+  const oc  = document.getElementById('drone-overlay-canvas');
+  const img = document.getElementById('drone-slide-img');
+  if (!oc || !img) return;
+  if (img.offsetWidth > 0) { oc.width = img.offsetWidth; oc.height = img.offsetHeight; }
+}
+
+function _initOverlayCanvas() {
+  if (_overlayCanvasReady) return;
+  _overlayCanvasReady = true;
+  const canvas = document.getElementById('drone-overlay-canvas');
+  if (!canvas) return;
+
+  canvas.addEventListener('pointerdown', e => {
+    if (!_overlayMode) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    const r  = canvas.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width;
+    const ny = (e.clientY - r.top)  / r.height;
+    if (_overlayMode === 'valve') {
+      const path = canvas.dataset.path;
+      if (!_droneOverlay[path]) _droneOverlay[path] = { pipes: [], valves: [] };
+      _droneOverlay[path].valves.push({ x: nx, y: ny, color: _overlayColor, size: _overlayWidth + 6 });
+      _lastOverlayType = 'valve';
+      _saveOverlayData();
+      _renderOverlayCanvas(canvas, path);
+    } else if (_overlayMode === 'pipe') {
+      _pipeStart = { x: nx, y: ny };
+    }
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if (_overlayMode !== 'pipe' || !_pipeStart) return;
+    const r  = canvas.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width;
+    const ny = (e.clientY - r.top)  / r.height;
+    _renderOverlayCanvas(canvas, canvas.dataset.path);
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.strokeStyle = _overlayColor; ctx.lineWidth = _overlayWidth; ctx.lineCap = 'round';
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath();
+    ctx.moveTo(_pipeStart.x * canvas.width, _pipeStart.y * canvas.height);
+    ctx.lineTo(nx * canvas.width, ny * canvas.height);
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  canvas.addEventListener('pointerup', e => {
+    if (_overlayMode !== 'pipe' || !_pipeStart) return;
+    const r  = canvas.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width;
+    const ny = (e.clientY - r.top)  / r.height;
+    const dx = Math.abs(nx - _pipeStart.x), dy = Math.abs(ny - _pipeStart.y);
+    if (dx > 0.01 || dy > 0.01) {
+      const path = canvas.dataset.path;
+      if (!_droneOverlay[path]) _droneOverlay[path] = { pipes: [], valves: [] };
+      _droneOverlay[path].pipes.push({ x1: _pipeStart.x, y1: _pipeStart.y, x2: nx, y2: ny, color: _overlayColor, width: _overlayWidth });
+      _lastOverlayType = 'pipe';
+      _saveOverlayData();
+    }
+    _pipeStart = null;
+    _renderOverlayCanvas(canvas, canvas.dataset.path);
+  });
+
+  canvas.addEventListener('pointercancel', () => { _pipeStart = null; });
+}
+
+function _updateOverlayUI() {
+  const pipeBtn  = document.getElementById('overlay-pipe-btn');
+  const valveBtn = document.getElementById('overlay-valve-btn');
+  if (pipeBtn)  { pipeBtn.style.background  = _overlayMode === 'pipe'  ? '#0d2b5e' : '#fff'; pipeBtn.style.color  = _overlayMode === 'pipe'  ? '#fff' : ''; pipeBtn.style.borderColor  = _overlayMode === 'pipe'  ? '#0d2b5e' : '#cbd5e1'; }
+  if (valveBtn) { valveBtn.style.background = _overlayMode === 'valve' ? '#0d2b5e' : '#fff'; valveBtn.style.color = _overlayMode === 'valve' ? '#fff' : ''; valveBtn.style.borderColor = _overlayMode === 'valve' ? '#0d2b5e' : '#cbd5e1'; }
+  document.querySelectorAll('.ov-color-btn').forEach(btn => {
+    btn.style.boxShadow = btn.dataset.color === _overlayColor ? '0 0 0 3px #0d2b5e' : '0 0 0 1px #cbd5e1';
+  });
+  const oc = document.getElementById('drone-overlay-canvas');
+  const fc = document.getElementById('drone-slide-canvas');
+  if (oc) { oc.style.pointerEvents = _overlayMode ? 'all' : 'none'; oc.style.cursor = _overlayMode ? 'crosshair' : ''; }
+  if (fc) { fc.style.pointerEvents = (_drawMode && !_overlayMode) ? 'all' : 'none'; fc.style.cursor = (_drawMode && !_overlayMode) ? 'crosshair' : ''; }
+}
+
+window._toggleOverlayToolbar = function() {
+  _overlayEditOpen = !_overlayEditOpen;
+  const toolbar = document.getElementById('drone-overlay-toolbar');
+  const btn     = document.getElementById('overlay-edit-btn');
+  if (toolbar) toolbar.style.display = _overlayEditOpen ? '' : 'none';
+  if (btn) { btn.style.background = _overlayEditOpen ? '#0d2b5e' : '#fff'; btn.style.color = _overlayEditOpen ? '#fff' : '#475569'; btn.style.borderColor = _overlayEditOpen ? '#0d2b5e' : '#cbd5e1'; }
+  if (!_overlayEditOpen) { _overlayMode = null; _updateOverlayUI(); }
+};
+
+window._setOverlayTool = function(tool) {
+  _overlayMode = _overlayMode === tool ? null : tool;
+  if (_overlayMode && _drawMode) { _drawMode = null; _updateDrawToolUI(); }
+  _updateOverlayUI();
+};
+
+window._setOverlayColor = function(color) {
+  _overlayColor = color;
+  _updateOverlayUI();
+};
+
+window._setOverlayWidth = function(w) {
+  _overlayWidth = w;
+  const label = document.getElementById('overlay-width-label');
+  if (label) label.textContent = w + 'px';
+};
+
+window._toggleOverlayVisible = function() {
+  _overlayVisible = !_overlayVisible;
+  const btn = document.getElementById('overlay-visible-btn');
+  if (btn) { btn.textContent = _overlayVisible ? '👁 ON' : '👁 OFF'; btn.style.color = _overlayVisible ? '#475569' : '#9ca3af'; }
+  const canvas = document.getElementById('drone-overlay-canvas');
+  if (!canvas) return;
+  if (_overlayVisible) { _syncOverlayCanvasSize(); _renderOverlayCanvas(canvas, canvas.dataset.path); }
+  else { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); }
+};
+
+window._undoLastOverlay = function() {
+  const canvas = document.getElementById('drone-overlay-canvas');
+  if (!canvas) return;
+  const path = canvas.dataset.path;
+  if (!_droneOverlay[path]) return;
+  const d = _droneOverlay[path];
+  if (_lastOverlayType === 'valve' && d.valves && d.valves.length) d.valves.pop();
+  else if (_lastOverlayType === 'pipe'  && d.pipes  && d.pipes.length)  d.pipes.pop();
+  else if (d.valves && d.valves.length) d.valves.pop();
+  else if (d.pipes  && d.pipes.length)  d.pipes.pop();
+  _saveOverlayData();
+  _renderOverlayCanvas(canvas, path);
+};
+
+window._clearCurrentOverlay = function() {
+  const canvas = document.getElementById('drone-overlay-canvas');
+  if (!canvas) return;
+  const path = canvas.dataset.path;
+  if (!path || !_droneOverlay[path]) return;
+  if (!confirm('이 사진의 배관/밸브를 모두 지울까요?')) return;
+  delete _droneOverlay[path];
+  _saveOverlayData();
+  _renderOverlayCanvas(canvas, path);
+};
+
 function _renderDroneSlide() {
   _initSlideCanvas();
+  _initOverlayCanvas();
   const empty   = document.getElementById('drone-slide-empty');
   const content = document.getElementById('drone-slide-content');
   if (!_dronePhotos.length) {
@@ -811,18 +1027,25 @@ function _renderDroneSlide() {
   _droneSlideIndex = Math.max(0, Math.min(_droneSlideIndex, _dronePhotos.length - 1));
   const p      = _dronePhotos[_droneSlideIndex];
   const img    = document.getElementById('drone-slide-img');
-  const canvas = document.getElementById('drone-slide-canvas');
-  canvas.dataset.path = p.path;
+  const fc     = document.getElementById('drone-slide-canvas');
+  const oc     = document.getElementById('drone-overlay-canvas');
+  fc.dataset.path = p.path;
+  if (oc) oc.dataset.path = p.path;
   img.src = p.url;
   if (img.complete && img.naturalHeight) {
     const w = img.offsetWidth, h = img.offsetHeight;
-    if (w > 0 && h > 0) { canvas.width = w; canvas.height = h; }
-    _drawStrokesOnCanvas(canvas, p.path);
+    if (w > 0 && h > 0) {
+      fc.width = w; fc.height = h;
+      if (oc) { oc.width = w; oc.height = h; }
+    }
+    _drawStrokesOnCanvas(fc, p.path);
+    if (oc) _renderOverlayCanvas(oc, p.path);
   }
   document.getElementById('drone-slide-counter').textContent = `${_droneSlideIndex + 1} / ${_dronePhotos.length}장`;
   document.getElementById('slide-prev-btn').disabled = _droneSlideIndex === 0;
   document.getElementById('slide-next-btn').disabled = _droneSlideIndex === _dronePhotos.length - 1;
   _updateDrawToolUI();
+  _updateOverlayUI();
 }
 
 window._slideMove = function(dir) {
@@ -913,8 +1136,10 @@ async function initDroneView() {
     ]);
   } catch(e) { _dronePhotos = []; _constrPhotos = []; }
   _dronePhotos = _applyDroneOrder(_dronePhotos, currentDashSite);
+  _loadOverlayData(currentDashSite);
   _droneReorderMode = false;
   _droneSlideIndex  = 0;
+  _overlayMode      = null;
   const btn = document.getElementById('drone-reorder-btn');
   if (btn) { btn.style.background = '#fff'; btn.style.color = '#475569'; btn.style.borderColor = '#cbd5e1'; btn.textContent = '⇅ 순서 변경'; }
   if (_droneViewOpen) {

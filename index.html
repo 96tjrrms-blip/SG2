@@ -318,9 +318,11 @@
         <div id="drone-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span style="font-size:12px;color:#6b7280" id="drone-count-label"></span>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
               <button id="drone-reorder-btn" onclick="_toggleDroneReorder()"
                 style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">⇅ 순서 변경</button>
+              <button id="overlay-edit-btn" onclick="_toggleOverlayToolbar()"
+                style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">🔧 배관/밸브</button>
               <button id="draw-toggle-btn" onclick="_toggleDrawToolbar()"
                 style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">✏️ 그리기</button>
               <button onclick="document.getElementById('drone-file-input').click()"
@@ -358,6 +360,41 @@
               <span id="draw-size-label" style="font-size:11px;color:#475569;min-width:28px">4px</span>
             </div>
           </div>
+          <!-- 배관/밸브 오버레이 툴바 -->
+          <div id="drone-overlay-toolbar" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <button id="overlay-pipe-btn" onclick="_setOverlayTool('pipe')"
+                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;font-weight:600">━ 파이프</button>
+              <button id="overlay-valve-btn" onclick="_setOverlayTool('valve')"
+                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;font-weight:600">◆ 밸브</button>
+              <div style="display:flex;gap:3px;margin:0 2px">
+                <button class="ov-color-btn" data-color="#3b82f6" onclick="_setOverlayColor('#3b82f6')" title="파랑"
+                  style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 3px #0d2b5e;cursor:pointer;padding:0"></button>
+                <button class="ov-color-btn" data-color="#eab308" onclick="_setOverlayColor('#eab308')" title="노랑"
+                  style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+                <button class="ov-color-btn" data-color="#22c55e" onclick="_setOverlayColor('#22c55e')" title="초록"
+                  style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+                <button class="ov-color-btn" data-color="#ef4444" onclick="_setOverlayColor('#ef4444')" title="빨강"
+                  style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+                <button class="ov-color-btn" data-color="#f8fafc" onclick="_setOverlayColor('#f8fafc')" title="흰색"
+                  style="width:20px;height:20px;border-radius:50%;background:#f8fafc;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+                <button class="ov-color-btn" data-color="#1e293b" onclick="_setOverlayColor('#1e293b')" title="검정"
+                  style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              </div>
+              <button id="overlay-visible-btn" onclick="_toggleOverlayVisible()"
+                style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;margin-left:auto">👁 ON</button>
+              <button onclick="_undoLastOverlay()" title="마지막 항목 삭제"
+                style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">↩</button>
+              <button onclick="_clearCurrentOverlay()"
+                style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444">🗑</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+              <span style="font-size:11px;color:#64748b;white-space:nowrap">두께</span>
+              <input type="range" id="overlay-width-input" min="2" max="20" value="6"
+                oninput="_setOverlayWidth(+this.value)" style="flex:1;accent-color:#0d2b5e">
+              <span id="overlay-width-label" style="font-size:11px;color:#475569;min-width:28px">6px</span>
+            </div>
+          </div>
           <!-- 슬라이드쇼 (순서변경 OFF) -->
           <div id="drone-slide-view">
             <div id="drone-slide-empty" style="display:none;text-align:center;color:#9ca3af;padding:32px 0;font-size:13px">
@@ -370,6 +407,8 @@
                     background:#fff;color:#374151;font-size:16px;cursor:pointer;line-height:1">◀</button>
                 <div style="position:relative;flex:1;line-height:0">
                   <img id="drone-slide-img" style="width:100%;display:block;border-radius:8px">
+                  <canvas id="drone-overlay-canvas"
+                    style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
                   <canvas id="drone-slide-canvas" class="drone-canvas"
                     style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
                 </div>
