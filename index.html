@@ -6,6 +6,8 @@
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -42,6 +44,7 @@
       <span>인덕원~동탄 복선전철 제11공구</span>
       <span style="color:#cbd5e1;font-size:11px">|</span>
       <div style="display:flex;gap:4px">
+        <button class="dash-site-tab" id="overview-map-tab" onclick="showOverviewMap()">📍 전체 위치도</button>
         <button class="dash-site-tab" data-site="S015" onclick="switchDashSite('S015')">#S-015 환기구</button>
         <button class="dash-site-tab active" data-site="115st" onclick="switchDashSite('115st')">115 정거장</button>
         <button class="dash-site-tab" data-site="S016" onclick="switchDashSite('S016')">#S-016 환기구</button>
@@ -231,6 +234,8 @@
       <div id="map-no-image" class="map-no-image">
         map.png 파일을 프로젝트 폴더에 추가하면 배관 위치도가 표시됩니다.
       </div>
+      <!-- 전체 위치도 (Leaflet) -->
+      <div id="site-overview-map" class="map-container" style="display:none"></div>
       <!-- 드론사진 뷰 (세로 나열) -->
       <div id="drone-view" style="display:none">
         <!-- 헤더 -->

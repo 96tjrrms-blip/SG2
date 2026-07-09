@@ -478,3 +478,31 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
   border-radius: 5px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-weight: 600;
 }
 .cm-btn-save:hover { background: #1e3a6e; }
+
+/* ===== 전체 위치도 (Leaflet 마커 / 팝업) ===== */
+.ov-marker {
+  width: 36px; height: 36px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 3px solid #fff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.ov-marker-inner {
+  transform: rotate(45deg);
+  font-size: 10px; font-weight: 800;
+  color: #fff; text-align: center;
+  line-height: 1; white-space: nowrap;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.ov-popup { font-family: 'Noto Sans KR', sans-serif; }
+.ov-popup-title { font-weight: 700; font-size: 14px; color: #0d2b5e; margin-bottom: 3px; }
+.ov-popup-addr  { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+.ov-popup-btn {
+  display: block; width: 100%;
+  padding: 6px 0; border: none; border-radius: 6px;
+  background: #0d2b5e; color: #fff;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.ov-popup-btn:hover { background: #1e3a6e; }

@@ -37,10 +37,23 @@ function _updateDashControls() {
   const regGroup = document.getElementById('regulator-edit-group');
   if (regGroup) regGroup.style.display = currentDashSite === 'S016' ? 'flex' : 'none';
   // map-svg는 항상 표시 유지 (환기구에서도 구역·입구 표시용으로 필요)
+  // zone-toggle-bar / 주소칩 / 가스카드 복원 (overview에서 숨겼을 수 있음)
+  const ztb = document.getElementById('zone-toggle-bar');
+  if (ztb) ztb.style.display = 'flex';
+  const addrChip = document.getElementById('map-address-chip');
+  if (addrChip) addrChip.style.display = '';
+  const gasCard = document.getElementById('gas-exposure-card');
+  if (gasCard) gasCard.style.display = '';
   _updateSiteInfoOverlay();
 }
 
 window.switchDashSite = function(siteId) {
+  // 전체 위치도 → 개별 현장으로 전환 시 overview 숨기고 map-container 복원
+  const ov = document.getElementById('site-overview-map');
+  const mc = document.getElementById('map-container');
+  if (ov) ov.style.display = 'none';
+  if (mc) mc.style.display = '';
+
   currentDashSite = siteId;
   window.currentDashSite = siteId;
 
@@ -65,6 +78,75 @@ window.switchDashSite = function(siteId) {
 
   _updateDashControls();
   initDroneView();
+};
+
+// ===== 전체 위치도 =====
+const SITE_LOCATIONS = [
+  { id:'S015',  label:'#S-015 환기구', addr:'화성시 병점구 기산동 35-1', lat:37.2028, lng:126.9897, color:'#3b82f6' },
+  { id:'115st', label:'115 정거장',    addr:'화성시 병점구 능동 464-4',   lat:37.2013, lng:126.9940, color:'#0d2b5e' },
+  { id:'S016',  label:'#S-016 환기구', addr:'화성시 동탄구 반송동 59',    lat:37.1980, lng:127.0740, color:'#ef4444' },
+];
+
+let _overviewMap = null;
+
+window.showOverviewMap = function() {
+  // 탭 active 처리
+  document.querySelectorAll('.dash-site-tab').forEach(b => b.classList.remove('active'));
+  const tab = document.getElementById('overview-map-tab');
+  if (tab) tab.classList.add('active');
+
+  // map-container / drone-view 숨기고 overview 표시
+  const mc = document.getElementById('map-container');
+  const ov = document.getElementById('site-overview-map');
+  const mn = document.getElementById('map-no-image');
+  if (mc) mc.style.display = 'none';
+  if (mn) mn.style.display = 'none';
+  if (ov) ov.style.display = '';
+  if (_droneViewOpen) toggleDroneView();
+
+  // 편집 컨트롤 전체 숨김
+  ['zone-toggle-bar','pipe-edit-group','regulator-edit-group',
+   'map-address-chip','gas-exposure-card'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  // Leaflet 첫 초기화
+  if (!_overviewMap) {
+    _overviewMap = L.map('site-overview-map', { zoomControl: true })
+      .setView([37.201, 127.030], 13);
+
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: '© Esri World Imagery', maxZoom: 19 }
+    ).addTo(_overviewMap);
+
+    SITE_LOCATIONS.forEach(site => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="ov-marker" style="background:${site.color}">
+                 <div class="ov-marker-inner">${site.id === '115st' ? '115' : site.id.replace('S0','S-0')}</div>
+               </div>`,
+        iconSize: [40, 48],
+        iconAnchor: [20, 48],
+        popupAnchor: [0, -50]
+      });
+
+      L.marker([site.lat, site.lng], { icon })
+        .addTo(_overviewMap)
+        .bindPopup(
+          `<div class="ov-popup">
+            <div class="ov-popup-title">${site.label}</div>
+            <div class="ov-popup-addr">${site.addr}</div>
+            <button class="ov-popup-btn" onclick="switchDashSite('${site.id}')">이 현장 보기 →</button>
+          </div>`,
+          { minWidth: 180 }
+        );
+    });
+  }
+
+  // display 변경 후 크기 재계산 필요
+  setTimeout(() => { if (_overviewMap) _overviewMap.invalidateSize(); }, 50);
 };
 
 // ===== 현장 주소 / 도시가스 노출현황 =====
