@@ -51,6 +51,15 @@ function initMap() {
     if (typeof _updateBoringBtn === 'function') _updateBoringBtn();
     if (typeof window._initMapCanvas === 'function') window._initMapCanvas();
     if (typeof window._loadCustomPipesForSite === 'function') window._loadCustomPipesForSite(window.currentDashSite || '115st');
+
+    // 툴팁 마우스 추적
+    document.addEventListener('mousemove', e => {
+      const tt = document.getElementById('map-pipe-tooltip');
+      if (tt && tt.style.display !== 'none') {
+        tt.style.left = (e.clientX + 14) + 'px';
+        tt.style.top  = (e.clientY - 42) + 'px';
+      }
+    }, { passive: true });
   };
 
   if (img.complete) {
@@ -137,6 +146,9 @@ function _valveFractionsOnPipe(seg) {
     .sort((a, b) => a - b);
 }
 
+const PIPE_COLOR_UNCOV = '#dc2626'; // 노출중 + 매달기 미완료
+const PIPE_COLOR_DONE  = '#38bdf8'; // 노출중 + 매달기 완료
+
 function _buildPipeGroup(seg) {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.setAttribute('class', 'pipe-group');
@@ -149,16 +161,21 @@ function _buildPipeGroup(seg) {
   const saved = _getSegmentColors(seg.id);
   const segs  = saved.매달기구간 ?? seg.매달기구간;
 
-  if (segs.length === 0 || seg.노출길이 === 0) {
+  if (seg.노출길이 === 0) {
+    // 비노출 → seg.color 그대로
     const line = _mkPolyline(seg.points, seg.color, lineW, 'pipe-line');
     line.dataset.baseWidth = lineW;
     g.appendChild(line);
+  } else if (segs.length === 0) {
+    // 노출중 + 매달기 전혀 안됨 → 빨강
+    const line = _mkPolyline(seg.points, PIPE_COLOR_UNCOV, lineW, 'pipe-line');
+    line.dataset.baseWidth = lineW;
+    g.appendChild(line);
   } else {
-    // 매달기구간 기반 분할 렌더링 (밸브 위치에서 클리핑)
+    // 노출중 + 매달기 일부/완료 → 분할 렌더링
     const L = seg.노출길이;
-    const valveTs = _valveFractionsOnPipe(seg); // 0~1 fraction
+    const valveTs = _valveFractionsOnPipe(seg);
 
-    // 컬러 구간을 밸브 직전까지 클리핑
     const clipped = segs.map(s => {
       let toT = s.to / L;
       for (const vt of valveTs) {
@@ -171,11 +188,11 @@ function _buildPipeGroup(seg) {
     const full = [];
     let cur = 0;
     for (const s of sorted) {
-      if (s.from > cur) full.push({ from: cur, to: s.from, color: seg.color });
-      full.push(s);
+      if (s.from > cur) full.push({ from: cur, to: s.from, color: PIPE_COLOR_UNCOV }); // 빨강: 미완료 gap
+      full.push({ ...s, color: PIPE_COLOR_DONE }); // 하늘색: 완료 구간
       cur = s.to;
     }
-    if (cur < L) full.push({ from: cur, to: L, color: seg.color });
+    if (cur < L) full.push({ from: cur, to: L, color: PIPE_COLOR_UNCOV }); // 빨강: 끝부분 미완료
 
     for (const s of full) {
       const pts  = _pxSubpath(seg.points, s.from / L, s.to / L);
@@ -210,7 +227,7 @@ function _mkPolyline(points, color, width, cls) {
   return el;
 }
 
-// ── 호버 이펙트 ───────────────────────────────────────────────
+// ── 호버 이펙트 + 툴팁 ────────────────────────────────────────
 function _onPipeHover(segId, enter) {
   const g = document.querySelector(`.pipe-group[data-pipe-id="${segId}"]`);
   if (!g) return;
@@ -222,12 +239,39 @@ function _onPipeHover(segId, enter) {
       const base = parseFloat(el.dataset.baseWidth);
       el.setAttribute('stroke-width', base * 1.7);
     });
+    if (seg && seg.노출길이 > 0) _showPipeTooltip(seg);
   } else {
     g.removeAttribute('filter');
     g.querySelectorAll('.pipe-line').forEach(el => {
       el.setAttribute('stroke-width', el.dataset.baseWidth);
     });
+    _hidePipeTooltip();
   }
+}
+
+function _showPipeTooltip(seg) {
+  const tt = document.getElementById('map-pipe-tooltip');
+  if (!tt) return;
+  const saved = _getSegmentColors(seg.id);
+  const segs  = saved.매달기구간 ?? seg.매달기구간;
+  const L     = seg.노출길이;
+  const done  = segs.reduce((sum, s) => sum + Math.max(0, s.to - s.from), 0);
+  const pct   = Math.round(done / L * 100);
+  let statusHtml;
+  if (segs.length === 0 || done === 0) {
+    statusHtml = `<span style="color:#fca5a5">⚠ 매달기 미진행</span>`;
+  } else if (pct >= 100) {
+    statusHtml = `<span style="color:#7dd3fc">✔ 매달기 완료</span>`;
+  } else {
+    statusHtml = `<span style="color:#fcd34d">▶ 매달기 진행중 ${pct}%</span>`;
+  }
+  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>노출 <strong>${L}m</strong> | ${statusHtml}`;
+  tt.style.display = 'block';
+}
+
+function _hidePipeTooltip() {
+  const tt = document.getElementById('map-pipe-tooltip');
+  if (tt) tt.style.display = 'none';
 }
 
 // ── 클릭 → 팝업 ──────────────────────────────────────────────
@@ -736,6 +780,9 @@ function _closestFractionOnPolyline(points, px, py) {
 }
 
 function _renderExposedLabels() {
+  // 라벨 제거: 파이프 색(빨강/하늘색/노랑)으로 상태 표시, 호버 툴팁으로 상세 확인
+  return;
+  /* eslint-disable no-unreachable */
   const svg = document.getElementById('map-svg');
   if (!svg) return;
   const fs  = Math.max(14, _mapNatW / 90);
