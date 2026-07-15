@@ -158,13 +158,10 @@ function _buildPipeGroup(seg) {
   const lineW = Math.max(3, _mapNatW / 200);
   const hitW  = lineW * 7;
 
-  const saved    = _getSegmentColors(seg.id);
-  const segs     = saved.매달기구간 ?? seg.매달기구간;
-  const L_seg    = saved.노출길이 ?? seg.노출길이; // 비율 계산용 (mapConfig 폴백 유지)
-  const isDone   = saved.매달기완료 ?? false;
-  const sectCol  = isDone ? PIPE_COLOR_DONE : PIPE_COLOR_UNCOV; // 하늘색 or 빨간색
-
-  // 노출 여부: 섹션이 있거나 사용자가 명시적으로 노출길이를 설정한 경우
+  const saved  = _getSegmentColors(seg.id);
+  const segs   = saved.매달기구간 ?? seg.매달기구간;
+  // 비율 계산용 L: 저장된 노출길이가 0이면 mapConfig 값 사용 (division-by-zero 방지)
+  const L_seg  = (saved.노출길이 > 0) ? saved.노출길이 : seg.노출길이;
   const isExposed = segs.length > 0 || (saved.노출길이 ?? 0) > 0;
 
   if (!isExposed) {
@@ -173,12 +170,12 @@ function _buildPipeGroup(seg) {
     line.dataset.baseWidth = lineW;
     g.appendChild(line);
   } else if (segs.length === 0) {
-    // 노출 + 섹션 미지정 → 파이프 전체를 한 색으로
-    const line = _mkPolyline(seg.points, sectCol, lineW, 'pipe-line');
+    // 노출 + 섹션 미지정 → 빨간색 (매달기 미진행)
+    const line = _mkPolyline(seg.points, PIPE_COLOR_UNCOV, lineW, 'pipe-line');
     line.dataset.baseWidth = lineW;
     g.appendChild(line);
   } else {
-    // 노출 + 섹션 있음 → 섹션=하늘/빨강, 빈 구간=노란색
+    // 노출 + 섹션 있음 → 섹션 색상(s.color) 그대로 사용, 빈 구간=노란색
     const L = L_seg;
     const valveTs = _valveFractionsOnPipe(seg);
 
@@ -195,7 +192,7 @@ function _buildPipeGroup(seg) {
     let cur = 0;
     for (const s of sorted) {
       if (s.from > cur) full.push({ from: cur, to: s.from, color: seg.color }); // 빈 구간=노란색
-      full.push({ ...s, color: sectCol }); // 섹션=체크박스 기준 색
+      full.push(s); // 섹션 색상 그대로 (빨강=미완료, 하늘색=완료)
       cur = s.to;
     }
     if (cur < L) full.push({ from: cur, to: L, color: seg.color }); // 끝 빈 구간=노란색
@@ -269,22 +266,20 @@ function _onPipeHover(segId, enter) {
 function _showPipeTooltip(seg) {
   const tt = document.getElementById('map-pipe-tooltip');
   if (!tt) return;
-  const saved  = _getSegmentColors(seg.id);
-  const segs   = saved.매달기구간 ?? seg.매달기구간;
-  const L      = saved.노출길이 ?? 0;
-  const isDone = saved.매달기완료 ?? false;
+  const saved = _getSegmentColors(seg.id);
+  const segs  = saved.매달기구간 ?? seg.매달기구간;
+  const L     = saved.노출길이 ?? 0;
   const isExposed = segs.length > 0 || L > 0;
 
   if (!isExposed) { _hidePipeTooltip(); return; }
 
-  const exposedM = L > 0 ? L
-    : parseFloat(segs.reduce((a, s) => a + (s.to - s.from), 0).toFixed(1));
-
-  const statusHtml = isDone
+  const exposedM = parseFloat(segs.reduce((a, s) => a + (s.to - s.from), 0).toFixed(1)) || L;
+  const allDone  = segs.length > 0 && segs.every(s => s.color === PIPE_COLOR_DONE);
+  const statusHtml = allDone
     ? `<span style="color:#38bdf8">노출중(매달기완료)</span>`
     : `<span style="color:#fca5a5">노출중(매달기 미진행)</span>`;
 
-  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>${statusHtml} | 노출 <strong>${exposedM}m</strong>`;
+  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>${statusHtml}${exposedM > 0 ? ` | 노출 <strong>${exposedM}m</strong>` : ''}`;
   tt.style.display = 'block';
 }
 
@@ -310,58 +305,44 @@ function _showPipePopup(seg, e) {
   const container = document.getElementById('map-container');
   const popup     = document.getElementById('pipe-popup');
 
-  const saved   = _getSegmentColors(seg.id);
-  const segs    = saved.매달기구간 ?? seg.매달기구간;
-  const L       = saved.노출길이 ?? 0;
-  const isDone  = saved.매달기완료 ?? false;
-  const sectCol = isDone ? '#38bdf8' : '#dc2626';
+  const saved     = _getSegmentColors(seg.id);
+  const segs      = saved.매달기구간 ?? seg.매달기구간;
+  const L         = saved.노출길이 ?? 0;
   const isExposed = segs.length > 0 || L > 0;
 
-  // 섹션 진행바
-  let madalkiHtml = '';
-  if (isExposed && segs.length > 0) {
-    const sorted   = [...segs].sort((a, b) => a.from - b.from);
-    const barParts = [];
-    let cur = 0;
-    for (const s of sorted) {
-      if (s.from > cur) barParts.push({ from: cur, to: s.from, color: '#e2e8f0' }); // 빈 구간
-      barParts.push({ ...s, color: sectCol });
-      cur = s.to;
-    }
-    if (cur < L) barParts.push({ from: cur, to: L, color: '#e2e8f0' });
-    const totalSect = parseFloat(segs.reduce((a, s) => a + (s.to - s.from), 0).toFixed(1));
-    madalkiHtml = `
-      <div class="pp-madalki">
-        <div class="pp-bar-label">노출 구간 <span class="pp-bar-pct">${totalSect}m</span></div>
-        <div class="pp-bar">
-          ${barParts.map(s => `<div style="width:${(s.to-s.from)/L*100}%;background:${s.color}"></div>`).join('')}
-        </div>
-        <div class="pp-bar-sub">${totalSect}m / ${L}m</div>
-      </div>`;
-  }
-
-  // 섹션별 사진 or 배관 전체 사진
-  let photoHtml = '';
-  if (isExposed && segs.length > 0) {
-    const subsegList = segs.map(s => {
-      const subId = s.id || (s.from + '_' + s.to);
-      const rep   = _getRepPhoto(seg.id, subId);
+  // 섹션 체크박스 목록 (완료=하늘색, 미완료=빨간색)
+  let sectListHtml = '';
+  if (segs.length > 0) {
+    const rows = segs.map((s, i) => {
+      const isDone = s.color === PIPE_COLOR_DONE;
+      const subId  = s.id || (s.from + '_' + s.to);
+      const rep    = _getRepPhoto(seg.id, subId);
       return `
-        <div class="pp-subseg-item" onclick="openPhotoModal('${seg.id}','${subId}')">
-          <div class="pp-subseg-header">
-            <span class="pp-subseg-dot" style="background:${sectCol}"></span>
+        <div class="pp-subseg-item" data-seg-idx="${i}">
+          <div class="pp-subseg-header" style="cursor:default">
+            <span class="pp-subseg-dot" style="background:${s.color}"></span>
             <span>${s.from}m ~ ${s.to}m</span>
-            <span class="pp-subseg-photo-hint">${rep ? '📷' : '📷 없음'}</span>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto">
+              <input type="checkbox" class="pp-seg-done" data-idx="${i}" ${isDone ? 'checked' : ''}
+                style="width:15px;height:15px;accent-color:#38bdf8;cursor:pointer">
+              <span style="font-size:11px;color:#475569">완료</span>
+            </label>
+            <span class="pp-subseg-photo-hint" onclick="openPhotoModal('${seg.id}','${subId}')" style="cursor:pointer">${rep ? '📷' : '📷 없음'}</span>
           </div>
           ${rep
-            ? `<img src="${rep.url}" class="pp-photo-img-sm">`
-            : `<div class="pp-photo-placeholder-sm">탭하여 사진 추가</div>`}
+            ? `<img src="${rep.url}" class="pp-photo-img-sm" onclick="openPhotoModal('${seg.id}','${subId}')" style="cursor:zoom-in">`
+            : `<div class="pp-photo-placeholder-sm" onclick="openPhotoModal('${seg.id}','${subId}')">탭하여 사진 추가</div>`}
         </div>`;
     }).join('');
-    photoHtml = `<div class="pp-subseg-list">${subsegList}</div>`;
+    sectListHtml = `
+      <div class="pp-subseg-list">${rows}</div>
+      <button id="pp-sect-save" onclick="_saveSectDone('${seg.id}')"
+        style="width:100%;margin:6px 0 2px;padding:7px;border-radius:7px;
+          border:1px solid #38bdf8;background:#f0f9ff;color:#0369a1;
+          font-size:12px;font-weight:600;cursor:pointer">매달기 현황 저장</button>`;
   } else {
     const rep = _getRepPhoto(seg.id, '_pipe');
-    photoHtml = `
+    sectListHtml = `
       <div class="pp-photo-area" onclick="openPhotoModal('${seg.id}','_pipe')">
         ${rep
           ? `<img src="${rep.url}" class="pp-photo-img">`
@@ -378,10 +359,7 @@ function _showPipePopup(seg, e) {
     <div class="pp-body">
       <div class="pp-row"><span>현장</span><span>${seg.site}</span></div>
       <div class="pp-row"><span>관경</span><span>${seg.관경 || '-'}</span></div>
-      <div class="pp-row"><span>노출길이</span><span>${L > 0 ? L + 'm' : (segs.length > 0 ? segs.reduce((a,s)=>a+(s.to-s.from),0).toFixed(1)+'m' : '-')}</span></div>
-      <div class="pp-row"><span>매달기</span><span style="color:${isExposed?(isDone?'#38bdf8':'#dc2626'):'#94a3b8'};font-weight:600">${isExposed?(isDone?'완료':'미진행'):'비노출'}</span></div>
-      ${madalkiHtml}
-      ${photoHtml}
+      ${sectListHtml}
     </div>
     <div class="pp-footer pp-footer-col">
       <div class="pp-footer-row">
@@ -413,6 +391,22 @@ function _showPipePopup(seg, e) {
     popup.style.top  = y + 'px';
   });
 }
+
+// 팝업 체크박스 → 섹션 색상 저장
+window._saveSectDone = function(segId) {
+  const saved   = _getSegmentColors(segId);
+  const segs    = JSON.parse(JSON.stringify(saved.매달기구간 ?? []));
+  document.querySelectorAll('.pp-seg-done').forEach(cb => {
+    const idx = parseInt(cb.dataset.idx);
+    if (segs[idx]) segs[idx].color = cb.checked ? PIPE_COLOR_DONE : PIPE_COLOR_UNCOV;
+  });
+  _saveSegmentColors(segId, { 매달기구간: segs });
+  renderAllPipes();
+  // 팝업 색상 도트 즉시 반영
+  document.querySelectorAll('.pp-subseg-dot').forEach((dot, i) => {
+    if (segs[i]) dot.style.background = segs[i].color;
+  });
+};
 
 function hidePipePopup() {
   const popup = document.getElementById('pipe-popup');
@@ -1196,7 +1190,7 @@ function _mkCircle(cx, cy, r, fill) {
 
 // ── 지도에서 구간 선택 ────────────────────────────────────────
 function startSectionPick(segId) {
-  _sectionPick = { segId, step: 'start', startM: null, startT: null, color: '#f59e0b' };
+  _sectionPick = { segId, step: 'start', startM: null, startT: null, color: PIPE_COLOR_UNCOV }; // 기본=빨간색(미완료)
   const seg = PIPELINE_SEGMENTS.find(s => s.id === segId);
   _enterPickModePopup(seg);
   renderAllPipes();
