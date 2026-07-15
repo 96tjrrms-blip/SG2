@@ -89,6 +89,7 @@
           <button class="zone-btn" onclick="startPipeDraw()" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">📐 배관 그리기</button>
           <button class="zone-btn" onclick="startValveAdd()" style="background:#f0fdf4;color:#15803d;border-color:#86efac">🔧 밸브 추가</button>
           <button class="zone-btn" onclick="showPipeList()" style="background:#fafafa;color:#475569;border-color:#cbd5e1">📋 목록 / 삭제</button>
+          <button class="zone-btn" onclick="openPipeListModal()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">🚧 노출현황 관리</button>
         </div>
       </div>
     </div>
@@ -535,29 +536,28 @@
     </div>
   </div>
 
-  <!-- 색상 설정 모달 -->
-  <div id="color-modal" class="color-modal" style="display:none">
-    <div class="cm-panel">
+  <!-- 노출배관 목록 관리 모달 -->
+  <div id="pipe-list-modal" class="color-modal" style="display:none">
+    <div class="cm-panel" style="max-width:440px;width:92vw">
       <div class="cm-header">
-        <span id="cm-title">구간 설정</span>
-        <button id="cm-x" class="cm-close">✕</button>
+        <span>노출배관 목록 관리</span>
+        <button id="plm-x" class="cm-close">✕</button>
       </div>
-      <div class="cm-body">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e2e8f0">
-          <span style="font-size:12px;color:#64748b;white-space:nowrap">노출길이</span>
-          <input type="number" id="cm-noochul" min="0" max="999" step="0.5"
-            style="width:80px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;text-align:right">
-          <span style="font-size:12px;color:#64748b">m</span>
-          <span style="font-size:11px;color:#94a3b8;margin-left:4px">(실제 노출 구간 총 길이)</span>
+      <div class="cm-body" style="padding:0">
+        <div style="display:grid;grid-template-columns:1fr 90px 90px;gap:0;font-size:11px;color:#94a3b8;
+          padding:6px 14px;border-bottom:1px solid #e2e8f0;font-weight:600">
+          <span>배관</span><span style="text-align:center">노출길이(m)</span><span style="text-align:center">매달기완료</span>
         </div>
-        <p class="cm-hint">매달기 완료 구간을 추가하세요 (단위: m)</p>
-        <div id="cm-segs"></div>
+        <div id="plm-rows" style="max-height:60vh;overflow-y:auto"></div>
       </div>
       <div class="cm-footer">
-        <button id="cm-add" class="cm-btn-add">+ 구간 추가</button>
+        <div style="font-size:11px;color:#94a3b8">
+          <span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:2px;margin-right:4px"></span>미진행
+          <span style="display:inline-block;width:10px;height:10px;background:#38bdf8;border-radius:2px;margin:0 4px 0 10px"></span>완료
+        </div>
         <div style="display:flex;gap:8px">
-          <button id="cm-cancel" class="cm-btn-cancel">취소</button>
-          <button id="cm-save"   class="cm-btn-save">저장</button>
+          <button id="plm-cancel" class="cm-btn-cancel">취소</button>
+          <button id="plm-save"   class="cm-btn-save">저장</button>
         </div>
       </div>
     </div>
