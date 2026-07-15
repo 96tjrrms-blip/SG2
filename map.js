@@ -160,8 +160,9 @@ function _buildPipeGroup(seg) {
 
   const saved = _getSegmentColors(seg.id);
   const segs  = saved.매달기구간 ?? seg.매달기구간;
+  const L_seg = saved.노출길이 ?? seg.노출길이;
 
-  if (seg.노출길이 === 0) {
+  if (L_seg === 0) {
     // 비노출 → seg.color 그대로
     const line = _mkPolyline(seg.points, seg.color, lineW, 'pipe-line');
     line.dataset.baseWidth = lineW;
@@ -173,7 +174,7 @@ function _buildPipeGroup(seg) {
     g.appendChild(line);
   } else {
     // 노출중 + 매달기 일부/완료 → 분할 렌더링
-    const L = seg.노출길이;
+    const L = L_seg;
     const valveTs = _valveFractionsOnPipe(seg);
 
     const clipped = segs.map(s => {
@@ -254,16 +255,15 @@ function _showPipeTooltip(seg) {
   if (!tt) return;
   const saved = _getSegmentColors(seg.id);
   const segs  = saved.매달기구간 ?? seg.매달기구간;
-  const L     = seg.노출길이;
+  const L     = saved.노출길이 ?? seg.노출길이;
   const done  = segs.reduce((sum, s) => sum + Math.max(0, s.to - s.from), 0);
-  const pct   = Math.round(done / L * 100);
   let statusHtml;
   if (segs.length === 0 || done === 0) {
     statusHtml = `<span style="color:#fca5a5">⚠ 매달기 미진행</span>`;
-  } else if (pct >= 100) {
+  } else if (done >= L) {
     statusHtml = `<span style="color:#7dd3fc">✔ 매달기 완료</span>`;
   } else {
-    statusHtml = `<span style="color:#fcd34d">▶ 매달기 진행중 ${pct}%</span>`;
+    statusHtml = `<span style="color:#fcd34d">▶ 매달기 진행중</span>`;
   }
   tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>노출 <strong>${L}m</strong> | ${statusHtml}`;
   tt.style.display = 'block';
@@ -294,7 +294,7 @@ function _showPipePopup(seg, e) {
 
   const saved = _getSegmentColors(seg.id);
   const segs  = saved.매달기구간 ?? seg.매달기구간;
-  const L     = seg.노출길이;
+  const L     = saved.노출길이 ?? seg.노출길이;
 
   let madalkiHtml = '';
   if (L > 0 && segs.length > 0) {
@@ -413,20 +413,24 @@ function openColorModal(segId) {
   const modal     = document.getElementById('color-modal');
   const titleEl   = document.getElementById('cm-title');
   const segsEl    = document.getElementById('cm-segs');
+  const noochulEl = document.getElementById('cm-noochul');
 
-  titleEl.textContent = `구간 설정 — ${seg.name} (노출길이 ${seg.노출길이}m)`;
+  const effectiveL = saved.노출길이 ?? seg.노출길이;
+  titleEl.textContent = `구간 설정 — ${seg.name}`;
+  if (noochulEl) noochulEl.value = effectiveL;
 
   function renderRows() {
+    const L = parseFloat(noochulEl?.value) || effectiveL;
     if (cmSegs.length === 0) {
       segsEl.innerHTML = '<div class="cm-empty">아래 버튼으로 구간을 추가하세요.</div>';
     } else {
       segsEl.innerHTML = cmSegs.map((s, i) => `
         <div class="cm-row" data-index="${i}" data-ssid="${s.id || ''}">
           <input type="number" class="cm-from" value="${s.from}"
-            min="0" max="${seg.노출길이}" step="0.5" placeholder="시작(m)">
+            min="0" max="${L}" step="0.5" placeholder="시작(m)">
           <span class="cm-sep">~</span>
           <input type="number" class="cm-to" value="${s.to}"
-            min="0" max="${seg.노출길이}" step="0.5" placeholder="끝(m)">
+            min="0" max="${L}" step="0.5" placeholder="끝(m)">
           <span class="cm-unit">m</span>
           <input type="color" class="cm-color" value="${s.color}">
           <button class="cm-del" data-idx="${i}">✕</button>
@@ -453,9 +457,10 @@ function openColorModal(segId) {
   });
 
   document.getElementById('cm-add').addEventListener('click', () => {
+    const L    = parseFloat(noochulEl?.value) || effectiveL;
     const last = cmSegs[cmSegs.length - 1];
     const from = last ? last.to : 0;
-    const to   = Math.min(from + 5, seg.노출길이);
+    const to   = Math.min(from + 5, L);
     cmSegs.push({ id: _makeSubSegId(), from, to, color: '#f59e0b' });
     renderRows();
   });
@@ -467,12 +472,14 @@ function openColorModal(segId) {
       const to    = parseFloat(row.querySelector('.cm-to').value);
       const color = row.querySelector('.cm-color').value;
       if (!isNaN(from) && !isNaN(to) && to > from) {
-        // 기존 ID 보존, 없으면 새로 생성
         const existingId = row.dataset.ssid || _makeSubSegId();
         newSegs.push({ id: existingId, from, to, color });
       }
     });
-    _saveSegmentColors(segId, { 매달기구간: newSegs });
+    const newL = parseFloat(noochulEl?.value);
+    const saveData = { 매달기구간: newSegs };
+    if (!isNaN(newL) && newL >= 0) saveData.노출길이 = newL;
+    _saveSegmentColors(segId, saveData);
     modal.style.display = 'none';
     renderAllPipes();
   });

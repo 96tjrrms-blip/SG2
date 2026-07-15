@@ -5,7 +5,7 @@ const PIPELINE_SEGMENTS = [
     "name": "메인관",
     "site": "115정거장",
     "관경": "150A",
-    "노출길이": 100,
+    "노출길이": 0,
     "color": "#facc15",
     "points": [
       [

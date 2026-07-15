@@ -543,6 +543,13 @@
         <button id="cm-x" class="cm-close">✕</button>
       </div>
       <div class="cm-body">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e2e8f0">
+          <span style="font-size:12px;color:#64748b;white-space:nowrap">노출길이</span>
+          <input type="number" id="cm-noochul" min="0" max="999" step="0.5"
+            style="width:80px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;text-align:right">
+          <span style="font-size:12px;color:#64748b">m</span>
+          <span style="font-size:11px;color:#94a3b8;margin-left:4px">(실제 노출 구간 총 길이)</span>
+        </div>
         <p class="cm-hint">매달기 완료 구간을 추가하세요 (단위: m)</p>
         <div id="cm-segs"></div>
       </div>
