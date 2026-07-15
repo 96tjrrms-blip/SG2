@@ -160,7 +160,7 @@ function _buildPipeGroup(seg) {
 
   const saved = _getSegmentColors(seg.id);
   const segs  = saved.매달기구간 ?? seg.매달기구간;
-  const L_seg = saved.노출길이 ?? seg.노출길이;
+  const L_seg = saved.노출길이 ?? 0; // 저장된 값만 사용 — 미설정=비노출(노란색)
 
   if (L_seg === 0) {
     // 비노출 → 노란색 (seg.color)
@@ -242,7 +242,7 @@ function _onPipeHover(segId, enter) {
       const base = parseFloat(el.dataset.baseWidth);
       el.setAttribute('stroke-width', base * 1.7);
     });
-    if (seg && seg.노출길이 > 0) _showPipeTooltip(seg);
+    if (seg) _showPipeTooltip(seg);
   } else {
     g.removeAttribute('filter');
     g.querySelectorAll('.pipe-line').forEach(el => {
@@ -265,21 +265,27 @@ function _showPipeTooltip(seg) {
   if (!tt) return;
   const saved = _getSegmentColors(seg.id);
   const segs  = saved.매달기구간 ?? seg.매달기구간;
-  const L     = saved.노출길이 ?? seg.노출길이;
-  if (L === 0) { _hidePipeTooltip(); return; }
+  const L     = saved.노출길이 ?? 0;
+
+  // 비노출 배관은 툴팁 없음
+  if (L === 0 && segs.length === 0) { _hidePipeTooltip(); return; }
+
+  // 실제 노출 길이 = 섹션 합산 (섹션 없으면 saved.노출길이 그대로)
+  const exposedM = segs.length > 0
+    ? segs.reduce((sum, s) => sum + Math.max(0, s.to - s.from), 0)
+    : L;
 
   let statusHtml;
   if (segs.length === 0) {
-    // 하얀색 파이프: 노출 + 매달기 완료 기본 상태
-    statusHtml = '<span style="color:#f8fafc">노출중(매달기완료)</span>';
+    statusHtml = `<span style="color:#f8fafc">노출중(매달기완료)</span>`;
   } else if (segs.some(s => _isRedColor(s.color))) {
-    // 빨간색 섹션 있음: 미완료
-    statusHtml = '<span style="color:#fca5a5">노출중(매달기 미완료)</span>';
+    statusHtml = `<span style="color:#fca5a5">노출중(매달기 미완료)</span>`;
   } else {
-    // 섹션 있고 빨간색 없음: 완료
-    statusHtml = '<span style="color:#7dd3fc">노출중(매달기완료)</span>';
+    statusHtml = `<span style="color:#7dd3fc">노출중(매달기완료)</span>`;
   }
-  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>${statusHtml} | 노출 <strong>${L}m</strong>`;
+
+  const mStr = exposedM > 0 ? ` | 노출 <strong>${exposedM}m</strong>` : '';
+  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>${statusHtml}${mStr}`;
   tt.style.display = 'block';
 }
 
