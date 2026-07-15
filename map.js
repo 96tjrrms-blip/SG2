@@ -384,11 +384,10 @@ function _showPipePopup(seg, e) {
       ${photoHtml}
     </div>
     <div class="pp-footer pp-footer-col">
-      ${L > 0 ? `
       <div class="pp-footer-row">
         <button class="pp-btn-pick" onclick="startSectionPick('${seg.id}')">🗺️ 구간 선택</button>
         <button class="pp-btn-mgr"  onclick="openPipeListModal()">📋 목록 관리</button>
-      </div>` : `<button class="pp-btn-mgr" onclick="openPipeListModal()">📋 목록 관리</button>`}
+      </div>
       <button class="pp-btn-photo" onclick="openPhotoModal('${seg.id}','_pipe')">📷 배관 전체 사진</button>
     </div>
   `;
@@ -424,7 +423,7 @@ function hidePipePopup() {
 // ── 노출배관 목록 관리 모달 ────────────────────────────────────
 function openPipeListModal() {
   hidePipePopup();
-  const modal = document.getElementById('pipe-list-modal');
+  const modal = document.getElementById('exposure-modal');
   const rowsEl = document.getElementById('plm-rows');
 
   rowsEl.innerHTML = PIPELINE_SEGMENTS.map(seg => {
