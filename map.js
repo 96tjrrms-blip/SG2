@@ -160,11 +160,14 @@ function _buildPipeGroup(seg) {
 
   const saved    = _getSegmentColors(seg.id);
   const segs     = saved.매달기구간 ?? seg.매달기구간;
-  const L_seg    = saved.노출길이 ?? 0;  // 저장 값만 사용 — 미설정=비노출
+  const L_seg    = saved.노출길이 ?? seg.노출길이; // 비율 계산용 (mapConfig 폴백 유지)
   const isDone   = saved.매달기완료 ?? false;
   const sectCol  = isDone ? PIPE_COLOR_DONE : PIPE_COLOR_UNCOV; // 하늘색 or 빨간색
 
-  if (L_seg === 0) {
+  // 노출 여부: 섹션이 있거나 사용자가 명시적으로 노출길이를 설정한 경우
+  const isExposed = segs.length > 0 || (saved.노출길이 ?? 0) > 0;
+
+  if (!isExposed) {
     // 비노출 → 노란색
     const line = _mkPolyline(seg.points, seg.color, lineW, 'pipe-line');
     line.dataset.baseWidth = lineW;
@@ -267,16 +270,21 @@ function _showPipeTooltip(seg) {
   const tt = document.getElementById('map-pipe-tooltip');
   if (!tt) return;
   const saved  = _getSegmentColors(seg.id);
+  const segs   = saved.매달기구간 ?? seg.매달기구간;
   const L      = saved.노출길이 ?? 0;
   const isDone = saved.매달기완료 ?? false;
+  const isExposed = segs.length > 0 || L > 0;
 
-  if (L === 0) { _hidePipeTooltip(); return; }
+  if (!isExposed) { _hidePipeTooltip(); return; }
+
+  const exposedM = L > 0 ? L
+    : parseFloat(segs.reduce((a, s) => a + (s.to - s.from), 0).toFixed(1));
 
   const statusHtml = isDone
     ? `<span style="color:#38bdf8">노출중(매달기완료)</span>`
     : `<span style="color:#fca5a5">노출중(매달기 미진행)</span>`;
 
-  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>${statusHtml} | 노출 <strong>${L}m</strong>`;
+  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>${statusHtml} | 노출 <strong>${exposedM}m</strong>`;
   tt.style.display = 'block';
 }
 
@@ -307,10 +315,11 @@ function _showPipePopup(seg, e) {
   const L       = saved.노출길이 ?? 0;
   const isDone  = saved.매달기완료 ?? false;
   const sectCol = isDone ? '#38bdf8' : '#dc2626';
+  const isExposed = segs.length > 0 || L > 0;
 
   // 섹션 진행바
   let madalkiHtml = '';
-  if (L > 0 && segs.length > 0) {
+  if (isExposed && segs.length > 0) {
     const sorted   = [...segs].sort((a, b) => a.from - b.from);
     const barParts = [];
     let cur = 0;
@@ -333,7 +342,7 @@ function _showPipePopup(seg, e) {
 
   // 섹션별 사진 or 배관 전체 사진
   let photoHtml = '';
-  if (L > 0 && segs.length > 0) {
+  if (isExposed && segs.length > 0) {
     const subsegList = segs.map(s => {
       const subId = s.id || (s.from + '_' + s.to);
       const rep   = _getRepPhoto(seg.id, subId);
@@ -369,8 +378,8 @@ function _showPipePopup(seg, e) {
     <div class="pp-body">
       <div class="pp-row"><span>현장</span><span>${seg.site}</span></div>
       <div class="pp-row"><span>관경</span><span>${seg.관경 || '-'}</span></div>
-      <div class="pp-row"><span>노출길이</span><span>${L > 0 ? L + 'm' : '-'}</span></div>
-      <div class="pp-row"><span>매달기</span><span style="color:${L>0?(isDone?'#38bdf8':'#dc2626'):'#94a3b8'};font-weight:600">${L>0?(isDone?'완료':'미진행'):'비노출'}</span></div>
+      <div class="pp-row"><span>노출길이</span><span>${L > 0 ? L + 'm' : (segs.length > 0 ? segs.reduce((a,s)=>a+(s.to-s.from),0).toFixed(1)+'m' : '-')}</span></div>
+      <div class="pp-row"><span>매달기</span><span style="color:${isExposed?(isDone?'#38bdf8':'#dc2626'):'#94a3b8'};font-weight:600">${isExposed?(isDone?'완료':'미진행'):'비노출'}</span></div>
       ${madalkiHtml}
       ${photoHtml}
     </div>
@@ -1214,8 +1223,8 @@ function confirmSectionPick() {
 function _handleSectionPick(segId, e) {
   const seg   = PIPELINE_SEGMENTS.find(s => s.id === segId);
   const saved = _getSegmentColors(segId);
-  const L     = saved.노출길이 ?? 0;
-  if (!seg || L === 0) return;
+  const L     = saved.노출길이 ?? seg.노출길이; // mapConfig 폴백 유지
+  if (!seg || !L) return;
 
   const img = document.getElementById('map-img');
   const rect = img.getBoundingClientRect();
