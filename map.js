@@ -163,17 +163,19 @@ function _buildPipeGroup(seg) {
   const L_seg = saved.노출길이 ?? seg.노출길이;
 
   if (L_seg === 0) {
-    // 비노출 → seg.color 그대로
+    // 비노출 → 노란색 (seg.color)
     const line = _mkPolyline(seg.points, seg.color, lineW, 'pipe-line');
     line.dataset.baseWidth = lineW;
     g.appendChild(line);
   } else if (segs.length === 0) {
-    // 노출중 + 매달기 전혀 안됨 → 빨강
-    const line = _mkPolyline(seg.points, PIPE_COLOR_UNCOV, lineW, 'pipe-line');
+    // 노출중 + 매달기구간 미기록 → 하얀색 (노출중 완료 기본 상태)
+    const line = _mkPolyline(seg.points, '#f8fafc', lineW, 'pipe-line');
     line.dataset.baseWidth = lineW;
     g.appendChild(line);
   } else {
-    // 노출중 + 매달기 일부/완료 → 분할 렌더링
+    // 매달기구간 있음 → 분할 렌더링
+    // 섹션: 사용자 지정 색 그대로 (빨강=미완료, 하늘색=완료 등)
+    // 빈 구간: 노란색 (비노출 구간)
     const L = L_seg;
     const valveTs = _valveFractionsOnPipe(seg);
 
@@ -189,11 +191,11 @@ function _buildPipeGroup(seg) {
     const full = [];
     let cur = 0;
     for (const s of sorted) {
-      if (s.from > cur) full.push({ from: cur, to: s.from, color: PIPE_COLOR_UNCOV }); // 빨강: 미완료 gap
-      full.push({ ...s, color: PIPE_COLOR_DONE }); // 하늘색: 완료 구간
+      if (s.from > cur) full.push({ from: cur, to: s.from, color: seg.color }); // 빈 구간 → 노란색
+      full.push(s); // 사용자 지정 색 유지
       cur = s.to;
     }
-    if (cur < L) full.push({ from: cur, to: L, color: PIPE_COLOR_UNCOV }); // 빨강: 끝부분 미완료
+    if (cur < L) full.push({ from: cur, to: L, color: seg.color }); // 끝 빈 구간 → 노란색
 
     for (const s of full) {
       const pts  = _pxSubpath(seg.points, s.from / L, s.to / L);
@@ -250,22 +252,34 @@ function _onPipeHover(segId, enter) {
   }
 }
 
+function _isRedColor(hex) {
+  if (!hex || hex.length < 7) return false;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return r > 160 && g < 100 && b < 100;
+}
+
 function _showPipeTooltip(seg) {
   const tt = document.getElementById('map-pipe-tooltip');
   if (!tt) return;
   const saved = _getSegmentColors(seg.id);
   const segs  = saved.매달기구간 ?? seg.매달기구간;
   const L     = saved.노출길이 ?? seg.노출길이;
-  const done  = segs.reduce((sum, s) => sum + Math.max(0, s.to - s.from), 0);
+  if (L === 0) { _hidePipeTooltip(); return; }
+
   let statusHtml;
-  if (segs.length === 0 || done === 0) {
-    statusHtml = `<span style="color:#fca5a5">⚠ 매달기 미진행</span>`;
-  } else if (done >= L) {
-    statusHtml = `<span style="color:#7dd3fc">✔ 매달기 완료</span>`;
+  if (segs.length === 0) {
+    // 하얀색 파이프: 노출 + 매달기 완료 기본 상태
+    statusHtml = '<span style="color:#f8fafc">노출중(매달기완료)</span>';
+  } else if (segs.some(s => _isRedColor(s.color))) {
+    // 빨간색 섹션 있음: 미완료
+    statusHtml = '<span style="color:#fca5a5">노출중(매달기 미완료)</span>';
   } else {
-    statusHtml = `<span style="color:#fcd34d">▶ 매달기 진행중</span>`;
+    // 섹션 있고 빨간색 없음: 완료
+    statusHtml = '<span style="color:#7dd3fc">노출중(매달기완료)</span>';
   }
-  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>노출 <strong>${L}m</strong> | ${statusHtml}`;
+  tt.innerHTML = `<strong style="color:#fff">${seg.name}</strong><span style="color:#94a3b8;margin-left:6px">${seg.관경 || ''}</span><br>${statusHtml} | 노출 <strong>${L}m</strong>`;
   tt.style.display = 'block';
 }
 
