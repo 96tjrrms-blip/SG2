@@ -89,7 +89,6 @@
           <button class="zone-btn" onclick="startPipeDraw()" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">📐 배관 그리기</button>
           <button class="zone-btn" onclick="startValveAdd()" style="background:#f0fdf4;color:#15803d;border-color:#86efac">🔧 밸브 추가</button>
           <button class="zone-btn" onclick="showPipeList()" style="background:#fafafa;color:#475569;border-color:#cbd5e1">📋 목록 / 삭제</button>
-          <button class="zone-btn" onclick="openPipeListModal()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">🚧 노출현황 관리</button>
         </div>
       </div>
     </div>
@@ -536,25 +535,18 @@
     </div>
   </div>
 
-  <!-- 노출배관 목록 관리 모달 -->
+  <!-- 노출구간 목록 관리 모달 -->
   <div id="exposure-modal" class="color-modal" style="display:none">
-    <div class="cm-panel" style="max-width:440px;width:92vw">
+    <div class="cm-panel" style="max-width:360px;width:92vw">
       <div class="cm-header">
-        <span>노출배관 목록 관리</span>
+        <span>노출구간 관리</span>
         <button id="plm-x" class="cm-close">✕</button>
       </div>
       <div class="cm-body" style="padding:0">
-        <div style="display:grid;grid-template-columns:1fr 90px 90px;gap:0;font-size:11px;color:#94a3b8;
-          padding:6px 14px;border-bottom:1px solid #e2e8f0;font-weight:600">
-          <span>배관</span><span style="text-align:center">노출길이(m)</span><span style="text-align:center">매달기완료</span>
-        </div>
         <div id="plm-rows" style="max-height:60vh;overflow-y:auto"></div>
       </div>
       <div class="cm-footer">
-        <div style="font-size:11px;color:#94a3b8">
-          <span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:2px;margin-right:4px"></span>미진행
-          <span style="display:inline-block;width:10px;height:10px;background:#38bdf8;border-radius:2px;margin:0 4px 0 10px"></span>완료
-        </div>
+        <div style="font-size:11px;color:#94a3b8">시작m ~ 끝m 수정 후 저장</div>
         <div style="display:flex;gap:8px">
           <button id="plm-cancel" class="cm-btn-cancel">취소</button>
           <button id="plm-save"   class="cm-btn-save">저장</button>

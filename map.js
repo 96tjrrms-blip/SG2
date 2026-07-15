@@ -364,7 +364,7 @@ function _showPipePopup(seg, e) {
     <div class="pp-footer pp-footer-col">
       <div class="pp-footer-row">
         <button class="pp-btn-pick" onclick="startSectionPick('${seg.id}')">🗺️ 구간 선택</button>
-        <button class="pp-btn-mgr"  onclick="openPipeListModal()">📋 목록 관리</button>
+        <button class="pp-btn-mgr"  onclick="openPipeListModal('${seg.id}')">📋 목록 관리</button>
       </div>
       <button class="pp-btn-photo" onclick="openPhotoModal('${seg.id}','_pipe')">📷 배관 전체 사진</button>
     </div>
@@ -414,32 +414,49 @@ function hidePipePopup() {
   _activePipeId = null;
 }
 
-// ── 노출배관 목록 관리 모달 ────────────────────────────────────
-function openPipeListModal() {
+// ── 노출구간 목록 관리 모달 (현재 파이프의 섹션 편집/삭제) ─────
+function openPipeListModal(segId) {
   hidePipePopup();
+  const seg   = PIPELINE_SEGMENTS.find(s => s.id === segId);
+  if (!seg) return;
   const modal = document.getElementById('exposure-modal');
   const rowsEl = document.getElementById('plm-rows');
 
-  rowsEl.innerHTML = PIPELINE_SEGMENTS.map(seg => {
-    const saved = _getSegmentColors(seg.id);
-    const L     = saved.노출길이 ?? 0;
-    const done  = saved.매달기완료 ?? false;
-    return `
-      <div style="display:grid;grid-template-columns:1fr 90px 90px;align-items:center;
-        gap:0;padding:9px 14px;border-bottom:1px solid #f1f5f9" data-seg-id="${seg.id}">
-        <span style="font-size:13px;font-weight:500;color:#1e293b">${seg.name}</span>
-        <div style="text-align:center">
-          <input type="number" class="plm-l" min="0" max="999" step="0.5" value="${L}"
-            style="width:64px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;
-              font-size:13px;text-align:right;accent-color:#0d2b5e">
-        </div>
-        <div style="text-align:center">
-          <input type="checkbox" class="plm-done" ${done ? 'checked' : ''}
-            style="width:18px;height:18px;accent-color:#38bdf8;cursor:pointer">
-        </div>
-      </div>`;
-  }).join('');
+  // 헤더 제목 업데이트
+  modal.querySelector('.cm-header span').textContent = `노출구간 관리 — ${seg.name}`;
 
+  function renderRows() {
+    const saved = _getSegmentColors(segId);
+    const segs  = saved.매달기구간 ?? [];
+    if (segs.length === 0) {
+      rowsEl.innerHTML = `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px">잡힌 구간 없음</div>`;
+      return;
+    }
+    rowsEl.innerHTML = segs.map((s, i) => `
+      <div style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid #f1f5f9" data-row-idx="${i}">
+        <span style="width:10px;height:10px;border-radius:50%;background:${s.color};flex-shrink:0;display:inline-block"></span>
+        <input type="number" class="plm-from" value="${s.from}" min="0" step="0.1"
+          style="width:58px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;text-align:right">
+        <span style="color:#94a3b8;font-size:12px">~</span>
+        <input type="number" class="plm-to" value="${s.to}" min="0" step="0.1"
+          style="width:58px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;text-align:right">
+        <span style="color:#64748b;font-size:12px">m</span>
+        <button data-del-idx="${i}"
+          style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:11px;cursor:pointer">삭제</button>
+      </div>`).join('');
+
+    rowsEl.querySelectorAll('[data-del-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const saved2 = _getSegmentColors(segId);
+        const segs2  = (saved2.매달기구간 ?? []).filter((_, j) => j !== parseInt(btn.dataset.delIdx));
+        _saveSegmentColors(segId, { 매달기구간: segs2 });
+        renderAllPipes();
+        renderRows();
+      });
+    });
+  }
+
+  renderRows();
   modal.style.display = 'flex';
 
   ['plm-save', 'plm-cancel', 'plm-x'].forEach(id => {
@@ -449,12 +466,18 @@ function openPipeListModal() {
   });
 
   document.getElementById('plm-save').addEventListener('click', () => {
-    document.querySelectorAll('#plm-rows [data-seg-id]').forEach(row => {
-      const segId = row.dataset.segId;
-      const L     = parseFloat(row.querySelector('.plm-l').value) || 0;
-      const done  = row.querySelector('.plm-done').checked;
-      _saveSegmentColors(segId, { 노출길이: L, 매달기완료: done });
+    const saved = _getSegmentColors(segId);
+    const segs  = saved.매달기구간 ?? [];
+    const newSegs = [];
+    rowsEl.querySelectorAll('[data-row-idx]').forEach(row => {
+      const from  = parseFloat(row.querySelector('.plm-from').value);
+      const to    = parseFloat(row.querySelector('.plm-to').value);
+      const idx   = parseInt(row.dataset.rowIdx);
+      if (!isNaN(from) && !isNaN(to) && to > from) {
+        newSegs.push({ ...(segs[idx] || {}), from, to });
+      }
     });
+    _saveSegmentColors(segId, { 매달기구간: newSegs });
     modal.style.display = 'none';
     renderAllPipes();
   });
