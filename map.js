@@ -1239,7 +1239,8 @@ function confirmSectionPick() {
 function _handleSectionPick(segId, e) {
   const seg   = PIPELINE_SEGMENTS.find(s => s.id === segId);
   const saved = _getSegmentColors(segId);
-  const L     = saved.노출길이 ?? seg.노출길이; // mapConfig 폴백 유지
+  // saved.노출길이가 0이면 mapConfig 값 사용 (0 ?? X = 0 이므로 별도 체크)
+  const L     = (saved.노출길이 > 0) ? saved.노출길이 : seg.노출길이;
   if (!seg || !L) return;
 
   const img = document.getElementById('map-img');
