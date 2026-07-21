@@ -112,9 +112,9 @@ function renderParkingSpots() {
 
     g.append(circle, pText, labelBg, labelTxt);
 
-    // 클릭 → 삭제 (edit 모드 불필요, 항상 가능)
     g.addEventListener('click', e => {
       e.stopPropagation();
+      if (!window._editMode) return;
       if (confirm('이 주차위치를 삭제할까요?')) {
         _removeParkingSpot(spot.id);
         renderParkingSpots();
@@ -272,6 +272,7 @@ window.renderRegulatorSpots = function() {
 
     g.addEventListener('click', e => {
       e.stopPropagation();
+      if (!window._editMode) return;
       if (confirm('이 정압기 마커를 삭제할까요?')) {
         _saveRegulatorSpots(_getRegulatorSpots().filter(s => s.id !== spot.id));
         renderRegulatorSpots();

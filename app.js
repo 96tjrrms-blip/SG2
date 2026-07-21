@@ -7,7 +7,8 @@ function _applyEditMode() {
   const em = window._editMode;
   ['ctrl-group-hdr-edit', 'edit-group', 'map-draw-toggle-btn',
    'drone-edit-btns', 'drone-slide-edit-row',
-   'constr-add-btn', 'bp-upload-lbl', 'bp-delete-btn'].forEach(id => {
+   'constr-add-btn', 'pm-upload-footer',
+   'bp-upload-lbl', 'bp-delete-btn', 'bp-ipwhoe-section', 'bp-state-section'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     if (id === 'edit-group' && em) return; // 잠금 해제 시 edit-group은 접힌 상태 유지
@@ -1779,7 +1780,7 @@ window.openBoringPanel = async function(boringId, isCustom) {
   _renderBpColorState(stateMap[boringId] || 0);
 
   const delBtn = document.getElementById('bp-delete-btn');
-  if (delBtn) delBtn.style.display = 'block';
+  if (delBtn) delBtn.style.display = window._editMode ? 'block' : 'none';
 
   const panel = document.getElementById('boring-panel');
   panel.style.display = 'block';
@@ -1851,12 +1852,12 @@ window.renderBoringPhotos = async function(boringId) {
       <div style="position:relative;display:inline-block;margin:3px">
         <img src="${p.url}" style="width:76px;height:76px;object-fit:cover;border-radius:6px;cursor:pointer;border:${repPath===p.path?'2.5px solid #16a34a':'1px solid #e2e8f0'}"
           onclick="openLightbox('${p.url}')">
-        <div style="position:absolute;top:2px;right:2px;display:flex;gap:2px">
+        ${window._editMode ? `<div style="position:absolute;top:2px;right:2px;display:flex;gap:2px">
           <button onclick="event.stopPropagation();boringSetRepPhoto('${p.path}')" title="대표사진으로 지정"
             style="width:18px;height:18px;border-radius:3px;border:none;background:rgba(255,255,255,0.92);font-size:10px;cursor:pointer;line-height:1">★</button>
           <button onclick="event.stopPropagation();boringDeletePhoto('${p.path}')" title="삭제"
             style="width:18px;height:18px;border-radius:3px;border:none;background:rgba(255,255,255,0.92);font-size:10px;cursor:pointer;line-height:1">✕</button>
-        </div>
+        </div>` : ''}
       </div>
     `).join('');
   } catch {

@@ -601,7 +601,7 @@
         <div class="pm-empty">불러오는 중...</div>
       </div>
       <div class="pm-footer">
-        <label class="pm-upload-label">
+        <label id="pm-upload-footer" class="pm-upload-label">
           📷 사진 추가
           <input type="file" id="pm-file-input" accept="image/*" multiple
             style="display:none" onchange="handlePhotoUpload(this)">
@@ -984,7 +984,7 @@ window._psmPickColor = function(btn) {
   </div>
 
   <!-- 입회 여부 -->
-  <div style="padding:14px 18px 10px;border-bottom:1px solid #f1f5f9">
+  <div id="bp-ipwhoe-section" style="padding:14px 18px 10px;border-bottom:1px solid #f1f5f9">
     <div style="font-size:11px;color:#6b7280;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">입회 여부</div>
     <div style="display:flex;gap:8px">
       <button id="bp-ipwhoe-y" onclick="setBoringIpwhoe(true)"
@@ -999,7 +999,7 @@ window._psmPickColor = function(btn) {
   </div>
 
   <!-- 색상 상태 -->
-  <div style="padding:12px 18px 10px;border-bottom:1px solid #f1f5f9">
+  <div id="bp-state-section" style="padding:12px 18px 10px;border-bottom:1px solid #f1f5f9">
     <div style="font-size:11px;color:#6b7280;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">마커 상태</div>
     <div style="display:flex;gap:8px">
       <button id="bp-color-0" onclick="setBoringColorState(0)"

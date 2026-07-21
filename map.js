@@ -657,12 +657,12 @@ async function _renderPhotoGrid(segId, subSegId) {
       return `
         <div class="pm-photo-item ${isRep ? 'pm-rep' : ''}">
           <img src="${p.url}" onclick="openLightbox('${p.url}')" style="cursor:zoom-in">
-          <div class="pm-photo-actions">
+          ${window._editMode ? `<div class="pm-photo-actions">
             <button class="${isRep ? 'pm-btn-rep-active' : 'pm-btn-rep'}" title="대표사진"
               onclick="setRepPhoto('${segId}','${ess}','${p.url}','${ep}')">★</button>
             <button class="pm-btn-del" title="삭제"
               onclick="deletePhoto('${segId}','${ess}','${ep}')">✕</button>
-          </div>
+          </div>` : ''}
         </div>`;
     }).join('')}</div>`;
   } catch(e) {
