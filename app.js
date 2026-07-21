@@ -1,3 +1,61 @@
+// ===== 편집 잠금 =====
+const _EDIT_PW       = '3002';
+const _EDIT_AUTH_KEY = 'sg2_edit_auth_v1';
+window._editMode = localStorage.getItem(_EDIT_AUTH_KEY) === '1';
+
+function _applyEditMode() {
+  const em = window._editMode;
+  ['ctrl-group-hdr-edit', 'edit-group', 'map-draw-toggle-btn',
+   'drone-edit-btns', 'drone-slide-edit-row',
+   'constr-add-btn', 'bp-upload-lbl', 'bp-delete-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'edit-group' && em) return; // 잠금 해제 시 edit-group은 접힌 상태 유지
+    el.style.display = em ? '' : 'none';
+  });
+  const lockBtn = document.getElementById('edit-lock-btn');
+  if (lockBtn) {
+    lockBtn.textContent  = em ? '🔓 편집 중 (잠그기)' : '🔒 편집 잠금';
+    lockBtn.style.background   = em ? 'rgba(56,189,248,0.18)' : 'rgba(255,255,255,0.08)';
+    lockBtn.style.borderColor  = em ? 'rgba(56,189,248,0.5)'  : 'rgba(255,255,255,0.25)';
+    lockBtn.style.color        = em ? '#38bdf8'               : 'rgba(255,255,255,0.8)';
+  }
+  _renderConstrGrid();
+}
+
+window.toggleEditAuth = function() {
+  if (window._editMode) {
+    window._editMode = false;
+    localStorage.setItem(_EDIT_AUTH_KEY, '0');
+    _applyEditMode();
+  } else {
+    const modal = document.getElementById('edit-auth-modal');
+    modal.style.display = 'flex';
+    const input = document.getElementById('edit-pw-input');
+    input.value = '';
+    document.getElementById('edit-pw-error').style.display = 'none';
+    setTimeout(() => input.focus(), 50);
+  }
+};
+
+window.closeEditAuth = function() {
+  document.getElementById('edit-auth-modal').style.display = 'none';
+};
+
+window.submitEditAuth = function() {
+  const pw = document.getElementById('edit-pw-input').value;
+  if (pw === _EDIT_PW) {
+    window._editMode = true;
+    localStorage.setItem(_EDIT_AUTH_KEY, '1');
+    closeEditAuth();
+    _applyEditMode();
+  } else {
+    document.getElementById('edit-pw-error').style.display = '';
+    document.getElementById('edit-pw-input').value = '';
+    document.getElementById('edit-pw-input').focus();
+  }
+};
+
 // ===== 상태 관리 =====
 let currentSite = '115정거장';
 let currentItemId = null;
@@ -1222,9 +1280,9 @@ function _renderConstrGrid() {
       style="width:${s}px;height:${s}px;border-radius:8px;overflow:hidden;cursor:zoom-in;
         background:#e2e8f0;flex-shrink:0;position:relative;box-shadow:0 1px 4px rgba(0,0,0,0.1)">
       <img src="${p.url}" style="width:100%;height:100%;object-fit:cover;display:block">
-      <button onclick="event.stopPropagation();deleteConstrPhoto('${safePath}')"
+      ${window._editMode ? `<button onclick="event.stopPropagation();deleteConstrPhoto('${safePath}')"
         style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;
-          background:rgba(239,68,68,0.85);color:#fff;font-size:12px;cursor:pointer;line-height:1;padding:0">✕</button>
+          background:rgba(239,68,68,0.85);color:#fff;font-size:12px;cursor:pointer;line-height:1;padding:0">✕</button>` : ''}
     </div>`;
   }).join('');
 }
@@ -1280,6 +1338,7 @@ window._lbMove = function(dir) {
 document.addEventListener('DOMContentLoaded', async () => {
   siteMap = await getSiteMap();
   navigate('dashboard');
+  _applyEditMode();
 });
 
 // ===== 네비게이션 =====

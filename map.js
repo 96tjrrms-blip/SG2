@@ -310,43 +310,47 @@ function _showPipePopup(seg, e) {
   const L         = saved.노출길이 ?? 0;
   const isExposed = segs.length > 0 || L > 0;
 
-  // 섹션 체크박스 목록 (완료=하늘색, 미완료=빨간색)
+  // 섹션 목록 (편집 모드 시 체크박스, 조회 모드 시 읽기 전용)
+  const em = !!window._editMode;
   let sectListHtml = '';
   if (segs.length > 0) {
     const rows = segs.map((s, i) => {
       const isDone = s.color === PIPE_COLOR_DONE;
       const subId  = s.id || (s.from + '_' + s.to);
       const rep    = _getRepPhoto(seg.id, subId);
+      const checkHtml = em ? `
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto">
+          <input type="checkbox" class="pp-seg-done" data-idx="${i}" ${isDone ? 'checked' : ''}
+            style="width:15px;height:15px;accent-color:#38bdf8;cursor:pointer">
+          <span style="font-size:11px;color:#475569">완료</span>
+        </label>` : `<span style="font-size:11px;color:${isDone ? '#0369a1' : '#94a3b8'};margin-left:auto">${isDone ? '✓ 완료' : '미완료'}</span>`;
+      const photoHtml = rep
+        ? `<img src="${rep.url}" class="pp-photo-img-sm" onclick="openPhotoModal('${seg.id}','${subId}')" style="cursor:zoom-in">`
+        : (em ? `<div class="pp-photo-placeholder-sm" onclick="openPhotoModal('${seg.id}','${subId}')">탭하여 사진 추가</div>` : '');
       return `
         <div class="pp-subseg-item" data-seg-idx="${i}">
           <div class="pp-subseg-header" style="cursor:default">
             <span class="pp-subseg-dot" style="background:${s.color}"></span>
             <span>${s.from}m ~ ${s.to}m</span>
-            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto">
-              <input type="checkbox" class="pp-seg-done" data-idx="${i}" ${isDone ? 'checked' : ''}
-                style="width:15px;height:15px;accent-color:#38bdf8;cursor:pointer">
-              <span style="font-size:11px;color:#475569">완료</span>
-            </label>
-            <span class="pp-subseg-photo-hint" onclick="openPhotoModal('${seg.id}','${subId}')" style="cursor:pointer">${rep ? '📷' : '📷 없음'}</span>
+            ${checkHtml}
+            <span class="pp-subseg-photo-hint" onclick="openPhotoModal('${seg.id}','${subId}')" style="cursor:pointer">${rep ? '📷' : (em ? '📷 없음' : '')}</span>
           </div>
-          ${rep
-            ? `<img src="${rep.url}" class="pp-photo-img-sm" onclick="openPhotoModal('${seg.id}','${subId}')" style="cursor:zoom-in">`
-            : `<div class="pp-photo-placeholder-sm" onclick="openPhotoModal('${seg.id}','${subId}')">탭하여 사진 추가</div>`}
+          ${photoHtml}
         </div>`;
     }).join('');
     sectListHtml = `
       <div class="pp-subseg-list">${rows}</div>
-      <button id="pp-sect-save" onclick="_saveSectDone('${seg.id}')"
+      ${em ? `<button id="pp-sect-save" onclick="_saveSectDone('${seg.id}')"
         style="width:100%;margin:6px 0 2px;padding:7px;border-radius:7px;
           border:1px solid #38bdf8;background:#f0f9ff;color:#0369a1;
-          font-size:12px;font-weight:600;cursor:pointer">매달기 현황 저장</button>`;
+          font-size:12px;font-weight:600;cursor:pointer">매달기 현황 저장</button>` : ''}`;
   } else {
     const rep = _getRepPhoto(seg.id, '_pipe');
     sectListHtml = `
       <div class="pp-photo-area" onclick="openPhotoModal('${seg.id}','_pipe')">
         ${rep
           ? `<img src="${rep.url}" class="pp-photo-img">`
-          : `<div class="pp-photo-placeholder">📷 사진 없음 — 탭하여 추가</div>`}
+          : `<div class="pp-photo-placeholder">📷 사진 없음${em ? ' — 탭하여 추가' : ''}</div>`}
       </div>`;
   }
 
@@ -362,10 +366,10 @@ function _showPipePopup(seg, e) {
       ${sectListHtml}
     </div>
     <div class="pp-footer pp-footer-col">
-      <div class="pp-footer-row">
+      ${em ? `<div class="pp-footer-row">
         <button class="pp-btn-pick" onclick="startSectionPick('${seg.id}')">🗺️ 구간 선택</button>
         <button class="pp-btn-mgr"  onclick="openPipeListModal('${seg.id}')">📋 목록 관리</button>
-      </div>
+      </div>` : ''}
       <button class="pp-btn-photo" onclick="openPhotoModal('${seg.id}','_pipe')">📷 배관 전체 사진</button>
     </div>
   `;

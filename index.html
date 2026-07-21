@@ -32,6 +32,14 @@
       <span class="icon">📋</span> 규정집
     </div>
   </nav>
+  <div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.12)">
+    <button id="edit-lock-btn" onclick="toggleEditAuth()"
+      style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.25);
+        background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);
+        font-size:12px;font-weight:600;cursor:pointer">
+      🔒 편집 잠금
+    </button>
+  </div>
 </div>
 
 <!-- 메인 -->
@@ -65,7 +73,7 @@
         <button id="drone-toggle-btn" class="zone-btn" onclick="toggleDroneView()">🚁 현장사진</button>
         <button id="map-draw-toggle-btn" class="zone-btn" onclick="_toggleMapDraw()">✏️ 그림판</button>
       </div>
-      <button class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
+      <button id="ctrl-group-hdr-edit" class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
         <span id="edit-arrow">▸</span> 편집
       </button>
       <div id="edit-group" class="ctrl-group-items" style="display:none">
@@ -318,7 +326,7 @@
         <div id="drone-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span style="font-size:12px;color:#6b7280" id="drone-count-label"></span>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <div id="drone-edit-btns" style="display:flex;gap:6px;flex-wrap:wrap">
               <button id="drone-reorder-btn" onclick="_toggleDroneReorder()"
                 style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">⇅ 순서 변경</button>
               <button id="overlay-edit-btn" onclick="_toggleOverlayToolbar()"
@@ -418,7 +426,7 @@
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
                 <span id="drone-slide-counter" style="font-size:12px;color:#6b7280"></span>
-                <div style="display:flex;gap:6px">
+                <div id="drone-slide-edit-row" style="display:flex;gap:6px">
                   <button onclick="_moveCurrDroneToConstr()"
                     style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;cursor:pointer">📷 공사사진으로 이동</button>
                   <button onclick="_deleteCurrDronePhoto()"
@@ -440,7 +448,7 @@
                 oninput="_setConstrSize(+this.value)" style="width:90px;accent-color:#0d2b5e">
               <span id="constr-size-label" style="min-width:36px">180px</span>
             </div>
-            <button onclick="document.getElementById('constr-file-input').click()"
+            <button id="constr-add-btn" onclick="document.getElementById('constr-file-input').click()"
               style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
           </div>
           <div id="constr-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
@@ -1036,6 +1044,24 @@ window._psmPickColor = function(btn) {
   </div>
 </div>
 <input type="file" id="bp-photo-input" accept="image/*" multiple style="display:none" onchange="handleBoringPhotoUpload(this)">
+<!-- 편집 인증 모달 -->
+<div id="edit-auth-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:28px 24px;width:280px;box-shadow:0 24px 48px rgba(0,0,0,0.3)">
+    <div style="font-size:15px;font-weight:700;color:#0d2b5e;margin-bottom:4px">편집 모드 잠금 해제</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:16px">비밀번호를 입력하세요</div>
+    <input type="password" id="edit-pw-input" placeholder="비밀번호"
+      onkeydown="if(event.key==='Enter') submitEditAuth()"
+      style="width:100%;padding:10px 12px;border:1.5px solid #cbd5e1;border-radius:8px;
+        font-size:14px;box-sizing:border-box;outline:none">
+    <div id="edit-pw-error" style="display:none;color:#ef4444;font-size:12px;margin-top:6px">비밀번호가 틀렸습니다</div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="closeEditAuth()"
+        style="flex:1;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569;font-size:13px;cursor:pointer;font-weight:600">취소</button>
+      <button onclick="submitEditAuth()"
+        style="flex:1;padding:10px;border:none;border-radius:8px;background:#0d2b5e;color:#fff;font-size:13px;cursor:pointer;font-weight:600">확인</button>
+    </div>
+  </div>
+</div>
 <input type="file" id="drone-file-input" accept="image/*" multiple style="display:none" onchange="handleDroneUpload(this)">
 <input type="file" id="excav-file-input" accept="image/*" multiple style="display:none" onchange="handleExcavUpload(this)">
 <input type="file" id="constr-file-input" accept="image/*" multiple style="display:none" onchange="handleConstrUpload(this)">
