@@ -22,6 +22,8 @@ function _applyEditMode() {
     lockBtn.style.color        = em ? '#38bdf8'               : 'rgba(255,255,255,0.8)';
   }
   _renderConstrGrid();
+  const emergEdit = document.getElementById('emerg-edit-controls');
+  if (emergEdit) emergEdit.style.display = em ? 'flex' : 'none';
 }
 
 window.toggleEditAuth = function() {
@@ -1353,6 +1355,7 @@ function navigate(page) {
   if (page === 'field') renderField();
   if (page === 'alarm') renderAlarm();
   if (page === 'regulation') renderRegulation();
+  if (page === 'emergency') initEmergencyPage();
 }
 
 // ===== 캐시 로드 =====
