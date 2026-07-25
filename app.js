@@ -403,7 +403,7 @@ const _SITE_DEFAULT_ADDR = {
   'S016': '화성시 동탄구 반송동 59'
 };
 // S015/S016은 주소 고정 (편집 불필요)
-const _SITE_ADDR_EDITABLE = { '115st': true, 'S015': false, 'S016': false };
+const _SITE_ADDR_EDITABLE = { '115st': true, 'S015': true, 'S016': true };
 
 function _getSiteAddress(siteId) {
   return localStorage.getItem(`_site_address_${siteId}`) || _SITE_DEFAULT_ADDR[siteId] || '';
