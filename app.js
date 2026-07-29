@@ -24,6 +24,9 @@ function _applyEditMode() {
   _renderConstrGrid();
   const emergEdit = document.getElementById('emerg-edit-controls');
   if (emergEdit) emergEdit.style.display = em ? 'flex' : 'none';
+  const protToolbar = document.getElementById('prot-toolbar');
+  if (protToolbar) protToolbar.style.display = em ? 'flex' : 'none';
+  if (typeof _renderProtTable === 'function') _renderProtTable();
 }
 
 window.toggleEditAuth = function() {
@@ -1352,7 +1355,7 @@ function navigate(page) {
   document.querySelector(`[data-page="${page}"]`).classList.add('active');
 
   if (page === 'dashboard') renderDashboard();
-  if (page === 'field') renderField();
+  if (page === 'field') initProtectionPage();
   if (page === 'alarm') renderAlarm();
   if (page === 'regulation') renderRegulation();
   if (page === 'emergency') initEmergencyPage();
