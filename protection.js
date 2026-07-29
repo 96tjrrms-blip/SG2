@@ -199,6 +199,7 @@ function _renderProtTable() {
   h += '</div>';
 
   wrap.innerHTML = h;
+  _renderRegSection();
 }
 
 // ===== 셀 편집 =====
@@ -309,4 +310,139 @@ window.switchProtSite = async function(s) {
 window.initProtectionPage = async function() {
   if (!_protCache[_protSite]) await _loadProt(_protSite);
   _renderProtTable();
+};
+
+// ===== 반송공원 지역정압기 현장점검 (16환기구 전용) =====
+
+const _REG_KEY = '_regulator_S016';
+let _regData = null;
+
+async function _loadReg() {
+  if (_regData) return _regData;
+  try {
+    const all = await fetchAllPipeSettings();
+    const row = all[_REG_KEY];
+    _regData = (row && row.scenarios) ? row.scenarios : { entries: [] };
+  } catch {
+    _regData = { entries: [] };
+  }
+  return _regData;
+}
+
+async function _saveReg() {
+  await upsertPipeSettings(_REG_KEY, { scenarios: _regData });
+}
+
+function _renderRegSection() {
+  const section = document.getElementById('reg-section');
+  const addBtn = document.getElementById('reg-add-btn');
+  const is16 = _protSite === '16환기구';
+  if (section) section.style.display = is16 ? '' : 'none';
+  if (addBtn) addBtn.style.display = (is16 && window._editMode) ? '' : 'none';
+  if (!is16) return;
+  if (!_regData) {
+    _loadReg().then(() => _renderRegTable());
+    return;
+  }
+  _renderRegTable();
+}
+
+function _renderRegTable() {
+  const wrap = document.getElementById('reg-table-wrap');
+  if (!wrap || !_regData) return;
+  const em = !!window._editMode;
+
+  const entries = [...(_regData.entries || [])].sort((a, b) =>
+    b.date.localeCompare(a.date)
+  );
+
+  if (entries.length === 0) {
+    wrap.innerHTML = `<div class="prot-empty">${em
+      ? '＋ 측정 추가 버튼을 클릭하여 첫 측정값을 입력하세요.'
+      : '측정 데이터가 없습니다.'}</div>`;
+    return;
+  }
+
+  let h = '<div style="overflow-x:auto"><table class="prot-table reg-table">';
+  h += `<thead><tr>
+    <th class="prot-th reg-th-date">날짜</th>
+    <th class="prot-th reg-th-val">1번 ①<br><small style="font-weight:400;opacity:.85">배관→지면</small></th>
+    <th class="prot-th reg-th-val">1번 ②<br><small style="font-weight:400;opacity:.85">배관→서포트</small></th>
+    <th class="prot-th reg-th-val">4번 ①<br><small style="font-weight:400;opacity:.85">배관→지면</small></th>
+    <th class="prot-th reg-th-val">4번 ②<br><small style="font-weight:400;opacity:.85">배관→서포트</small></th>
+    ${em ? '<th class="prot-th" style="width:36px"></th>' : ''}
+  </tr></thead><tbody>`;
+
+  entries.forEach(e => {
+    const disp = e.date.slice(5).replace('-', '/');
+    h += `<tr>
+      <td class="reg-td reg-td-date" data-id="${e.id}" data-field="date"
+        onclick="${em ? `editRegDate('${e.id}',this)` : ''}"
+        style="${em ? 'cursor:pointer' : ''}">
+        ${disp}
+      </td>
+      <td class="reg-cell" data-id="${e.id}" data-field="pt1_1" onclick="editRegCell(this)">${e.pt1_1 || ''}</td>
+      <td class="reg-cell" data-id="${e.id}" data-field="pt1_2" onclick="editRegCell(this)">${e.pt1_2 || ''}</td>
+      <td class="reg-cell" data-id="${e.id}" data-field="pt4_1" onclick="editRegCell(this)">${e.pt4_1 || ''}</td>
+      <td class="reg-cell" data-id="${e.id}" data-field="pt4_2" onclick="editRegCell(this)">${e.pt4_2 || ''}</td>
+      ${em ? `<td class="reg-td" style="text-align:center"><button class="prot-del" onclick="_delRegEntry('${e.id}')">✕</button></td>` : ''}
+    </tr>`;
+  });
+
+  h += '</tbody></table></div>';
+  wrap.innerHTML = h;
+}
+
+window.addRegEntry = function() {
+  const today = new Date().toISOString().split('T')[0];
+  const date = prompt('측정 날짜 (YYYY-MM-DD):', today);
+  if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) return;
+  if (!_regData) _regData = { entries: [] };
+  _regData.entries.push({ id: `e${Date.now()}`, date, pt1_1: '', pt1_2: '', pt4_1: '', pt4_2: '' });
+  _saveReg().then(() => _renderRegTable());
+};
+
+window.editRegCell = function(td) {
+  if (!window._editMode || td.querySelector('input')) return;
+  const { id, field } = td.dataset;
+  const cur = td.textContent.trim();
+  td.innerHTML = `<input type="text" class="prot-cell-input" value="${cur}" placeholder="예: 79cm">`;
+  const inp = td.querySelector('input');
+  inp.focus(); inp.select();
+  const done = async () => {
+    const val = inp.value.trim();
+    const entry = _regData.entries.find(e => e.id === id);
+    if (entry) entry[field] = val;
+    await _saveReg();
+    _renderRegTable();
+  };
+  inp.addEventListener('blur', done);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') _renderRegTable();
+  });
+};
+
+window.editRegDate = function(id, td) {
+  if (!window._editMode || td.querySelector('input')) return;
+  const entry = _regData.entries.find(e => e.id === id);
+  if (!entry) return;
+  const cur = entry.date;
+  td.innerHTML = `<input type="date" class="prot-cell-input" value="${cur}" style="width:120px">`;
+  const inp = td.querySelector('input');
+  inp.focus();
+  const done = async () => {
+    const val = inp.value.trim();
+    if (val && val.match(/^\d{4}-\d{2}-\d{2}$/)) entry.date = val;
+    await _saveReg();
+    _renderRegTable();
+  };
+  inp.addEventListener('blur', done);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') _renderRegTable(); });
+};
+
+window._delRegEntry = function(id) {
+  if (!confirm('이 측정 행을 삭제하시겠습니까?')) return;
+  _regData.entries = _regData.entries.filter(e => e.id !== id);
+  _saveReg().then(() => _renderRegTable());
 };
