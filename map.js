@@ -331,7 +331,7 @@ function _showPipePopup(seg, e) {
         <div class="pp-subseg-item" data-seg-idx="${i}">
           <div class="pp-subseg-header" style="cursor:default">
             <span class="pp-subseg-dot" style="background:${s.color}"></span>
-            <span>${s.from}m ~ ${s.to}m</span>
+            <span>노출중 (${parseFloat((s.to - s.from).toFixed(1))}m)</span>
             ${checkHtml}
             <span class="pp-subseg-photo-hint" onclick="openPhotoModal('${seg.id}','${subId}')" style="cursor:pointer">${rep ? '📷' : (em ? '📷 없음' : '')}</span>
           </div>
