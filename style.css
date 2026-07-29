@@ -576,3 +576,7 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 }
 .reg-pg-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
 .reg-pg-label { font-weight: 500; }
+.reg-edit-btn { background: #0d2b5e; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; }
+.reg-edit-btn:hover { opacity: 0.85; }
+.reg-save-btn { background: #16a34a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; margin-right:3px; }
+.reg-edit-inp { width:100%; border:1px solid #93c5fd; border-radius:4px; padding:3px 6px; font-size:13px; text-align:center; background:#fff; }

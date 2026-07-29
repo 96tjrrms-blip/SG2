@@ -378,6 +378,7 @@ const _REG_KEY = '_regulator_S016';
 const _REG_PER_PAGE = 20;
 let _regData = null;
 let _regPage = 0;
+let _regEditingId = null;
 
 async function _loadReg() {
   if (_regData) return _regData;
@@ -387,6 +388,13 @@ async function _loadReg() {
     _regData = (row && row.scenarios) ? row.scenarios : { entries: [] };
   } catch {
     _regData = { entries: [] };
+  }
+  // 과거 데이터 자동 합산 (날짜 기준 중복 방지)
+  const existingDates = new Set(_regData.entries.map(e => e.date));
+  const toAdd = _REG_HISTORY.filter(h => !existingDates.has(h.date));
+  if (toAdd.length > 0) {
+    _regData.entries = [..._regData.entries, ...toAdd];
+    _saveReg(); // fire-and-forget
   }
   return _regData;
 }
@@ -430,23 +438,14 @@ function _renderRegTable() {
   const total = allEntries.length;
 
   if (total === 0) {
-    wrap.innerHTML = `<div class="prot-empty">
-      ${em
-        ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px">
-            <div>측정 데이터가 없습니다.</div>
-            <button class="zone-btn" onclick="importRegHistory()" style="font-size:13px">📋 과거 데이터 불러오기 (2025.04 ~ 2026.06)</button>
-           </div>`
-        : '측정 데이터가 없습니다.'}
-    </div>`;
+    wrap.innerHTML = `<div class="prot-empty">측정 데이터가 없습니다.</div>`;
     return;
   }
 
   const totalPages = Math.ceil(total / _REG_PER_PAGE);
   _regPage = Math.max(0, Math.min(_regPage, totalPages - 1));
   const pageEntries = allEntries.slice(_regPage * _REG_PER_PAGE, (_regPage + 1) * _REG_PER_PAGE);
-  const countLabel = `전체 ${total}건`;
-
-  const pager = _regPager(_regPage, total, countLabel);
+  const pager = _regPager(_regPage, total, `전체 ${total}건`);
 
   let h = pager;
   h += '<div style="overflow-x:auto"><table class="prot-table reg-table">';
@@ -456,29 +455,69 @@ function _renderRegTable() {
     <th class="prot-th reg-th-val">1번 ②<br><small style="font-weight:400;opacity:.85">배관→서포트</small></th>
     <th class="prot-th reg-th-val">4번 ①<br><small style="font-weight:400;opacity:.85">배관→지면</small></th>
     <th class="prot-th reg-th-val">4번 ②<br><small style="font-weight:400;opacity:.85">배관→서포트</small></th>
-    ${em ? '<th class="prot-th" style="width:36px"></th>' : ''}
+    ${em ? '<th class="prot-th" style="width:80px"></th>' : ''}
   </tr></thead><tbody>`;
 
   pageEntries.forEach(e => {
-    const disp = e.date.slice(5).replace('-', '/');
-    h += `<tr>
-      <td class="reg-td reg-td-date" data-id="${e.id}" data-field="date"
-        onclick="${em ? `editRegDate('${e.id}',this)` : ''}"
-        style="${em ? 'cursor:pointer' : ''}">
-        ${disp}
-      </td>
-      <td class="reg-cell" data-id="${e.id}" data-field="pt1_1" onclick="editRegCell(this)">${e.pt1_1 || ''}</td>
-      <td class="reg-cell" data-id="${e.id}" data-field="pt1_2" onclick="editRegCell(this)">${e.pt1_2 || ''}</td>
-      <td class="reg-cell" data-id="${e.id}" data-field="pt4_1" onclick="editRegCell(this)">${e.pt4_1 || ''}</td>
-      <td class="reg-cell" data-id="${e.id}" data-field="pt4_2" onclick="editRegCell(this)">${e.pt4_2 || ''}</td>
-      ${em ? `<td class="reg-td" style="text-align:center"><button class="prot-del" onclick="_delRegEntry('${e.id}')">✕</button></td>` : ''}
-    </tr>`;
+    const disp = e.date.replace(/-/g, '/');
+    if (_regEditingId === e.id) {
+      h += `<tr style="background:#eff6ff">
+        <td class="reg-td reg-td-date">
+          <input type="date" id="redit-date-${e.id}" value="${e.date}"
+            style="width:130px;border:1px solid #93c5fd;border-radius:4px;padding:3px;font-size:12px">
+        </td>
+        <td class="reg-td"><input type="text" id="redit-pt1_1-${e.id}" value="${e.pt1_1||''}" class="reg-edit-inp" placeholder="예: 79cm"></td>
+        <td class="reg-td"><input type="text" id="redit-pt1_2-${e.id}" value="${e.pt1_2||''}" class="reg-edit-inp" placeholder="예: 0.5cm"></td>
+        <td class="reg-td"><input type="text" id="redit-pt4_1-${e.id}" value="${e.pt4_1||''}" class="reg-edit-inp" placeholder="예: 79cm"></td>
+        <td class="reg-td"><input type="text" id="redit-pt4_2-${e.id}" value="${e.pt4_2||''}" class="reg-edit-inp" placeholder="예: 0.5cm"></td>
+        <td class="reg-td" style="text-align:center;white-space:nowrap">
+          <button class="reg-save-btn" onclick="_saveRegRow('${e.id}')">저장</button>
+          <button class="prot-del" onclick="_cancelRegEdit()">취소</button>
+        </td>
+      </tr>`;
+    } else {
+      h += `<tr>
+        <td class="reg-td reg-td-date">${disp}</td>
+        <td class="reg-cell">${e.pt1_1 || ''}</td>
+        <td class="reg-cell">${e.pt1_2 || ''}</td>
+        <td class="reg-cell">${e.pt4_1 || ''}</td>
+        <td class="reg-cell">${e.pt4_2 || ''}</td>
+        ${em ? `<td class="reg-td" style="text-align:center;white-space:nowrap">
+          <button class="reg-edit-btn" onclick="_editRegRow('${e.id}')">수정</button>
+          <button class="prot-del" style="margin-left:3px" onclick="_delRegEntry('${e.id}')">✕</button>
+        </td>` : ''}
+      </tr>`;
+    }
   });
 
   h += '</tbody></table></div>';
   h += pager;
   wrap.innerHTML = h;
 }
+
+window._editRegRow = function(id) {
+  _regEditingId = id;
+  _renderRegTable();
+};
+
+window._cancelRegEdit = function() {
+  _regEditingId = null;
+  _renderRegTable();
+};
+
+window._saveRegRow = async function(id) {
+  const entry = _regData.entries.find(e => e.id === id);
+  if (!entry) return;
+  const dv = document.getElementById(`redit-date-${id}`)?.value;
+  if (dv && /^\d{4}-\d{2}-\d{2}$/.test(dv)) entry.date = dv;
+  ['pt1_1', 'pt1_2', 'pt4_1', 'pt4_2'].forEach(f => {
+    const el = document.getElementById(`redit-${f}-${id}`);
+    if (el) entry[f] = el.value.trim();
+  });
+  _regEditingId = null;
+  await _saveReg();
+  _renderRegTable();
+};
 
 window._regPageMove = function(dir) {
   const total = (_regData && _regData.entries) ? _regData.entries.length : 0;
@@ -487,18 +526,6 @@ window._regPageMove = function(dir) {
   _renderRegTable();
 };
 
-window.importRegHistory = function() {
-  if (!window._editMode) return;
-  if (!confirm(
-    `수기 기록(2025.04~2026.06) 56건을 불러옵니다.\n\n⚠️ 주의: 손글씨 판독이라 일부 값이 부정확할 수 있습니다.\n불러온 후 원본 자료와 대조하여 확인하세요.\n\n계속하시겠습니까?`
-  )) return;
-  if (!_regData) _regData = { entries: [] };
-  const existingDates = new Set(_regData.entries.map(e => e.date));
-  const toAdd = _REG_HISTORY.filter(h => !existingDates.has(h.date));
-  _regData.entries = [..._regData.entries, ...toAdd];
-  _regPage = 0;
-  _saveReg().then(() => _renderRegTable());
-};
 
 window.addRegEntry = function() {
   const today = new Date().toISOString().split('T')[0];
@@ -510,44 +537,6 @@ window.addRegEntry = function() {
   _saveReg().then(() => _renderRegTable());
 };
 
-window.editRegCell = function(td) {
-  if (!window._editMode || td.querySelector('input')) return;
-  const { id, field } = td.dataset;
-  const cur = td.textContent.trim();
-  td.innerHTML = `<input type="text" class="prot-cell-input" value="${cur}" placeholder="예: 79cm">`;
-  const inp = td.querySelector('input');
-  inp.focus(); inp.select();
-  const done = async () => {
-    const val = inp.value.trim();
-    const entry = _regData.entries.find(e => e.id === id);
-    if (entry) entry[field] = val;
-    await _saveReg();
-    _renderRegTable();
-  };
-  inp.addEventListener('blur', done);
-  inp.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
-    if (e.key === 'Escape') _renderRegTable();
-  });
-};
-
-window.editRegDate = function(id, td) {
-  if (!window._editMode || td.querySelector('input')) return;
-  const entry = _regData.entries.find(e => e.id === id);
-  if (!entry) return;
-  const cur = entry.date;
-  td.innerHTML = `<input type="date" class="prot-cell-input" value="${cur}" style="width:120px">`;
-  const inp = td.querySelector('input');
-  inp.focus();
-  const done = async () => {
-    const val = inp.value.trim();
-    if (val && val.match(/^\d{4}-\d{2}-\d{2}$/)) entry.date = val;
-    await _saveReg();
-    _renderRegTable();
-  };
-  inp.addEventListener('blur', done);
-  inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') _renderRegTable(); });
-};
 
 window._delRegEntry = function(id) {
   if (!confirm('이 측정 행을 삭제하시겠습니까?')) return;
