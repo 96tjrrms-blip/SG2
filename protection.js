@@ -314,8 +314,70 @@ window.initProtectionPage = async function() {
 
 // ===== 반송공원 지역정압기 현장점검 (16환기구 전용) =====
 
+// ⚠️ 수기 판독 — 불확실한 값 있음. 불러온 후 원본과 대조 필요.
+const _REG_HISTORY = [
+  {id:'h01',date:'2025-04-21',pt1_1:'77cm',pt1_2:'0.5cm',pt4_1:'79cm',pt4_2:'0.9cm'},
+  {id:'h02',date:'2025-04-28',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h03',date:'2025-05-07',pt1_1:'77cm',pt1_2:'0.5cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h04',date:'2025-05-13',pt1_1:'77cm',pt1_2:'0.5cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h05',date:'2025-05-20',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h06',date:'2025-05-26',pt1_1:'77cm',pt1_2:'0.4cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h07',date:'2025-06-02',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'77cm',pt4_2:'0.7cm'},
+  {id:'h08',date:'2025-06-09',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h09',date:'2025-06-16',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h10',date:'2025-06-23',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h11',date:'2025-06-30',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h12',date:'2025-07-07',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h13',date:'2025-07-14',pt1_1:'79cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h14',date:'2025-07-21',pt1_1:'79cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h15',date:'2025-07-28',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h16',date:'2025-08-04',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h17',date:'2025-08-11',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h18',date:'2025-08-18',pt1_1:'79cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h19',date:'2025-08-25',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h20',date:'2025-09-01',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h21',date:'2025-09-15',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h22',date:'2025-09-22',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h23',date:'2025-09-29',pt1_1:'79cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h24',date:'2025-10-12',pt1_1:'79cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h25',date:'2025-10-20',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h26',date:'2025-10-27',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.7cm'},
+  {id:'h27',date:'2025-11-03',pt1_1:'79cm',pt1_2:'0.5cm',pt4_1:'80cm',pt4_2:'0.9cm'},
+  {id:'h28',date:'2025-11-10',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'78cm',pt4_2:'0.8cm'},
+  {id:'h29',date:'2025-11-17',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'78cm',pt4_2:'0.8cm'},
+  {id:'h30',date:'2025-11-24',pt1_1:'78cm',pt1_2:'0.5cm',pt4_1:'78cm',pt4_2:'0.8cm'},
+  {id:'h31',date:'2025-12-01',pt1_1:'77cm',pt1_2:'0.3cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h32',date:'2025-12-15',pt1_1:'78cm',pt1_2:'0.3cm',pt4_1:'80cm',pt4_2:'0.7cm'},
+  {id:'h33',date:'2025-12-23',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'78cm',pt4_2:'0.7cm'},
+  {id:'h34',date:'2025-12-29',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h35',date:'2026-01-05',pt1_1:'79cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h36',date:'2026-01-12',pt1_1:'77cm',pt1_2:'0.3cm',pt4_1:'80cm',pt4_2:'0.7cm'},
+  {id:'h37',date:'2026-01-19',pt1_1:'78cm',pt1_2:'0.2cm',pt4_1:'79cm',pt4_2:'0.6cm'},
+  {id:'h38',date:'2026-01-26',pt1_1:'78cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.8cm'},
+  {id:'h39',date:'2026-02-02',pt1_1:'79cm',pt1_2:'0.5cm',pt4_1:'79cm',pt4_2:'0.8cm'},
+  {id:'h40',date:'2026-02-09',pt1_1:'79cm',pt1_2:'0.4cm',pt4_1:'79cm',pt4_2:'0.9cm'},
+  {id:'h41',date:'2026-02-19',pt1_1:'77cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.9cm'},
+  {id:'h42',date:'2026-02-22',pt1_1:'79cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.9cm'},
+  {id:'h43',date:'2026-03-03',pt1_1:'79cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.8cm'},
+  {id:'h44',date:'2026-03-11',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'78cm',pt4_2:'0.8cm'},
+  {id:'h45',date:'2026-03-16',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'79cm',pt4_2:'0.8cm'},
+  {id:'h46',date:'2026-03-30',pt1_1:'79cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.7cm'},
+  {id:'h47',date:'2026-04-06',pt1_1:'78cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h48',date:'2026-04-13',pt1_1:'80cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.7cm'},
+  {id:'h49',date:'2026-04-20',pt1_1:'80cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.8cm'},
+  {id:'h50',date:'2026-04-30',pt1_1:'80cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.7cm'},
+  {id:'h51',date:'2026-05-06',pt1_1:'80cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.6cm'},
+  {id:'h52',date:'2026-05-11',pt1_1:'80cm',pt1_2:'0.4cm',pt4_1:'80cm',pt4_2:'0.6cm'},
+  {id:'h53',date:'2026-05-18',pt1_1:'78cm',pt1_2:'0.7cm',pt4_1:'79cm',pt4_2:'0.8cm'},
+  {id:'h54',date:'2026-05-26',pt1_1:'79cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h55',date:'2026-06-02',pt1_1:'79cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.7cm'},
+  {id:'h56',date:'2026-06-08',pt1_1:'79cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.9cm'},
+];
+
 const _REG_KEY = '_regulator_S016';
+const _REG_PER_PAGE = 20;
 let _regData = null;
+let _regPage = 0;
 
 async function _loadReg() {
   if (_regData) return _regData;
@@ -347,23 +409,47 @@ function _renderRegSection() {
   _renderRegTable();
 }
 
+function _regPager(page, total, label) {
+  const totalPages = Math.ceil(total / _REG_PER_PAGE);
+  if (totalPages <= 1) return '';
+  return `<div class="reg-pager">
+    <button class="reg-pg-btn" onclick="_regPageMove(-1)" ${page === 0 ? 'disabled' : ''}>◀</button>
+    <span class="reg-pg-label">${page + 1} / ${totalPages} 페이지 (${label})</span>
+    <button class="reg-pg-btn" onclick="_regPageMove(1)" ${page >= totalPages - 1 ? 'disabled' : ''}>▶</button>
+  </div>`;
+}
+
 function _renderRegTable() {
   const wrap = document.getElementById('reg-table-wrap');
   if (!wrap || !_regData) return;
   const em = !!window._editMode;
 
-  const entries = [...(_regData.entries || [])].sort((a, b) =>
+  const allEntries = [...(_regData.entries || [])].sort((a, b) =>
     b.date.localeCompare(a.date)
   );
+  const total = allEntries.length;
 
-  if (entries.length === 0) {
-    wrap.innerHTML = `<div class="prot-empty">${em
-      ? '＋ 측정 추가 버튼을 클릭하여 첫 측정값을 입력하세요.'
-      : '측정 데이터가 없습니다.'}</div>`;
+  if (total === 0) {
+    wrap.innerHTML = `<div class="prot-empty">
+      ${em
+        ? `<div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div>측정 데이터가 없습니다.</div>
+            <button class="zone-btn" onclick="importRegHistory()" style="font-size:13px">📋 과거 데이터 불러오기 (2025.04 ~ 2026.06)</button>
+           </div>`
+        : '측정 데이터가 없습니다.'}
+    </div>`;
     return;
   }
 
-  let h = '<div style="overflow-x:auto"><table class="prot-table reg-table">';
+  const totalPages = Math.ceil(total / _REG_PER_PAGE);
+  _regPage = Math.max(0, Math.min(_regPage, totalPages - 1));
+  const pageEntries = allEntries.slice(_regPage * _REG_PER_PAGE, (_regPage + 1) * _REG_PER_PAGE);
+  const countLabel = `전체 ${total}건`;
+
+  const pager = _regPager(_regPage, total, countLabel);
+
+  let h = pager;
+  h += '<div style="overflow-x:auto"><table class="prot-table reg-table">';
   h += `<thead><tr>
     <th class="prot-th reg-th-date">날짜</th>
     <th class="prot-th reg-th-val">1번 ①<br><small style="font-weight:400;opacity:.85">배관→지면</small></th>
@@ -373,7 +459,7 @@ function _renderRegTable() {
     ${em ? '<th class="prot-th" style="width:36px"></th>' : ''}
   </tr></thead><tbody>`;
 
-  entries.forEach(e => {
+  pageEntries.forEach(e => {
     const disp = e.date.slice(5).replace('-', '/');
     h += `<tr>
       <td class="reg-td reg-td-date" data-id="${e.id}" data-field="date"
@@ -390,8 +476,29 @@ function _renderRegTable() {
   });
 
   h += '</tbody></table></div>';
+  h += pager;
   wrap.innerHTML = h;
 }
+
+window._regPageMove = function(dir) {
+  const total = (_regData && _regData.entries) ? _regData.entries.length : 0;
+  const totalPages = Math.ceil(total / _REG_PER_PAGE);
+  _regPage = Math.max(0, Math.min(_regPage + dir, totalPages - 1));
+  _renderRegTable();
+};
+
+window.importRegHistory = function() {
+  if (!window._editMode) return;
+  if (!confirm(
+    `수기 기록(2025.04~2026.06) 56건을 불러옵니다.\n\n⚠️ 주의: 손글씨 판독이라 일부 값이 부정확할 수 있습니다.\n불러온 후 원본 자료와 대조하여 확인하세요.\n\n계속하시겠습니까?`
+  )) return;
+  if (!_regData) _regData = { entries: [] };
+  const existingDates = new Set(_regData.entries.map(e => e.date));
+  const toAdd = _REG_HISTORY.filter(h => !existingDates.has(h.date));
+  _regData.entries = [..._regData.entries, ...toAdd];
+  _regPage = 0;
+  _saveReg().then(() => _renderRegTable());
+};
 
 window.addRegEntry = function() {
   const today = new Date().toISOString().split('T')[0];
@@ -399,6 +506,7 @@ window.addRegEntry = function() {
   if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) return;
   if (!_regData) _regData = { entries: [] };
   _regData.entries.push({ id: `e${Date.now()}`, date, pt1_1: '', pt1_2: '', pt4_1: '', pt4_2: '' });
+  _regPage = 0;
   _saveReg().then(() => _renderRegTable());
 };
 

@@ -564,3 +564,15 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
   padding: 6px 10px; transition: background 0.1s; font-size: 13px; color: #1e3a6e;
 }
 .reg-cell:hover { background: #eff6ff; }
+
+/* 정압기 테이블 페이지네이션 */
+.reg-pager {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; padding: 8px 0; font-size: 13px; color: #475569;
+}
+.reg-pg-btn {
+  background: #0d2b5e; color: #fff; border: none; border-radius: 6px;
+  padding: 4px 12px; font-size: 13px; cursor: pointer; transition: opacity 0.15s;
+}
+.reg-pg-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+.reg-pg-label { font-weight: 500; }
