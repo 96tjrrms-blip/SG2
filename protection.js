@@ -60,15 +60,7 @@ function _pd() {
 function _rk(pid, mid, dt) { return `${pid}|${mid}|${dt}`; }
 
 function _colTotal(pid, mid) {
-  const d = _pd(), m = d.measures.find(x => x.id === mid);
-  if (!m) return '-';
-  if (!m.isSum) {
-    for (let i = d.dates.length - 1; i >= 0; i--) {
-      const v = d.records[_rk(pid, mid, d.dates[i])];
-      if (v !== undefined && v !== '') return v;
-    }
-    return '-';
-  }
+  const d = _pd();
   let s = 0, any = false;
   d.dates.forEach(dt => {
     const v = d.records[_rk(pid, mid, dt)];
@@ -78,8 +70,7 @@ function _colTotal(pid, mid) {
 }
 
 function _grandTotal(mid) {
-  const d = _pd(), m = d.measures.find(x => x.id === mid);
-  if (!m || !m.isSum) return '-';
+  const d = _pd();
   let s = 0, any = false;
   d.pipes.forEach(p => d.dates.forEach(dt => {
     const v = d.records[_rk(p.id, mid, dt)];
@@ -121,11 +112,12 @@ function _renderProtTable() {
   h += '<thead><tr>';
   if (hasPipes) h += '<th class="prot-th prot-col-pipe">배관</th>';
   h += '<th class="prot-th prot-col-measure">항목</th>';
+  h += '<th class="prot-th prot-col-total">합계</th>';
   d.dates.forEach(dt => {
     const lbl = dt.slice(5).replace('-', '/');
     h += `<th class="prot-th prot-col-date">${lbl}${em ? `<button class="prot-del" onclick="_delProtDate('${dt}')">✕</button>` : ''}</th>`;
   });
-  h += '<th class="prot-th prot-col-total">합계</th></tr></thead>';
+  h += '</tr></thead>';
 
   // ── 바디 ──
   h += '<tbody>';
@@ -151,33 +143,32 @@ function _renderProtTable() {
             ${(em && pi === 0) ? `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>` : ''}
           </div>
         </td>`;
+        h += `<td class="prot-td prot-col-total">${_colTotal(pipe.id, m.id)}</td>`;
         d.dates.forEach(dt => {
           const val = d.records[_rk(pipe.id, m.id, dt)] || '';
           h += `<td class="prot-cell" data-pipe="${pipe.id}" data-measure="${m.id}" data-date="${dt}" onclick="editProtCell(this)">${val}</td>`;
         });
-        h += `<td class="prot-td prot-col-total">${_colTotal(pipe.id, m.id)}</td>`;
         h += '</tr>';
       });
       if (pi < d.pipes.length - 1) {
-        const cols = 1 + 1 + d.dates.length + 1;
+        const cols = (hasPipes ? 1 : 0) + 1 + 1 + d.dates.length;
         h += `<tr class="prot-pipe-sep"><td colspan="${cols}"></td></tr>`;
       }
     });
 
     // 전체 합계 (복수 배관 시)
-    const sumMs = d.measures.filter(m => m.isSum);
-    if (d.pipes.length > 1 && sumMs.length > 0 && d.dates.length > 0) {
-      sumMs.forEach((m, mi) => {
+    if (d.pipes.length > 1 && d.measures.length > 0 && d.dates.length > 0) {
+      d.measures.forEach((m, mi) => {
         h += '<tr class="prot-grand-row">';
         if (mi === 0) {
-          h += `<td class="prot-td prot-col-pipe prot-grand-pipe" rowspan="${sumMs.length}">전체 합계</td>`;
+          h += `<td class="prot-td prot-col-pipe prot-grand-pipe" rowspan="${d.measures.length}">전체 합계</td>`;
         }
         h += `<td class="prot-td prot-col-measure prot-grand-measure">${m.label}</td>`;
+        h += `<td class="prot-td prot-col-total prot-grand-total-cell">${_grandTotal(m.id)}</td>`;
         d.dates.forEach(dt => {
           const s = _dateColSum(m.id, dt);
           h += `<td class="prot-grand-cell">${s}</td>`;
         });
-        h += `<td class="prot-td prot-col-total prot-grand-total-cell">${_grandTotal(m.id)}</td>`;
         h += '</tr>';
       });
     }
@@ -191,11 +182,11 @@ function _renderProtTable() {
           ${em ? `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>` : ''}
         </div>
       </td>`;
+      h += `<td class="prot-td prot-col-total">${_colTotal('site', m.id)}</td>`;
       d.dates.forEach(dt => {
         const val = d.records[_rk('site', m.id, dt)] || '';
         h += `<td class="prot-cell" data-pipe="site" data-measure="${m.id}" data-date="${dt}" onclick="editProtCell(this)">${val}</td>`;
       });
-      h += `<td class="prot-td prot-col-total">${_colTotal('site', m.id)}</td>`;
       h += '</tr>';
     });
   }

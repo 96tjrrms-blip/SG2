@@ -516,10 +516,11 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align:
 }
 .prot-col-pipe    { min-width: 110px; width: 110px; position: sticky; left: 0;     z-index: 3; }
 .prot-col-measure { min-width: 140px; width: 140px; position: sticky; left: 110px; z-index: 3; }
+.prot-col-total   { min-width: 65px;  width: 65px;  position: sticky; left: 250px; z-index: 3; border-right: 2px solid #bfdbfe !important; }
 .prot-table.no-pipes .prot-col-measure { left: 0; }
+.prot-table.no-pipes .prot-col-total   { left: 140px; }
 .prot-col-date  { min-width: 72px; }
-.prot-col-total { min-width: 65px; }
-thead .prot-col-pipe, thead .prot-col-measure { z-index: 5; }
+thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 5; }
 .prot-th.prot-col-pipe    { background: #0b234e; }
 .prot-th.prot-col-measure { background: #0c2959; }
 .prot-th.prot-col-total   { background: #1e3a6e; }
