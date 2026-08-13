@@ -40,7 +40,7 @@ async function _loadProt(s) {
   try {
     const all = await fetchAllPipeSettings();
     const row = all[_protKey(s)];
-    _protCache[s] = (row && row.scenarios) ? row.scenarios : _emptyProt(s);
+    _protCache[s] = (row && row.colors) ? row.colors : _emptyProt(s);
   } catch (e) {
     console.warn('prot load:', e);
     _protCache[s] = _emptyProt(s);
@@ -49,7 +49,7 @@ async function _loadProt(s) {
 }
 
 async function _saveProt() {
-  await upsertPipeSettings(_protKey(_protSite), { scenarios: _protCache[_protSite] });
+  await upsertPipeSettings(_protKey(_protSite), { colors: _protCache[_protSite] });
 }
 
 function _pd() {
@@ -386,7 +386,7 @@ async function _loadReg() {
   try {
     const all = await fetchAllPipeSettings();
     const row = all[_REG_KEY];
-    _regData = (row && row.scenarios) ? row.scenarios : { entries: [] };
+    _regData = (row && row.colors) ? row.colors : { entries: [] };
   } catch {
     _regData = { entries: [] };
   }
@@ -402,7 +402,7 @@ async function _loadReg() {
 
 async function _saveReg() {
   try {
-    await upsertPipeSettings(_REG_KEY, { scenarios: _regData });
+    await upsertPipeSettings(_REG_KEY, { colors: _regData });
   } catch (err) {
     alert('저장 실패: ' + (err?.message || err));
     throw err;
