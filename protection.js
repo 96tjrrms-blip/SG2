@@ -379,6 +379,7 @@ const _REG_PER_PAGE = 20;
 let _regData = null;
 let _regPage = 0;
 let _regEditingId = null;
+let _regAddingNew = false;
 
 async function _loadReg() {
   if (_regData) return _regData;
@@ -400,7 +401,12 @@ async function _loadReg() {
 }
 
 async function _saveReg() {
-  await upsertPipeSettings(_REG_KEY, { scenarios: _regData });
+  try {
+    await upsertPipeSettings(_REG_KEY, { scenarios: _regData });
+  } catch (err) {
+    alert('저장 실패: ' + (err?.message || err));
+    throw err;
+  }
 }
 
 function _renderRegSection() {
@@ -447,6 +453,7 @@ function _renderRegTable() {
   const pageEntries = allEntries.slice(_regPage * _REG_PER_PAGE, (_regPage + 1) * _REG_PER_PAGE);
   const pager = _regPager(_regPage, total, `전체 ${total}건`);
 
+  const today = new Date().toISOString().split('T')[0];
   let h = pager;
   h += '<div style="overflow-x:auto"><table class="prot-table reg-table">';
   h += `<thead><tr>
@@ -457,6 +464,24 @@ function _renderRegTable() {
     <th class="prot-th reg-th-val">4번 ②<br><small style="font-weight:400;opacity:.85">배관→서포트</small></th>
     ${em ? '<th class="prot-th" style="width:80px"></th>' : ''}
   </tr></thead><tbody>`;
+
+  // 새 행 입력 폼 (편집모드 + 추가버튼 클릭 시)
+  if (em && _regAddingNew) {
+    h += `<tr style="background:#f0fdf4">
+      <td class="reg-td reg-td-date">
+        <input type="date" id="rnew-date" value="${today}"
+          style="width:130px;border:1px solid #86efac;border-radius:4px;padding:3px;font-size:12px">
+      </td>
+      <td class="reg-td"><input type="text" id="rnew-pt1_1" class="reg-edit-inp" placeholder="79cm"></td>
+      <td class="reg-td"><input type="text" id="rnew-pt1_2" class="reg-edit-inp" placeholder="0.5cm"></td>
+      <td class="reg-td"><input type="text" id="rnew-pt4_1" class="reg-edit-inp" placeholder="79cm"></td>
+      <td class="reg-td"><input type="text" id="rnew-pt4_2" class="reg-edit-inp" placeholder="0.5cm"></td>
+      <td class="reg-td" style="text-align:center;white-space:nowrap">
+        <button class="reg-save-btn" onclick="_confirmAddRegEntry()">추가</button>
+        <button class="prot-del" onclick="_cancelAddRegEntry()">취소</button>
+      </td>
+    </tr>`;
+  }
 
   pageEntries.forEach(e => {
     const disp = e.date.replace(/-/g, '/');
@@ -528,13 +553,38 @@ window._regPageMove = function(dir) {
 
 
 window.addRegEntry = function() {
-  const today = new Date().toISOString().split('T')[0];
-  const date = prompt('측정 날짜 (YYYY-MM-DD):', today);
-  if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) return;
-  if (!_regData) _regData = { entries: [] };
-  _regData.entries.push({ id: `e${Date.now()}`, date, pt1_1: '', pt1_2: '', pt4_1: '', pt4_2: '' });
+  _regAddingNew = true;
+  _regEditingId = null;
   _regPage = 0;
-  _saveReg().then(() => _renderRegTable());
+  _renderRegTable();
+  setTimeout(() => document.getElementById('rnew-date')?.focus(), 50);
+};
+
+window._confirmAddRegEntry = async function() {
+  const dateEl = document.getElementById('rnew-date');
+  const date = dateEl?.value;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    alert('날짜를 올바르게 입력해주세요.');
+    return;
+  }
+  if (!_regData) _regData = { entries: [] };
+  const entry = {
+    id: `e${Date.now()}`,
+    date,
+    pt1_1: document.getElementById('rnew-pt1_1')?.value.trim() || '',
+    pt1_2: document.getElementById('rnew-pt1_2')?.value.trim() || '',
+    pt4_1: document.getElementById('rnew-pt4_1')?.value.trim() || '',
+    pt4_2: document.getElementById('rnew-pt4_2')?.value.trim() || '',
+  };
+  _regData.entries.push(entry);
+  _regAddingNew = false;
+  await _saveReg();
+  _renderRegTable();
+};
+
+window._cancelAddRegEntry = function() {
+  _regAddingNew = false;
+  _renderRegTable();
 };
 
 
