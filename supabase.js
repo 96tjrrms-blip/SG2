@@ -383,10 +383,11 @@ async function fetchAllPipeSettings() {
 }
 
 async function upsertPipeSettings(segId, patch) {
-  await sb.from('pipe_settings').upsert(
+  const { error } = await sb.from('pipe_settings').upsert(
     { seg_id: segId, ...patch, updated_at: new Date().toISOString() },
     { onConflict: 'seg_id' }
   );
+  if (error) throw error;
 }
 
 // ===== DB API 함수 =====

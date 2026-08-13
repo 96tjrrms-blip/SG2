@@ -395,7 +395,7 @@ async function _loadReg() {
   const toAdd = _REG_HISTORY.filter(h => !existingDates.has(h.date));
   if (toAdd.length > 0) {
     _regData.entries = [..._regData.entries, ...toAdd];
-    _saveReg(); // fire-and-forget
+    await _saveReg().catch(() => {}); // 에러 무시 (초기 시드 실패해도 UI는 표시)
   }
   return _regData;
 }
