@@ -374,7 +374,7 @@ const _REG_HISTORY = [
   {id:'h56',date:'2026-06-08',pt1_1:'79cm',pt1_2:'0.3cm',pt4_1:'79cm',pt4_2:'0.9cm'},
 ];
 
-const _REG_KEY = '_regulator_S016';
+const _REG_KEY = '_prot_regulator_S016';
 const _REG_PER_PAGE = 20;
 let _regData = null;
 let _regPage = 0;
@@ -386,7 +386,8 @@ async function _loadReg() {
   try {
     const all = await fetchAllPipeSettings();
     const row = all[_REG_KEY];
-    _regData = (row && row.colors) ? row.colors : { entries: [] };
+    const raw = (row && row.colors) ? row.colors : null;
+    _regData = (raw && Array.isArray(raw.entries)) ? raw : { entries: [] };
   } catch {
     _regData = { entries: [] };
   }
