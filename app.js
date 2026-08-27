@@ -27,6 +27,7 @@ function _applyEditMode() {
   const protToolbar = document.getElementById('prot-toolbar');
   if (protToolbar) protToolbar.style.display = em ? 'flex' : 'none';
   if (typeof _renderProtTable === 'function') _renderProtTable();
+  if (typeof _renderDocsGrid === 'function') _renderDocsGrid();
 }
 
 window.toggleEditAuth = function() {
@@ -1359,6 +1360,7 @@ function navigate(page) {
   if (page === 'alarm') renderAlarm();
   if (page === 'regulation') renderRegulation();
   if (page === 'emergency') initEmergencyPage();
+  if (page === 'docs') initDocsPage();
 }
 
 // ===== 캐시 로드 =====
