@@ -388,8 +388,8 @@ window.saveDocsEdit = async function() {
     // Attachment uploads
     const uploaded = [];
     for (const f of _docsEditNewFiles) {
-      const safe = f.name.replace(/[^a-zA-Z0-9._\-가-힣]/g, '_');
-      const path = `${folder}/${Date.now()}_${safe}`;
+      const ext  = f.name.split('.').pop().toLowerCase() || 'bin';
+      const path = `${folder}/${Date.now()}.${ext}`;
       const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, f.file, { upsert: false });
       if (error) throw error;
       uploaded.push({
