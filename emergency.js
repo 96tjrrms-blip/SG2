@@ -29,8 +29,8 @@ window.switchEmergSite = function(siteId) {
 async function _loadEmergData(siteId) {
   try {
     const rows = await fetchAllPipeSettings();
-    _emergValves    = rows[`_emerg_valves_${siteId}`]?.valves    ?? [];
-    _emergScenarios = rows[`_emerg_scenarios_${siteId}`]?.scenarios ?? [];
+    _emergValves    = rows[`_emerg_valves_${siteId}`]?.colors    ?? [];
+    _emergScenarios = rows[`_emerg_scenarios_${siteId}`]?.colors ?? [];
   } catch {
     _emergValves = []; _emergScenarios = [];
   }
@@ -38,10 +38,10 @@ async function _loadEmergData(siteId) {
 }
 
 function _saveEmergValves() {
-  upsertPipeSettings(`_emerg_valves_${_emergSite}`, { valves: _emergValves }).catch(e => console.warn('emerg valve save:', e));
+  upsertPipeSettings(`_emerg_valves_${_emergSite}`, { colors: _emergValves }).catch(e => console.warn('emerg valve save:', e));
 }
 function _saveEmergScenarios() {
-  upsertPipeSettings(`_emerg_scenarios_${_emergSite}`, { scenarios: _emergScenarios }).catch(e => console.warn('emerg scenario save:', e));
+  upsertPipeSettings(`_emerg_scenarios_${_emergSite}`, { colors: _emergScenarios }).catch(e => console.warn('emerg scenario save:', e));
 }
 
 // ===== 줌/패닝 =====
