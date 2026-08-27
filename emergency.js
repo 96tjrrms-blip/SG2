@@ -9,10 +9,8 @@ const _EMERG_IMGS = {
 let _emergSite      = '115st';
 let _emergValves    = [];   // [{ id, x, y, label }]
 let _emergScenarios = [];   // [{ id, x, y, label, desc, procedure, internalValves:[], externalValves:[{name,location,note}] }]
-let _emergZoom      = { scale:1, tx:0, ty:0 };
 let _emergMode      = 'view';   // 'view' | 'addValve' | 'addScenario'
 let _emergActive    = null;     // 활성 시나리오 id
-let _emergPanStart  = null;
 
 // ===== 사이트 전환 =====
 window.switchEmergSite = function(siteId) {
@@ -21,8 +19,8 @@ window.switchEmergSite = function(siteId) {
     b.classList.toggle('active', b.dataset.esite === siteId));
   const img = document.getElementById('emerg-map-img');
   if (img) img.src = _EMERG_IMGS[siteId] || 'map.png';
-  emergZoomReset();
   _loadEmergData(siteId);
+  _renderEmergPipes();
 };
 
 // ===== 데이터 로드/저장 =====
@@ -44,67 +42,61 @@ function _saveEmergScenarios() {
   upsertPipeSettings(`_emerg_scenarios_${_emergSite}`, { colors: _emergScenarios }).catch(e => console.warn('emerg scenario save:', e));
 }
 
-// ===== 줌/패닝 =====
-window.emergZoomIn    = () => { _emergZoom.scale = Math.min(_emergZoom.scale * 1.3, 5);   _applyEmergZoom(); };
-window.emergZoomOut   = () => { _emergZoom.scale = Math.max(_emergZoom.scale / 1.3, 0.3); _applyEmergZoom(); };
-window.emergZoomReset = () => { _emergZoom = { scale:1, tx:0, ty:0 }; _applyEmergZoom(); };
-
-function _applyEmergZoom() {
-  const el = document.getElementById('emerg-map-zoomable');
-  if (!el) return;
-  el.style.transform = `translate(${_emergZoom.tx}px,${_emergZoom.ty}px) scale(${_emergZoom.scale})`;
-  const lbl = document.getElementById('emerg-zoom-label');
-  if (lbl) lbl.textContent = Math.round(_emergZoom.scale * 100) + '%';
-  _renderEmergMarkers();
-}
-
-function _emergMapWheel(e) {
-  e.preventDefault();
-  const d = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-  const c = document.getElementById('emerg-map-container');
-  const r = c.getBoundingClientRect();
-  const ox = e.clientX - r.left, oy = e.clientY - r.top;
-  _emergZoom.tx    = ox - (ox - _emergZoom.tx) * d;
-  _emergZoom.ty    = oy - (oy - _emergZoom.ty) * d;
-  _emergZoom.scale = Math.max(0.3, Math.min(5, _emergZoom.scale * d));
-  _applyEmergZoom();
-}
-
-function _emergMapMouseDown(e) {
-  if (_emergMode !== 'view') return;
-  if (e.button !== 0) return;
-  _emergPanStart = { x: e.clientX - _emergZoom.tx, y: e.clientY - _emergZoom.ty };
-  e.currentTarget.style.cursor = 'grabbing';
-}
-function _emergMapMouseMove(e) {
-  if (!_emergPanStart) return;
-  _emergZoom.tx = e.clientX - _emergPanStart.x;
-  _emergZoom.ty = e.clientY - _emergPanStart.y;
-  _applyEmergZoom();
-}
-function _emergMapMouseUp(e) {
-  _emergPanStart = null;
-  if (e.currentTarget) e.currentTarget.style.cursor = _emergMode === 'view' ? 'grab' : 'crosshair';
-}
-
-// ===== 마커 좌표 계산 =====
+// ===== 마커 좌표 계산 (줌 없음, 퍼센트 기반) =====
 function _emergScreenPos(xPct, yPct) {
   const c = document.getElementById('emerg-map-container');
   return {
-    x: (xPct / 100) * c.clientWidth  * _emergZoom.scale + _emergZoom.tx,
-    y: (yPct / 100) * c.clientHeight * _emergZoom.scale + _emergZoom.ty,
+    x: (xPct / 100) * c.clientWidth,
+    y: (yPct / 100) * c.clientHeight,
   };
 }
 
 function _emergMapPos(clientX, clientY) {
   const c = document.getElementById('emerg-map-container');
   const r = c.getBoundingClientRect();
-  const rawX = (clientX - r.left - _emergZoom.tx) / _emergZoom.scale;
-  const rawY = (clientY - r.top  - _emergZoom.ty) / _emergZoom.scale;
   return {
-    x: +(rawX / c.clientWidth  * 100).toFixed(2),
-    y: +(rawY / c.clientHeight * 100).toFixed(2),
+    x: +((clientX - r.left) / c.clientWidth  * 100).toFixed(2),
+    y: +((clientY - r.top)  / c.clientHeight * 100).toFixed(2),
   };
+}
+
+// ===== 배관 렌더링 (115정거장 전용) =====
+function _renderEmergPipes() {
+  const svg = document.getElementById('emerg-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+
+  if (_emergSite !== '115st') return;
+
+  const img = document.getElementById('emerg-map-img');
+  const w = (img && img.naturalWidth) ? img.naturalWidth : (window._mapNatW || 0);
+  const h = (img && img.naturalHeight) ? img.naturalHeight : (window._mapNatH || 0);
+
+  if (!w || !h) {
+    img && img.addEventListener('load', _renderEmergPipes, { once: true });
+    return;
+  }
+
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const ns = 'http://www.w3.org/2000/svg';
+  const lineW = Math.max(3, w / 200);
+
+  const segs = (typeof PIPELINE_SEGMENTS !== 'undefined' ? PIPELINE_SEGMENTS : [])
+    .filter(s => !s.site || s.site === '115정거장');
+
+  segs.forEach(seg => {
+    const pts = (seg.points || []).map(p => `${p[0]},${p[1]}`).join(' ');
+    const line = document.createElementNS(ns, 'polyline');
+    line.setAttribute('points', pts);
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', seg.color || '#facc15');
+    line.setAttribute('stroke-width', lineW);
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('stroke-linejoin', 'round');
+    line.setAttribute('opacity', '0.85');
+    line.style.pointerEvents = 'none';
+    svg.appendChild(line);
+  });
 }
 
 // ===== 마커 렌더 =====
@@ -489,17 +481,8 @@ window.initEmergencyPage = function() {
   const ec = document.getElementById('emerg-edit-controls');
   if (ec) ec.style.display = window._editMode ? 'flex' : 'none';
 
-  const mc = document.getElementById('emerg-map-container');
-  if (mc && !mc._emergEventsAttached) {
-    mc.addEventListener('wheel',      _emergMapWheel, { passive: false });
-    mc.addEventListener('mousedown',  _emergMapMouseDown);
-    mc.addEventListener('mousemove',  _emergMapMouseMove);
-    mc.addEventListener('mouseup',    _emergMapMouseUp);
-    mc.addEventListener('mouseleave', _emergMapMouseUp);
-    mc._emergEventsAttached = true;
-  }
-
   _loadEmergData(_emergSite);
+  _renderEmergPipes();
 };
 
 // ESC 취소 (비상대응 페이지 활성 시)
@@ -513,5 +496,5 @@ document.addEventListener('keydown', e => {
 // 리사이즈 시 재렌더
 window.addEventListener('resize', () => {
   clearTimeout(window._emergResizeT);
-  window._emergResizeT = setTimeout(_renderEmergMarkers, 150);
+  window._emergResizeT = setTimeout(() => { _renderEmergMarkers(); _renderEmergPipes(); }, 150);
 });

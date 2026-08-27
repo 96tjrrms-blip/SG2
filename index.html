@@ -704,13 +704,13 @@
     </div>
 
     <div class="card" style="padding:16px">
-      <div id="emerg-map-container" class="map-container" style="position:relative;overflow:hidden;cursor:grab;background:#e2e8f0">
-        <div id="emerg-map-zoomable" style="position:relative;width:100%;transform-origin:0 0;will-change:transform">
+      <div id="emerg-map-container" class="map-container" style="position:relative;overflow:hidden;background:#e2e8f0">
+        <div id="emerg-map-zoomable" style="position:relative;width:100%">
           <img id="emerg-map-img" src="map.png" alt="비상대응 도면" style="width:100%;display:block">
           <svg id="emerg-svg" xmlns="http://www.w3.org/2000/svg"
             style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></svg>
         </div>
-        <!-- 마커 오버레이 (zoom 밖, 항상 선명) -->
+        <!-- 마커 오버레이 -->
         <svg id="emerg-overlay-svg" xmlns="http://www.w3.org/2000/svg"
           style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:12;overflow:hidden"></svg>
         <!-- 밸브 추가 오버레이 -->
@@ -719,12 +719,6 @@
         <!-- 사고지점 추가 오버레이 -->
         <div id="emerg-scenario-overlay" onclick="_onEmergScenarioClick(event)"
           style="display:none;position:absolute;inset:0;z-index:19;cursor:crosshair;background:rgba(239,68,68,0.05)"></div>
-        <!-- 줌 컨트롤 -->
-        <div style="position:absolute;bottom:10px;right:10px;z-index:30;display:flex;flex-direction:column;gap:4px">
-          <button onclick="emergZoomIn()" style="width:32px;height:32px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.92);font-size:18px;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.2)">+</button>
-          <button onclick="emergZoomOut()" style="width:32px;height:32px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.92);font-size:18px;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.2)">−</button>
-          <button onclick="emergZoomReset()" id="emerg-zoom-label" style="width:32px;height:28px;border-radius:6px;border:1px solid #cbd5e1;background:rgba(255,255,255,0.92);font-size:10px;cursor:pointer;color:#475569;box-shadow:0 1px 4px rgba(0,0,0,0.2)">100%</button>
-        </div>
         <!-- 사고지점 클릭 팝업 -->
         <div id="emerg-popup"
           style="display:none;position:absolute;bottom:16px;left:16px;z-index:50;
