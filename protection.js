@@ -369,7 +369,9 @@ async function _renderManualTab() {
     return;
   }
 
-  html += `<div id="manual-pdf-pages" style="display:flex;flex-direction:column;gap:10px"></div>`;
+  html += `<div style="max-width:860px;margin:0 auto">
+    <div id="manual-pdf-pages" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>`;
   section.innerHTML = html;
   _renderPdfPages(_manualPdfUrl);
 }
