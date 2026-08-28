@@ -64,8 +64,11 @@ function _renderDocsGrid() {
   const addBtn = document.getElementById('docs-add-btn');
   if (addBtn) addBtn.style.display = window._editMode ? '' : 'none';
 
-  const sorted = [..._docs].sort((a, b) =>
-    (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const sorted = [..._docs].sort((a, b) => {
+    const da = a.date || a.createdAt || '';
+    const db = b.date || b.createdAt || '';
+    return db.localeCompare(da);
+  });
 
   if (sorted.length === 0) {
     wrap.innerHTML = `
