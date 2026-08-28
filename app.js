@@ -1352,7 +1352,7 @@ async function _initApp() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const overlay = document.getElementById('login-overlay');
-  if (localStorage.getItem(_SG2_LOGIN_KEY) === '1') {
+  if (sessionStorage.getItem(_SG2_LOGIN_KEY) === '1') {
     overlay.style.display = 'none';
     await _initApp();
   }
@@ -1389,7 +1389,7 @@ window.submitLogin = async function() {
 
   // 인증 성공 — Supabase 세션은 필요없으니 즉시 정리
   await sb.auth.signOut();
-  localStorage.setItem(_SG2_LOGIN_KEY, '1');
+  sessionStorage.setItem(_SG2_LOGIN_KEY, '1');
   document.getElementById('login-overlay').style.display = 'none';
   await _initApp();
 };
@@ -1398,7 +1398,7 @@ window.doLogout = async function() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
   window._editMode = false;
   localStorage.setItem(_EDIT_AUTH_KEY, '0');
-  localStorage.removeItem(_SG2_LOGIN_KEY);
+  sessionStorage.removeItem(_SG2_LOGIN_KEY);
   location.reload();
 };
 
