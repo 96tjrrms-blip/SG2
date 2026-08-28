@@ -384,7 +384,21 @@ async function _renderPdfPages(url) {
     lib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    const pdf = await lib.getDocument(url).promise;
+    // fetch로 먼저 가져와서 에러 원인 명확히 파악
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`파일 접근 실패 (HTTP ${resp.status}). Supabase Storage 버킷이 Public인지 확인하세요.`);
+    const data = await resp.arrayBuffer();
+
+    let pdf;
+    try {
+      pdf = await lib.getDocument({ data }).promise;
+    } catch (pdfErr) {
+      if (pdfErr.name === 'PasswordException') {
+        throw new Error('PDF에 보안(암호)이 걸려있습니다. 보안 해제 후 다시 업로드해주세요.');
+      }
+      throw pdfErr;
+    }
+
     container.innerHTML = '';
     const containerW = container.clientWidth || 800;
 
@@ -413,7 +427,10 @@ async function _renderPdfPages(url) {
       await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
     }
   } catch (e) {
-    container.innerHTML = `<div style="text-align:center;color:#dc2626;padding:40px;font-size:13px">PDF 로드 실패: ${e.message}</div>`;
+    container.innerHTML = `
+      <div style="text-align:center;color:#dc2626;padding:40px;font-size:13px;line-height:1.8">
+        ⚠️ ${e.message}
+      </div>`;
   }
 }
 
