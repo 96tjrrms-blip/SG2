@@ -1342,11 +1342,65 @@ window._lbMove = function(dir) {
 };
 
 // ===== 초기화 =====
-document.addEventListener('DOMContentLoaded', async () => {
+const _SG2_LOGIN_KEY = 'sg2_login_v2';
+
+async function _initApp() {
   siteMap = await getSiteMap();
   navigate('dashboard');
   _applyEditMode();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const overlay = document.getElementById('login-overlay');
+  if (localStorage.getItem(_SG2_LOGIN_KEY) === '1') {
+    overlay.style.display = 'none';
+    await _initApp();
+  }
+  // 로그인 안된 경우 overlay는 CSS display:flex로 이미 보임
 });
+
+window.submitLogin = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+
+  if (!email || !pw) {
+    errEl.textContent = '이메일과 비밀번호를 입력해주세요.';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '로그인 중...';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+
+  btn.disabled = false;
+  btn.textContent = '로그인';
+
+  if (error) {
+    errEl.textContent = '이메일 또는 비밀번호가 올바르지 않습니다.';
+    errEl.style.display = '';
+    document.getElementById('login-pw').value = '';
+    document.getElementById('login-pw').focus();
+    return;
+  }
+
+  // 인증 성공 — Supabase 세션은 필요없으니 즉시 정리
+  await sb.auth.signOut();
+  localStorage.setItem(_SG2_LOGIN_KEY, '1');
+  document.getElementById('login-overlay').style.display = 'none';
+  await _initApp();
+};
+
+window.doLogout = async function() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  window._editMode = false;
+  localStorage.setItem(_EDIT_AUTH_KEY, '0');
+  localStorage.removeItem(_SG2_LOGIN_KEY);
+  location.reload();
+};
 
 // ===== 네비게이션 =====
 function navigate(page) {

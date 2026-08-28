@@ -4,12 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+
+<!-- 로그인 화면 -->
+<div id="login-overlay" style="display:flex;position:fixed;inset:0;z-index:999999;background:linear-gradient(145deg,#0a1f45,#0d2b5e,#0f3470);align-items:center;justify-content:center">
+  <div class="login-card">
+    <img src="logo.png" alt="삼천리" class="login-logo">
+    <div class="login-title">서남안전관리팀</div>
+    <div class="login-subtitle">인동선 11공구 현장관리</div>
+    <div class="login-form">
+      <input id="login-email" type="email" placeholder="이메일 (아이디)"
+        autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()">
+      <input id="login-pw" type="password" placeholder="비밀번호"
+        autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()">
+      <div id="login-error" class="login-error" style="display:none"></div>
+      <button id="login-btn" onclick="submitLogin()">로그인</button>
+    </div>
+  </div>
+</div>
 
 <!-- 사이드바 -->
 <div class="sidebar">
@@ -38,12 +55,18 @@
       <span class="icon">📋</span> 규정집
     </div>
   </nav>
-  <div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.12)">
+  <div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.12);display:flex;flex-direction:column;gap:8px">
     <button id="edit-lock-btn" onclick="toggleEditAuth()"
       style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.25);
         background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);
         font-size:12px;font-weight:600;cursor:pointer">
       🔒 편집 잠금
+    </button>
+    <button onclick="doLogout()"
+      style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);
+        background:transparent;color:rgba(255,255,255,0.5);
+        font-size:12px;font-weight:500;cursor:pointer">
+      🚪 로그아웃
     </button>
   </div>
 </div>
@@ -818,17 +841,17 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="mapConfig.js"></script>
-<script src="boring-data.js"></script>
-<script src="boring.js"></script>
-<script src="parking.js"></script>
-<script src="map.js"></script>
-<script src="pipe-editor.js"></script>
-<script src="emergency.js"></script>
-<script src="protection.js"></script>
-<script src="docs.js"></script>
-<script src="app.js"></script>
+<script src="supabase.js?v=3"></script>
+<script src="mapConfig.js?v=3"></script>
+<script src="boring-data.js?v=3"></script>
+<script src="boring.js?v=3"></script>
+<script src="parking.js?v=3"></script>
+<script src="map.js?v=3"></script>
+<script src="pipe-editor.js?v=3"></script>
+<script src="emergency.js?v=3"></script>
+<script src="protection.js?v=3"></script>
+<script src="docs.js?v=3"></script>
+<script src="app.js?v=3"></script>
 
 <!-- 지도 줌/패닝 -->
 <script>
