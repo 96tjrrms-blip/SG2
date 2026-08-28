@@ -425,7 +425,10 @@ window.saveDocsEdit = async function() {
     closeDocsEdit();
     _renderDocsGrid();
   } catch (e) {
-    alert('저장 실패: ' + e.message);
+    const msg = e.message?.includes('maximum allowed size')
+      ? '파일 크기 초과입니다.\nSupabase 대시보드 → Storage → Settings → File size limit 에서 제한을 올려주세요.\n(또는 파일을 압축해서 다시 시도하세요)'
+      : '저장 실패: ' + e.message;
+    alert(msg);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '저장'; }
   }
