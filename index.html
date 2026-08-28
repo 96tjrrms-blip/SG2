@@ -620,38 +620,57 @@
   <!-- 방호조치현황 -->
   <div class="page" id="page-field">
     <div class="page-title">방호조치현황</div>
-    <div class="page-subtitle">일별 방호조치 현황</div>
 
-    <div class="site-tabs">
-      <button class="site-tab prot-site-tab active" data-site="115정거장" onclick="switchProtSite('115정거장')">115정거장</button>
-      <button class="site-tab prot-site-tab" data-site="15환기구" onclick="switchProtSite('15환기구')">15환기구</button>
-      <button class="site-tab prot-site-tab" data-site="16환기구" onclick="switchProtSite('16환기구')">16환기구</button>
+    <!-- 서브탭 -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #e2e8f0">
+      <button id="psub-btn-status" onclick="switchProtSubTab('status')"
+        style="padding:8px 22px;border:none;border-bottom:3px solid #0d2b5e;margin-bottom:-2px;
+          background:transparent;font-size:13px;font-weight:700;color:#0d2b5e;cursor:pointer">
+        📊 현황표
+      </button>
+      <button id="psub-btn-manual" onclick="switchProtSubTab('manual')"
+        style="padding:8px 22px;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;
+          background:transparent;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer">
+        📘 방호조치 매뉴얼
+      </button>
     </div>
 
-    <!-- 편집 툴바 (편집 모드에서만 표시) -->
-    <div id="prot-toolbar" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-      <button class="zone-btn" onclick="addProtDate()">📅 날짜 추가</button>
-      <button class="zone-btn" onclick="addProtPipe()">＋ 배관 추가</button>
-      <button class="zone-btn" onclick="addProtMeasure()">＋ 항목 추가</button>
-    </div>
-
-    <div class="card" style="padding:0;overflow:hidden">
-      <div id="prot-table-wrap"></div>
-    </div>
-
-    <!-- 정압기 점검 (16환기구 전용) -->
-    <div id="reg-section" style="display:none;margin-top:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:14px;font-weight:700;color:#0d2b5e;letter-spacing:-0.3px">
-          반송공원 지역정압기 현장점검
-          <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:6px">측정항목: ① 배관→지면 / ② 배관→서포트</span>
-        </div>
-        <button id="reg-add-btn" class="zone-btn" style="display:none" onclick="addRegEntry()">＋ 측정 추가</button>
+    <!-- 현황표 섹션 -->
+    <div id="prot-status-section">
+      <div class="site-tabs">
+        <button class="site-tab prot-site-tab active" data-site="115정거장" onclick="switchProtSite('115정거장')">115정거장</button>
+        <button class="site-tab prot-site-tab" data-site="15환기구" onclick="switchProtSite('15환기구')">15환기구</button>
+        <button class="site-tab prot-site-tab" data-site="16환기구" onclick="switchProtSite('16환기구')">16환기구</button>
       </div>
+
+      <!-- 편집 툴바 (편집 모드에서만 표시) -->
+      <div id="prot-toolbar" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <button class="zone-btn" onclick="addProtDate()">📅 날짜 추가</button>
+        <button class="zone-btn" onclick="addProtPipe()">＋ 배관 추가</button>
+        <button class="zone-btn" onclick="addProtMeasure()">＋ 항목 추가</button>
+      </div>
+
       <div class="card" style="padding:0;overflow:hidden">
-        <div id="reg-table-wrap"></div>
+        <div id="prot-table-wrap"></div>
+      </div>
+
+      <!-- 정압기 점검 (16환기구 전용) -->
+      <div id="reg-section" style="display:none;margin-top:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:14px;font-weight:700;color:#0d2b5e;letter-spacing:-0.3px">
+            반송공원 지역정압기 현장점검
+            <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:6px">측정항목: ① 배관→지면 / ② 배관→서포트</span>
+          </div>
+          <button id="reg-add-btn" class="zone-btn" style="display:none" onclick="addRegEntry()">＋ 측정 추가</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="reg-table-wrap"></div>
+        </div>
       </div>
     </div>
+
+    <!-- 매뉴얼 섹션 -->
+    <div id="prot-manual-section" style="display:none"></div>
   </div>
 
   <!-- 알람 -->
@@ -797,6 +816,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script src="mapConfig.js"></script>

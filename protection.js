@@ -305,9 +305,162 @@ window.switchProtSite = async function(s) {
   _renderProtTable();
 };
 
+// ===== 서브탭 (현황표 / 매뉴얼) =====
+
+let _protSubTab = 'status';
+let _manualPdfUrl = null;
+let _manualPdfLoaded = false;
+
+window.switchProtSubTab = function(tab) {
+  _protSubTab = tab;
+  document.getElementById('prot-status-section').style.display = tab === 'status' ? '' : 'none';
+  document.getElementById('prot-manual-section').style.display = tab === 'manual' ? '' : 'none';
+
+  const sBtn = document.getElementById('psub-btn-status');
+  const mBtn = document.getElementById('psub-btn-manual');
+  if (sBtn) {
+    sBtn.style.borderBottomColor = tab === 'status' ? '#0d2b5e' : 'transparent';
+    sBtn.style.color  = tab === 'status' ? '#0d2b5e' : '#6b7280';
+    sBtn.style.fontWeight = tab === 'status' ? '700' : '600';
+  }
+  if (mBtn) {
+    mBtn.style.borderBottomColor = tab === 'manual' ? '#0d2b5e' : 'transparent';
+    mBtn.style.color  = tab === 'manual' ? '#0d2b5e' : '#6b7280';
+    mBtn.style.fontWeight = tab === 'manual' ? '700' : '600';
+  }
+
+  if (tab === 'manual') _renderManualTab();
+};
+
+async function _renderManualTab() {
+  const section = document.getElementById('prot-manual-section');
+  if (!section) return;
+
+  if (!_manualPdfLoaded) {
+    section.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;font-size:13px">불러오는 중...</div>';
+    try {
+      const rows = await fetchAllPipeSettings();
+      _manualPdfUrl = rows['_prot_manual_pdf']?.colors?.url || null;
+    } catch (e) { console.error(e); }
+    _manualPdfLoaded = true;
+  }
+
+  let html = '';
+  if (window._editMode) {
+    html += `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+        <button onclick="document.getElementById('manual-pdf-input').click()"
+          style="padding:7px 16px;border-radius:7px;border:1px solid #0d2b5e;background:#fff;
+            color:#0d2b5e;font-size:13px;font-weight:700;cursor:pointer">📄 PDF 업로드</button>
+        <input type="file" id="manual-pdf-input" accept=".pdf" style="display:none"
+          onchange="_uploadManualPdf(this)">
+        ${_manualPdfUrl ? `<button onclick="_clearManualPdf()"
+          style="padding:7px 14px;border-radius:7px;border:1px solid #fca5a5;background:#fff;
+            color:#dc2626;font-size:12px;cursor:pointer">🗑 삭제</button>` : ''}
+      </div>`;
+  }
+
+  if (!_manualPdfUrl) {
+    html += `<div style="text-align:center;color:#94a3b8;padding:60px;font-size:14px">
+      업로드된 매뉴얼이 없습니다
+      ${window._editMode ? '<br><small style="font-size:12px">위 버튼으로 PDF를 업로드하세요</small>' : ''}
+    </div>`;
+    section.innerHTML = html;
+    return;
+  }
+
+  html += `<div id="manual-pdf-pages" style="display:flex;flex-direction:column;gap:10px"></div>`;
+  section.innerHTML = html;
+  _renderPdfPages(_manualPdfUrl);
+}
+
+async function _renderPdfPages(url) {
+  const container = document.getElementById('manual-pdf-pages');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;font-size:13px">PDF 렌더링 중...</div>';
+
+  try {
+    const lib = window.pdfjsLib;
+    lib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const pdf = await lib.getDocument(url).promise;
+    container.innerHTML = '';
+    const containerW = container.clientWidth || 800;
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const base = page.getViewport({ scale: 1 });
+      const scale = containerW / base.width;
+      const vp = page.getViewport({ scale });
+
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;background:#fff;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,0.12);overflow:hidden;line-height:0';
+
+      const label = document.createElement('div');
+      label.style.cssText = 'position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,0.45);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;z-index:1;line-height:1.4';
+      label.textContent = `${i} / ${pdf.numPages}`;
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = vp.width;
+      canvas.height = vp.height;
+      canvas.style.cssText = 'display:block;width:100%;height:auto';
+
+      wrap.appendChild(canvas);
+      wrap.appendChild(label);
+      container.appendChild(wrap);
+
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    }
+  } catch (e) {
+    container.innerHTML = `<div style="text-align:center;color:#dc2626;padding:40px;font-size:13px">PDF 로드 실패: ${e.message}</div>`;
+  }
+}
+
+window._uploadManualPdf = async function(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  input.value = '';
+  const section = document.getElementById('prot-manual-section');
+  if (section) section.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;font-size:13px">업로드 중...</div>';
+  try {
+    const path = 'manual/protection-manual.pdf';
+    const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, file, { upsert: true });
+    if (error) throw error;
+    _manualPdfUrl = sb.storage.from(PIPE_PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+    await upsertPipeSettings('_prot_manual_pdf', { colors: { path, url: _manualPdfUrl } });
+    _manualPdfLoaded = true;
+    _renderManualTab();
+  } catch (e) {
+    alert('업로드 실패: ' + e.message);
+    _renderManualTab();
+  }
+};
+
+window._clearManualPdf = async function() {
+  if (!confirm('매뉴얼 PDF를 삭제할까요?')) return;
+  try {
+    await sb.storage.from(PIPE_PHOTO_BUCKET).remove(['manual/protection-manual.pdf']);
+    await upsertPipeSettings('_prot_manual_pdf', { colors: null });
+    _manualPdfUrl = null;
+    _renderManualTab();
+  } catch (e) {
+    alert('삭제 실패: ' + e.message);
+  }
+};
+
 // ===== 초기화 =====
 
 window.initProtectionPage = async function() {
+  _protSubTab = 'status';
+  const sSection = document.getElementById('prot-status-section');
+  const mSection = document.getElementById('prot-manual-section');
+  if (sSection) sSection.style.display = '';
+  if (mSection) mSection.style.display = 'none';
+  const sBtn = document.getElementById('psub-btn-status');
+  const mBtn = document.getElementById('psub-btn-manual');
+  if (sBtn) { sBtn.style.borderBottomColor = '#0d2b5e'; sBtn.style.color = '#0d2b5e'; sBtn.style.fontWeight = '700'; }
+  if (mBtn) { mBtn.style.borderBottomColor = 'transparent'; mBtn.style.color = '#6b7280'; mBtn.style.fontWeight = '600'; }
   if (!_protCache[_protSite]) await _loadProt(_protSite);
   _renderProtTable();
 };
