@@ -189,37 +189,61 @@ function _renderEmergMarkers() {
     g.setAttribute('transform', `translate(${x},${y})`);
     g.style.pointerEvents = 'all';
 
+    const r = 13;
+    const color = isHL ? '#ef4444' : '#16a34a';
+    const sw = r * 0.18;
+
     if (isHL) {
       const ring = _mkSvgEl('circle');
-      ring.setAttribute('r', '22');
+      ring.setAttribute('r', String(r * 2.8));
       ring.setAttribute('fill', 'none');
       ring.setAttribute('stroke', '#ef4444');
-      ring.setAttribute('stroke-width', '2.5');
-      ring.setAttribute('stroke-opacity', '0.55');
-      ring.setAttribute('stroke-dasharray', '5,3');
+      ring.setAttribute('stroke-width', '2');
+      ring.setAttribute('stroke-opacity', '0.5');
+      ring.setAttribute('stroke-dasharray', '4,3');
       g.appendChild(ring);
     }
 
-    const circle = _mkSvgEl('circle');
-    circle.setAttribute('r', '15');
-    circle.setAttribute('fill', isHL ? '#ef4444' : '#16a34a');
-    circle.setAttribute('stroke', '#fff');
-    circle.setAttribute('stroke-width', isHL ? '3' : '2');
-    g.appendChild(circle);
-
-    const icon = _mkSvgEl('text');
-    icon.setAttribute('x', '0'); icon.setAttribute('y', '0');
-    icon.setAttribute('text-anchor', 'middle');
-    icon.setAttribute('dominant-baseline', 'middle');
-    icon.setAttribute('font-size', '12'); icon.setAttribute('font-weight', '900');
-    icon.setAttribute('fill', '#fff'); icon.setAttribute('font-family', 'sans-serif');
-    icon.textContent = 'V';
-    g.appendChild(icon);
+    // 나비밸브 — 좌날개
+    const wL = _mkSvgEl('polygon');
+    wL.setAttribute('points', `-${r},-${r} 0,0 -${r},${r}`);
+    wL.setAttribute('fill', color); wL.setAttribute('stroke', '#fff');
+    wL.setAttribute('stroke-width', sw); wL.setAttribute('stroke-linejoin', 'round');
+    g.appendChild(wL);
+    // 나비밸브 — 우날개
+    const wR = _mkSvgEl('polygon');
+    wR.setAttribute('points', `${r},-${r} 0,0 ${r},${r}`);
+    wR.setAttribute('fill', color); wR.setAttribute('stroke', '#fff');
+    wR.setAttribute('stroke-width', sw); wR.setAttribute('stroke-linejoin', 'round');
+    g.appendChild(wR);
+    // 수평 축
+    const hBar = _mkSvgEl('line');
+    hBar.setAttribute('x1', String(-r)); hBar.setAttribute('y1', '0');
+    hBar.setAttribute('x2', String(r));  hBar.setAttribute('y2', '0');
+    hBar.setAttribute('stroke', '#fff'); hBar.setAttribute('stroke-width', String(r * 0.22));
+    g.appendChild(hBar);
+    // 스템
+    const stem = _mkSvgEl('line');
+    stem.setAttribute('x1', '0'); stem.setAttribute('y1', String(-r));
+    stem.setAttribute('x2', '0'); stem.setAttribute('y2', String(-r * 1.9));
+    stem.setAttribute('stroke', color); stem.setAttribute('stroke-width', String(r * 0.28));
+    g.appendChild(stem);
+    // 핸들휠
+    const wheel = _mkSvgEl('circle');
+    wheel.setAttribute('cx', '0'); wheel.setAttribute('cy', String(-r * 2.3));
+    wheel.setAttribute('r', String(r * 0.5));
+    wheel.setAttribute('fill', 'none'); wheel.setAttribute('stroke', color);
+    wheel.setAttribute('stroke-width', String(r * 0.28));
+    g.appendChild(wheel);
+    // 히트 영역
+    const hit = _mkSvgEl('circle');
+    hit.setAttribute('r', String(r * 3)); hit.setAttribute('fill', 'transparent');
+    g.appendChild(hit);
 
     const lbl = _mkSvgEl('text');
-    lbl.setAttribute('x', '0'); lbl.setAttribute('y', '27');
+    lbl.setAttribute('x', '0'); lbl.setAttribute('y', '30');
     lbl.setAttribute('text-anchor', 'middle');
-    lbl.setAttribute('font-size', '11'); lbl.setAttribute('font-weight', '700');
+    lbl.setAttribute('font-size', '12'); lbl.setAttribute('font-weight', '700');
     lbl.setAttribute('fill', isHL ? '#dc2626' : '#166534');
     lbl.setAttribute('font-family', 'sans-serif');
     lbl.setAttribute('stroke', 'white'); lbl.setAttribute('stroke-width', '3');
