@@ -297,7 +297,7 @@ window._delProtMeasure = function(mid) {
 // ===== 수동 저장 =====
 
 window.saveProtNow = async function() {
-  // 열려있는 셀 input 값 먼저 커밋
+  // 열려있는 셀 input 값 먼저 캐시에 반영
   const inp = document.querySelector('#prot-table-wrap input.prot-cell-input');
   if (inp) {
     const td = inp.closest('td');
@@ -312,6 +312,9 @@ window.saveProtNow = async function() {
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
   try {
     await _saveProt();
+    // 저장 후 캐시 초기화 → DB에서 다시 읽어 화면에 반영
+    delete _protCache[_protSite];
+    await _loadProt(_protSite);
     if (btn) {
       btn.textContent = '✓ 저장됨';
       btn.style.background = '#16a34a';
@@ -514,7 +517,9 @@ window.initProtectionPage = async function() {
   const mBtn = document.getElementById('psub-btn-manual');
   if (sBtn) { sBtn.style.borderBottomColor = '#0d2b5e'; sBtn.style.color = '#0d2b5e'; sBtn.style.fontWeight = '700'; }
   if (mBtn) { mBtn.style.borderBottomColor = 'transparent'; mBtn.style.color = '#6b7280'; mBtn.style.fontWeight = '600'; }
-  if (!_protCache[_protSite]) await _loadProt(_protSite);
+  // 항상 DB에서 최신 데이터 로드 (저장 확인 + 탭 전환 후 최신화)
+  delete _protCache[_protSite];
+  await _loadProt(_protSite);
   _renderProtTable();
 };
 
