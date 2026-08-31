@@ -97,6 +97,76 @@ function _renderEmergPipes() {
     line.style.pointerEvents = 'none';
     svg.appendChild(line);
   });
+
+  // 현장개요에서 추가한 커스텀 밸브도 함께 표시
+  _renderEmergValvesOnSvg();
+}
+
+// ===== 현장개요 밸브 렌더 (emerg-svg에 겹쳐 표시) =====
+
+function _renderEmergValvesOnSvg() {
+  const svg = document.getElementById('emerg-svg');
+  if (!svg || _emergSite !== '115st') return;
+
+  const img = document.getElementById('emerg-map-img');
+  const w = (img && img.naturalWidth) ? img.naturalWidth : (window._mapNatW || 0);
+  const h = (img && img.naturalHeight) ? img.naturalHeight : (window._mapNatH || 0);
+  if (!w || !h) return;
+
+  const valves = window._peGetValves ? window._peGetValves('115st') : [];
+  if (!valves.length) return;
+
+  const r = Math.max(22, w / 32);
+  const ns = 'http://www.w3.org/2000/svg';
+  const mk = (parent, tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    parent.appendChild(el);
+    return el;
+  };
+
+  valves.forEach(v => {
+    const { x, y, name, id } = v;
+    const g = document.createElementNS(ns, 'g');
+    g.style.cursor = window._editMode ? 'pointer' : 'default';
+
+    // 밸브 아이콘 (나비형 — 현장개요와 동일)
+    mk(g, 'polygon', { points: `${x-r},${y-r} ${x},${y} ${x-r},${y+r}`,
+      fill: '#ef4444', stroke: '#fff', 'stroke-width': r*0.18, 'stroke-linejoin': 'round' });
+    mk(g, 'polygon', { points: `${x+r},${y-r} ${x},${y} ${x+r},${y+r}`,
+      fill: '#ef4444', stroke: '#fff', 'stroke-width': r*0.18, 'stroke-linejoin': 'round' });
+    mk(g, 'line', { x1:x-r, y1:y, x2:x+r, y2:y, stroke:'#fff', 'stroke-width':r*0.22 });
+    mk(g, 'line', { x1:x, y1:y-r, x2:x, y2:y-r*1.9, stroke:'#ef4444', 'stroke-width':r*0.28 });
+    mk(g, 'circle', { cx:x, cy:y-r*2.3, r:r*0.5, fill:'none', stroke:'#ef4444', 'stroke-width':r*0.28 });
+    mk(g, 'circle', { cx:x, cy:y, r:r*3, fill:'transparent' }); // 히트영역
+
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', x); lbl.setAttribute('y', y + r * 2.8);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('fill', '#ef4444');
+    lbl.setAttribute('font-size', r * 1.3);
+    lbl.setAttribute('font-weight', '700');
+    lbl.setAttribute('paint-order', 'stroke');
+    lbl.setAttribute('stroke', '#000');
+    lbl.setAttribute('stroke-width', r * 0.35);
+    lbl.textContent = name;
+    g.appendChild(lbl);
+
+    // 편집 모드: 클릭으로 이름 수정
+    if (window._editMode) {
+      g.addEventListener('click', async e => {
+        e.stopPropagation();
+        const newName = prompt('밸브 이름 수정:', name);
+        if (newName === null || newName.trim() === '') return;
+        if (window._peUpdateValveName) {
+          await window._peUpdateValveName('115st', id, newName.trim());
+        }
+        _renderEmergPipes();
+      });
+    }
+
+    svg.appendChild(g);
+  });
 }
 
 // ===== 마커 렌더 =====
@@ -477,9 +547,14 @@ window.closeEmergModal = function() {
 };
 
 // ===== 페이지 초기화 =====
-window.initEmergencyPage = function() {
+window.initEmergencyPage = async function() {
   const ec = document.getElementById('emerg-edit-controls');
   if (ec) ec.style.display = window._editMode ? 'flex' : 'none';
+
+  // 현장개요를 방문하지 않았을 경우 밸브 데이터 미리 로드
+  if (window._loadCustomPipesForSite && (!window._peGetValves || !window._peGetValves('115st').length)) {
+    await window._loadCustomPipesForSite('115st');
+  }
 
   _loadEmergData(_emergSite);
   _renderEmergPipes();

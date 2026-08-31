@@ -378,3 +378,15 @@ window._changeLabelSide = function(segId, side) {
 window.closePipeListModal = function() {
   document.getElementById('pipe-list-modal').style.display = 'none';
 };
+
+// 비상대응방안 등 외부에서 밸브 데이터 접근용
+window._peGetValves = function(siteId) {
+  return (_peCustom[siteId] || {}).valves || [];
+};
+window._peUpdateValveName = async function(siteId, valveId, newName) {
+  const v = (_peCustom[siteId]?.valves || []).find(v => v.id === valveId);
+  if (!v) return;
+  v.name = newName;
+  _peSaveLocal();
+  await _peSaveSupabase(siteId);
+};
