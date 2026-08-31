@@ -1404,6 +1404,10 @@ window.doLogout = async function() {
 
 // ===== 네비게이션 =====
 function navigate(page) {
+  // 방호조치현황 셀 편집 중 페이지 이동 시 강제 저장
+  const openCell = document.querySelector('#prot-table-wrap input.prot-cell-input');
+  if (openCell) openCell.blur();
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');

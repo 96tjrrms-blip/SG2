@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -671,6 +671,9 @@
         <button class="zone-btn" onclick="addProtDate()">📅 날짜 추가</button>
         <button class="zone-btn" onclick="addProtPipe()">＋ 배관 추가</button>
         <button class="zone-btn" onclick="addProtMeasure()">＋ 항목 추가</button>
+        <button id="prot-save-btn" onclick="saveProtNow()"
+          style="padding:6px 16px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;
+            font-size:12px;font-weight:700;cursor:pointer;margin-left:auto">💾 저장</button>
       </div>
 
       <div class="card" style="padding:0;overflow:hidden">
@@ -841,17 +844,17 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js?v=3"></script>
-<script src="mapConfig.js?v=3"></script>
-<script src="boring-data.js?v=3"></script>
-<script src="boring.js?v=3"></script>
-<script src="parking.js?v=3"></script>
-<script src="map.js?v=3"></script>
-<script src="pipe-editor.js?v=3"></script>
-<script src="emergency.js?v=3"></script>
-<script src="protection.js?v=3"></script>
-<script src="docs.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="supabase.js?v=4"></script>
+<script src="mapConfig.js?v=4"></script>
+<script src="boring-data.js?v=4"></script>
+<script src="boring.js?v=4"></script>
+<script src="parking.js?v=4"></script>
+<script src="map.js?v=4"></script>
+<script src="pipe-editor.js?v=4"></script>
+<script src="emergency.js?v=4"></script>
+<script src="protection.js?v=4"></script>
+<script src="docs.js?v=4"></script>
+<script src="app.js?v=4"></script>
 
 <!-- 지도 줌/패닝 -->
 <script>

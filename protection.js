@@ -294,6 +294,40 @@ window._delProtMeasure = function(mid) {
   _saveProt().then(() => _renderProtTable());
 };
 
+// ===== 수동 저장 =====
+
+window.saveProtNow = async function() {
+  // 열려있는 셀 input 값 먼저 커밋
+  const inp = document.querySelector('#prot-table-wrap input.prot-cell-input');
+  if (inp) {
+    const td = inp.closest('td');
+    if (td) {
+      const { pipe, measure, date } = td.dataset;
+      const val = inp.value.trim();
+      const d = _pd(), key = _rk(pipe, measure, date);
+      if (val === '') delete d.records[key]; else d.records[key] = val;
+    }
+  }
+  const btn = document.getElementById('prot-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+  try {
+    await _saveProt();
+    if (btn) {
+      btn.textContent = '✓ 저장됨';
+      btn.style.background = '#16a34a';
+      setTimeout(() => {
+        btn.textContent = '💾 저장';
+        btn.style.background = '#0d2b5e';
+        btn.disabled = false;
+      }, 1500);
+    }
+    _renderProtTable();
+  } catch(e) {
+    if (btn) { btn.textContent = '💾 저장'; btn.disabled = false; }
+    alert('저장 실패: ' + e.message);
+  }
+};
+
 // ===== 사이트 전환 =====
 
 window.switchProtSite = async function(s) {
