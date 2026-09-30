@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -44,6 +44,9 @@
     </div>
     <div class="nav-item" data-page="alarm" onclick="navigate('alarm')">
       <span class="icon">🔔</span> 알람
+    </div>
+    <div class="nav-item" data-page="photos" onclick="navigate('photos')">
+      <span class="icon">📷</span> 현장사진
     </div>
     <div class="nav-item" data-page="emergency" onclick="navigate('emergency')">
       <span class="icon">🚨</span> 비상대응방안
@@ -99,7 +102,6 @@
         <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
         <button id="boring-toggle-btn" class="zone-btn" onclick="toggleBoringVisible()">⊕ 천공위치 표시</button>
         <button id="parking-toggle-btn" class="zone-btn" onclick="toggleParkingVisible()">🅿 주차위치 표시</button>
-        <button id="drone-toggle-btn" class="zone-btn" onclick="toggleDroneView()">🚁 현장사진</button>
         <button id="map-draw-toggle-btn" class="zone-btn" onclick="_toggleMapDraw()">✏️ 그림판</button>
       </div>
       <button id="ctrl-group-hdr-edit" class="ctrl-group-hdr ctrl-group-hdr-edit" onclick="toggleCtrlGroup('edit-group')">
@@ -339,150 +341,6 @@
         </div>
         <div id="excav-list"></div>
       </div>
-      <!-- 현장사진 뷰 -->
-      <div id="drone-view" style="display:none">
-        <!-- 서브탭 바 -->
-        <div style="display:flex;gap:0;margin-bottom:12px;border-bottom:2px solid #e2e8f0">
-          <button id="subtab-drone" onclick="showDroneSubTab('drone')"
-            style="padding:6px 16px;border:none;border-bottom:2px solid #0d2b5e;margin-bottom:-2px;
-              background:transparent;font-size:12px;font-weight:700;color:#0d2b5e;cursor:pointer">🚁 드론사진</button>
-          <button id="subtab-constr" onclick="showDroneSubTab('constr')"
-            style="padding:6px 16px;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;
-              background:transparent;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer">📷 공사사진</button>
-        </div>
-
-        <!-- ① 드론사진 패널 -->
-        <div id="drone-panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:12px;color:#6b7280" id="drone-count-label"></span>
-            <div id="drone-edit-btns" style="display:flex;gap:6px;flex-wrap:wrap">
-              <button id="drone-reorder-btn" onclick="_toggleDroneReorder()"
-                style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">⇅ 순서 변경</button>
-              <button id="overlay-edit-btn" onclick="_toggleOverlayToolbar()"
-                style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">🔧 배관/밸브</button>
-              <button id="draw-toggle-btn" onclick="_toggleDrawToolbar()"
-                style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">✏️ 그리기</button>
-              <button onclick="document.getElementById('drone-file-input').click()"
-                style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
-            </div>
-          </div>
-          <!-- 그리기 툴바 -->
-          <div id="drone-draw-toolbar" style="display:none;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:10px">
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <button id="draw-pen-btn" onclick="_setDrawTool('pen')"
-                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">✏️ 펜</button>
-              <button id="draw-eraser-btn" onclick="_setDrawTool('eraser')"
-                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">🧹 지우개</button>
-              <div style="display:flex;gap:3px;margin:0 2px">
-                <button class="draw-color-btn" data-color="#ef4444" onclick="_setDrawColor('#ef4444')" title="빨강"
-                  style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="draw-color-btn" data-color="#f97316" onclick="_setDrawColor('#f97316')" title="주황"
-                  style="width:20px;height:20px;border-radius:50%;background:#f97316;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="draw-color-btn" data-color="#eab308" onclick="_setDrawColor('#eab308')" title="노랑"
-                  style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="draw-color-btn" data-color="#22c55e" onclick="_setDrawColor('#22c55e')" title="초록"
-                  style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="draw-color-btn" data-color="#3b82f6" onclick="_setDrawColor('#3b82f6')" title="파랑"
-                  style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="draw-color-btn" data-color="#1e293b" onclick="_setDrawColor('#1e293b')" title="검정"
-                  style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-              </div>
-              <button onclick="_clearAllDroneDrawings()" title="전체 초기화"
-                style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444;margin-left:auto">🗑 초기화</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-              <span style="font-size:11px;color:#64748b;white-space:nowrap">굵기</span>
-              <input type="range" id="draw-size-input" min="2" max="24" value="4"
-                oninput="_setDrawSize(+this.value)" style="flex:1;accent-color:#0d2b5e">
-              <span id="draw-size-label" style="font-size:11px;color:#475569;min-width:28px">4px</span>
-            </div>
-          </div>
-          <!-- 배관/밸브 오버레이 툴바 -->
-          <div id="drone-overlay-toolbar" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 10px;margin-bottom:10px">
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <button id="overlay-pipe-btn" onclick="_setOverlayTool('pipe')"
-                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;font-weight:600">━ 파이프</button>
-              <button id="overlay-valve-btn" onclick="_setOverlayTool('valve')"
-                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;font-weight:600">◆ 밸브</button>
-              <div style="display:flex;gap:3px;margin:0 2px">
-                <button class="ov-color-btn" data-color="#3b82f6" onclick="_setOverlayColor('#3b82f6')" title="파랑"
-                  style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 3px #0d2b5e;cursor:pointer;padding:0"></button>
-                <button class="ov-color-btn" data-color="#eab308" onclick="_setOverlayColor('#eab308')" title="노랑"
-                  style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="ov-color-btn" data-color="#22c55e" onclick="_setOverlayColor('#22c55e')" title="초록"
-                  style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="ov-color-btn" data-color="#ef4444" onclick="_setOverlayColor('#ef4444')" title="빨강"
-                  style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="ov-color-btn" data-color="#f8fafc" onclick="_setOverlayColor('#f8fafc')" title="흰색"
-                  style="width:20px;height:20px;border-radius:50%;background:#f8fafc;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-                <button class="ov-color-btn" data-color="#1e293b" onclick="_setOverlayColor('#1e293b')" title="검정"
-                  style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
-              </div>
-              <button id="overlay-visible-btn" onclick="_toggleOverlayVisible()"
-                style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;margin-left:auto">👁 ON</button>
-              <button onclick="_undoLastOverlay()" title="마지막 항목 삭제"
-                style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">↩</button>
-              <button onclick="_clearCurrentOverlay()"
-                style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444">🗑</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-              <span style="font-size:11px;color:#64748b;white-space:nowrap">두께</span>
-              <input type="range" id="overlay-width-input" min="2" max="20" value="6"
-                oninput="_setOverlayWidth(+this.value)" style="flex:1;accent-color:#0d2b5e">
-              <span id="overlay-width-label" style="font-size:11px;color:#475569;min-width:28px">6px</span>
-            </div>
-          </div>
-          <!-- 슬라이드쇼 (순서변경 OFF) -->
-          <div id="drone-slide-view">
-            <div id="drone-slide-empty" style="display:none;text-align:center;color:#9ca3af;padding:32px 0;font-size:13px">
-              드론사진이 없습니다<br><small>위 + 버튼으로 추가하세요</small>
-            </div>
-            <div id="drone-slide-content" style="display:none">
-              <div style="display:flex;align-items:center;gap:8px">
-                <button onclick="_slideMove(-1)" id="slide-prev-btn"
-                  style="flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid #cbd5e1;
-                    background:#fff;color:#374151;font-size:16px;cursor:pointer;line-height:1">◀</button>
-                <div style="position:relative;flex:1;line-height:0">
-                  <img id="drone-slide-img" style="width:100%;display:block;border-radius:8px">
-                  <canvas id="drone-overlay-canvas"
-                    style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
-                  <canvas id="drone-slide-canvas" class="drone-canvas"
-                    style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
-                </div>
-                <button onclick="_slideMove(1)" id="slide-next-btn"
-                  style="flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid #cbd5e1;
-                    background:#fff;color:#374151;font-size:16px;cursor:pointer;line-height:1">▶</button>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
-                <span id="drone-slide-counter" style="font-size:12px;color:#6b7280"></span>
-                <div id="drone-slide-edit-row" style="display:flex;gap:6px">
-                  <button onclick="_moveCurrDroneToConstr()"
-                    style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;cursor:pointer">📷 공사사진으로 이동</button>
-                  <button onclick="_deleteCurrDronePhoto()"
-                    style="padding:4px 10px;border-radius:6px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:12px;cursor:pointer">🗑 삭제</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- 순서변경 리스트 (순서변경 ON) -->
-          <div id="drone-reorder-list" style="display:none"></div>
-        </div>
-
-        <!-- ② 공사사진 패널 -->
-        <div id="constr-panel" style="display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#475569">
-              <span>사이즈</span>
-              <input type="range" id="constr-size-slider" min="100" max="320" value="180"
-                oninput="_setConstrSize(+this.value)" style="width:90px;accent-color:#0d2b5e">
-              <span id="constr-size-label" style="min-width:36px">180px</span>
-            </div>
-            <button id="constr-add-btn" onclick="document.getElementById('constr-file-input').click()"
-              style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
-          </div>
-          <div id="constr-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -721,6 +579,163 @@
     </div>
   </div>
 
+  <!-- 현장사진 -->
+  <div class="page" id="page-photos">
+    <div class="page-title">현장사진</div>
+    <div class="page-subtitle" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span>드론사진 · 공사사진</span>
+      <span style="color:#cbd5e1;font-size:11px">|</span>
+      <div style="display:flex;gap:4px">
+        <button class="dash-site-tab photos-site-tab" data-psite="S015" onclick="switchPhotosSite('S015')">#S-015 환기구</button>
+        <button class="dash-site-tab photos-site-tab active" data-psite="115st" onclick="switchPhotosSite('115st')">115 정거장</button>
+        <button class="dash-site-tab photos-site-tab" data-psite="S016" onclick="switchPhotosSite('S016')">#S-016 환기구</button>
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <!-- 서브탭 바 -->
+      <div style="display:flex;gap:0;margin-bottom:12px;border-bottom:2px solid #e2e8f0">
+        <button id="subtab-drone" onclick="showDroneSubTab('drone')"
+          style="padding:6px 16px;border:none;border-bottom:2px solid #0d2b5e;margin-bottom:-2px;
+            background:transparent;font-size:12px;font-weight:700;color:#0d2b5e;cursor:pointer">🚁 드론사진</button>
+        <button id="subtab-constr" onclick="showDroneSubTab('constr')"
+          style="padding:6px 16px;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;
+            background:transparent;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer">📷 공사사진</button>
+      </div>
+
+      <!-- ① 드론사진 패널 -->
+      <div id="drone-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;color:#6b7280" id="drone-count-label"></span>
+          <div id="drone-edit-btns" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button id="drone-reorder-btn" onclick="_toggleDroneReorder()"
+              style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">⇅ 순서 변경</button>
+            <button id="overlay-edit-btn" onclick="_toggleOverlayToolbar()"
+              style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">🔧 배관/밸브</button>
+            <button id="draw-toggle-btn" onclick="_toggleDrawToolbar()"
+              style="padding:5px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer">✏️ 그리기</button>
+            <button onclick="document.getElementById('drone-file-input').click()"
+              style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
+          </div>
+        </div>
+        <!-- 그리기 툴바 -->
+        <div id="drone-draw-toolbar" style="display:none;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button id="draw-pen-btn" onclick="_setDrawTool('pen')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">✏️ 펜</button>
+            <button id="draw-eraser-btn" onclick="_setDrawTool('eraser')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">🧹 지우개</button>
+            <div style="display:flex;gap:3px;margin:0 2px">
+              <button class="draw-color-btn" data-color="#ef4444" onclick="_setDrawColor('#ef4444')" title="빨강"
+                style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#f97316" onclick="_setDrawColor('#f97316')" title="주황"
+                style="width:20px;height:20px;border-radius:50%;background:#f97316;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#eab308" onclick="_setDrawColor('#eab308')" title="노랑"
+                style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#22c55e" onclick="_setDrawColor('#22c55e')" title="초록"
+                style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#3b82f6" onclick="_setDrawColor('#3b82f6')" title="파랑"
+                style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="draw-color-btn" data-color="#1e293b" onclick="_setDrawColor('#1e293b')" title="검정"
+                style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+            </div>
+            <button onclick="_clearAllDroneDrawings()" title="전체 초기화"
+              style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444;margin-left:auto">🗑 초기화</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:11px;color:#64748b;white-space:nowrap">굵기</span>
+            <input type="range" id="draw-size-input" min="2" max="24" value="4"
+              oninput="_setDrawSize(+this.value)" style="flex:1;accent-color:#0d2b5e">
+            <span id="draw-size-label" style="font-size:11px;color:#475569;min-width:28px">4px</span>
+          </div>
+        </div>
+        <!-- 배관/밸브 오버레이 툴바 -->
+        <div id="drone-overlay-toolbar" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button id="overlay-pipe-btn" onclick="_setOverlayTool('pipe')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;font-weight:600">━ 파이프</button>
+            <button id="overlay-valve-btn" onclick="_setOverlayTool('valve')"
+              style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;font-weight:600">◆ 밸브</button>
+            <div style="display:flex;gap:3px;margin:0 2px">
+              <button class="ov-color-btn" data-color="#3b82f6" onclick="_setOverlayColor('#3b82f6')" title="파랑"
+                style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 3px #0d2b5e;cursor:pointer;padding:0"></button>
+              <button class="ov-color-btn" data-color="#eab308" onclick="_setOverlayColor('#eab308')" title="노랑"
+                style="width:20px;height:20px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="ov-color-btn" data-color="#22c55e" onclick="_setOverlayColor('#22c55e')" title="초록"
+                style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="ov-color-btn" data-color="#ef4444" onclick="_setOverlayColor('#ef4444')" title="빨강"
+                style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="ov-color-btn" data-color="#f8fafc" onclick="_setOverlayColor('#f8fafc')" title="흰색"
+                style="width:20px;height:20px;border-radius:50%;background:#f8fafc;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+              <button class="ov-color-btn" data-color="#1e293b" onclick="_setOverlayColor('#1e293b')" title="검정"
+                style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
+            </div>
+            <button id="overlay-visible-btn" onclick="_toggleOverlayVisible()"
+              style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;margin-left:auto">👁 ON</button>
+            <button onclick="_undoLastOverlay()" title="마지막 항목 삭제"
+              style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">↩</button>
+            <button onclick="_clearCurrentOverlay()"
+              style="padding:4px 8px;border-radius:6px;border:1px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#ef4444">🗑</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:11px;color:#64748b;white-space:nowrap">두께</span>
+            <input type="range" id="overlay-width-input" min="2" max="20" value="6"
+              oninput="_setOverlayWidth(+this.value)" style="flex:1;accent-color:#0d2b5e">
+            <span id="overlay-width-label" style="font-size:11px;color:#475569;min-width:28px">6px</span>
+          </div>
+        </div>
+        <!-- 슬라이드쇼 (순서변경 OFF) -->
+        <div id="drone-slide-view">
+          <div id="drone-slide-empty" style="display:none;text-align:center;color:#9ca3af;padding:32px 0;font-size:13px">
+            드론사진이 없습니다<br><small>위 + 버튼으로 추가하세요</small>
+          </div>
+          <div id="drone-slide-content" style="display:none">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="_slideMove(-1)" id="slide-prev-btn"
+                style="flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid #cbd5e1;
+                  background:#fff;color:#374151;font-size:16px;cursor:pointer;line-height:1">◀</button>
+              <div style="position:relative;flex:1;line-height:0">
+                <img id="drone-slide-img" style="width:100%;display:block;border-radius:8px">
+                <canvas id="drone-overlay-canvas"
+                  style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
+                <canvas id="drone-slide-canvas" class="drone-canvas"
+                  style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>
+              </div>
+              <button onclick="_slideMove(1)" id="slide-next-btn"
+                style="flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1px solid #cbd5e1;
+                  background:#fff;color:#374151;font-size:16px;cursor:pointer;line-height:1">▶</button>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+              <span id="drone-slide-counter" style="font-size:12px;color:#6b7280"></span>
+              <div id="drone-slide-edit-row" style="display:flex;gap:6px">
+                <button onclick="_moveCurrDroneToConstr()"
+                  style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;cursor:pointer">📷 공사사진으로 이동</button>
+                <button onclick="_deleteCurrDronePhoto()"
+                  style="padding:4px 10px;border-radius:6px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:12px;cursor:pointer">🗑 삭제</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 순서변경 리스트 (순서변경 ON) -->
+        <div id="drone-reorder-list" style="display:none"></div>
+      </div>
+
+      <!-- ② 공사사진 패널 -->
+      <div id="constr-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#475569">
+            <span>사이즈</span>
+            <input type="range" id="constr-size-slider" min="100" max="320" value="180"
+              oninput="_setConstrSize(+this.value)" style="width:90px;accent-color:#0d2b5e">
+            <span id="constr-size-label" style="min-width:36px">180px</span>
+          </div>
+          <button id="constr-add-btn" onclick="document.getElementById('constr-file-input').click()"
+            style="padding:5px 12px;border-radius:6px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">+ 사진 추가</button>
+        </div>
+        <div id="constr-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- 비상대응방안 -->
   <div class="page" id="page-emergency">
     <div class="page-title">비상대응방안</div>
@@ -844,17 +859,17 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js?v=6"></script>
-<script src="mapConfig.js?v=6"></script>
-<script src="boring-data.js?v=6"></script>
-<script src="boring.js?v=6"></script>
-<script src="parking.js?v=6"></script>
-<script src="map.js?v=6"></script>
-<script src="pipe-editor.js?v=6"></script>
-<script src="emergency.js?v=6"></script>
-<script src="protection.js?v=6"></script>
-<script src="docs.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="supabase.js?v=7"></script>
+<script src="mapConfig.js?v=7"></script>
+<script src="boring-data.js?v=7"></script>
+<script src="boring.js?v=7"></script>
+<script src="parking.js?v=7"></script>
+<script src="map.js?v=7"></script>
+<script src="pipe-editor.js?v=7"></script>
+<script src="emergency.js?v=7"></script>
+<script src="protection.js?v=7"></script>
+<script src="docs.js?v=7"></script>
+<script src="app.js?v=7"></script>
 
 <!-- 지도 줌/패닝 -->
 <script>

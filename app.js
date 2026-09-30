@@ -76,9 +76,10 @@ const DASH_SITES = [
   { id: 'S016',  label: '#S-016 환기구', mapImg: null, sitePhoto: 'photo_s016.jpg.JPG' },
 ];
 let currentDashSite = '115st';
+let currentPhotosSite = '115st';
 
-// 115 정거장 전용 ON/OFF 버튼 (파킹/드론은 모든 현장 공통)
-const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn', 'drone-toggle-btn'];
+// 115 정거장 전용 ON/OFF 버튼
+const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn'];
 // 115 정거장 전용 편집 버튼
 const _115_EDIT  = ['boring-edit-btn', 'boring-marker-sub'];
 
@@ -126,7 +127,6 @@ window.switchDashSite = function(siteId) {
     b.classList.toggle('active', b.dataset.site === siteId);
   });
 
-  if (_droneViewOpen) toggleDroneView();
   _closeExcavView();
 
   const site = DASH_SITES.find(s => s.id === siteId);
@@ -143,7 +143,6 @@ window.switchDashSite = function(siteId) {
   if (typeof window._syncGasExposureForSite === 'function') window._syncGasExposureForSite(siteId);
 
   _updateDashControls();
-  initDroneView();
 };
 
 // ===== 굴착공사현황 =====
@@ -319,8 +318,6 @@ window.showExcavView = function() {
   if (mn) mn.style.display = 'none';
   const ov = document.getElementById('site-overview-map');
   if (ov) ov.style.display = 'none';
-  if (_droneViewOpen) toggleDroneView();
-
   document.getElementById('excav-view').style.display = '';
 
   ['zone-toggle-bar','pipe-edit-group','regulator-edit-group',
@@ -364,14 +361,13 @@ window.showOverviewMap = function() {
   const tab = document.getElementById('overview-map-tab');
   if (tab) tab.classList.add('active');
 
-  // map-container / drone-view 숨기고 overview 표시
+  // map-container 숨기고 overview 표시
   const mc = document.getElementById('map-container');
   const ov = document.getElementById('site-overview-map');
   const mn = document.getElementById('map-no-image');
   if (mc) mc.style.display = 'none';
   if (mn) mn.style.display = 'none';
   if (ov) ov.style.display = '';
-  if (_droneViewOpen) toggleDroneView();
   _closeExcavView();
 
   // 편집 컨트롤 전체 숨김
@@ -515,7 +511,6 @@ window.saveGasExposure = async function() {
 
 // ===== 드론사진 =====
 let _dronePhotos = [];
-let _droneViewOpen = false;
 
 // ── 드론 그리기 ──────────────────────────────────────────────
 const DRONE_DRAW_KEY = 'drone_draw_v1';
@@ -822,7 +817,7 @@ window._moveDronePhoto = function(index, dir) {
   const newIdx = index + dir;
   if (newIdx < 0 || newIdx >= _dronePhotos.length) return;
   [_dronePhotos[index], _dronePhotos[newIdx]] = [_dronePhotos[newIdx], _dronePhotos[index]];
-  _saveDroneOrder(currentDashSite);
+  _saveDroneOrder(currentPhotosSite);
   _renderDroneList();
 };
 
@@ -887,7 +882,7 @@ function _loadOverlayData(siteId) {
 }
 
 function _saveOverlayData() {
-  localStorage.setItem(_overlayKey(currentDashSite), JSON.stringify(_droneOverlay));
+  localStorage.setItem(_overlayKey(currentPhotosSite), JSON.stringify(_droneOverlay));
 }
 
 function _renderOverlayCanvas(canvas, path) {
@@ -1129,14 +1124,14 @@ window._moveCurrDroneToConstr = async function() {
   const btn = document.querySelector('button[onclick="_moveCurrDroneToConstr()"]');
   if (btn) btn.textContent = '이동 중...';
   try {
-    await moveDroneToConstr(p.path, currentDashSite);
-    const remaining = _getDroneOrder(currentDashSite).filter(op => op !== p.path);
-    localStorage.setItem(`drone_order_v1_${currentDashSite}`, JSON.stringify(remaining));
+    await moveDroneToConstr(p.path, currentPhotosSite);
+    const remaining = _getDroneOrder(currentPhotosSite).filter(op => op !== p.path);
+    localStorage.setItem(`drone_order_v1_${currentPhotosSite}`, JSON.stringify(remaining));
     [_dronePhotos, _constrPhotos] = await Promise.all([
-      listDronePhotos(currentDashSite).catch(() => []),
-      listConstrPhotos(currentDashSite).catch(() => []),
+      listDronePhotos(currentPhotosSite).catch(() => []),
+      listConstrPhotos(currentPhotosSite).catch(() => []),
     ]);
-    _dronePhotos = _applyDroneOrder(_dronePhotos, currentDashSite);
+    _dronePhotos = _applyDroneOrder(_dronePhotos, currentPhotosSite);
     if (_droneSlideIndex >= _dronePhotos.length) _droneSlideIndex = Math.max(0, _dronePhotos.length - 1);
     _renderDroneList();
   } catch(e) {
@@ -1196,43 +1191,20 @@ function _renderDroneList() {
 async function initDroneView() {
   try {
     [_dronePhotos, _constrPhotos] = await Promise.all([
-      listDronePhotos(currentDashSite).catch(() => []),
-      listConstrPhotos(currentDashSite).catch(() => []),
+      listDronePhotos(currentPhotosSite).catch(() => []),
+      listConstrPhotos(currentPhotosSite).catch(() => []),
     ]);
   } catch(e) { _dronePhotos = []; _constrPhotos = []; }
-  _dronePhotos = _applyDroneOrder(_dronePhotos, currentDashSite);
-  _loadOverlayData(currentDashSite);
+  _dronePhotos = _applyDroneOrder(_dronePhotos, currentPhotosSite);
+  _loadOverlayData(currentPhotosSite);
   _droneReorderMode = false;
   _droneSlideIndex  = 0;
   _overlayMode      = null;
   const btn = document.getElementById('drone-reorder-btn');
   if (btn) { btn.style.background = '#fff'; btn.style.color = '#475569'; btn.style.borderColor = '#cbd5e1'; btn.textContent = '⇅ 순서 변경'; }
-  if (_droneViewOpen) {
-    showDroneSubTab(_droneSubTab || 'drone');
-    _renderDroneList();
-  }
+  showDroneSubTab(_droneSubTab || 'drone');
+  _renderDroneList();
 }
-
-window.toggleDroneView = function() {
-  _droneViewOpen = !_droneViewOpen;
-  const btn      = document.getElementById('drone-toggle-btn');
-  const mapCont  = document.getElementById('map-container');
-  const mapNoImg = document.getElementById('map-no-image');
-  const droneView = document.getElementById('drone-view');
-  if (_droneViewOpen) {
-    mapCont.style.display  = 'none';
-    mapNoImg.style.display = 'none';
-    droneView.style.display = '';
-    if (btn) { btn.style.background = '#0d2b5e'; btn.style.color = '#fff'; btn.style.borderColor = '#0d2b5e'; }
-    showDroneSubTab(_droneSubTab || 'drone');
-    _renderDroneList();
-  } else {
-    mapCont.style.display  = '';
-    mapNoImg.style.display = '';
-    droneView.style.display = 'none';
-    if (btn) { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
-  }
-};
 
 window.handleDroneUpload = async function(input) {
   const files = Array.from(input.files);
@@ -1240,8 +1212,8 @@ window.handleDroneUpload = async function(input) {
   const addBtn = document.querySelector('#drone-panel button:last-of-type');
   if (addBtn) addBtn.textContent = '업로드 중...';
   try {
-    for (const f of files) await uploadDronePhoto(f, currentDashSite);
-    _dronePhotos = _applyDroneOrder(await listDronePhotos(currentDashSite), currentDashSite);
+    for (const f of files) await uploadDronePhoto(f, currentPhotosSite);
+    _dronePhotos = _applyDroneOrder(await listDronePhotos(currentPhotosSite), currentPhotosSite);
     _renderDroneList();
   } catch(e) { alert('업로드 실패: ' + e.message); }
   finally { if (addBtn) addBtn.textContent = '+ 사진 추가'; input.value = ''; }
@@ -1251,9 +1223,9 @@ window.deleteDronePhoto = async function(path) {
   if (!confirm('이 드론사진을 삭제할까요?')) return;
   try {
     await deleteDronePhotoStorage(path);
-    const remaining = _getDroneOrder(currentDashSite).filter(p => p !== path);
-    localStorage.setItem(`drone_order_v1_${currentDashSite}`, JSON.stringify(remaining));
-    _dronePhotos = _applyDroneOrder(await listDronePhotos(currentDashSite), currentDashSite);
+    const remaining = _getDroneOrder(currentPhotosSite).filter(p => p !== path);
+    localStorage.setItem(`drone_order_v1_${currentPhotosSite}`, JSON.stringify(remaining));
+    _dronePhotos = _applyDroneOrder(await listDronePhotos(currentPhotosSite), currentPhotosSite);
     if (_droneSlideIndex >= _dronePhotos.length) _droneSlideIndex = Math.max(0, _dronePhotos.length - 1);
     _renderDroneList();
   } catch(e) { alert('삭제 실패: ' + e.message); }
@@ -1300,8 +1272,8 @@ window.handleConstrUpload = async function(input) {
   const addBtn = document.querySelector('#constr-panel button');
   if (addBtn) addBtn.textContent = '업로드 중...';
   try {
-    for (const f of files) await uploadConstrPhoto(f, currentDashSite);
-    _constrPhotos = await listConstrPhotos(currentDashSite);
+    for (const f of files) await uploadConstrPhoto(f, currentPhotosSite);
+    _constrPhotos = await listConstrPhotos(currentPhotosSite);
     _renderConstrGrid();
   } catch(e) { alert('업로드 실패: ' + e.message); }
   finally { input.value = ''; if (addBtn) addBtn.textContent = '+ 사진 추가'; }
@@ -1311,7 +1283,7 @@ window.deleteConstrPhoto = async function(path) {
   if (!confirm('이 공사사진을 삭제할까요?')) return;
   try {
     await deleteConstrPhotoStorage(path);
-    _constrPhotos = await listConstrPhotos(currentDashSite);
+    _constrPhotos = await listConstrPhotos(currentPhotosSite);
     _renderConstrGrid();
   } catch(e) { alert('삭제 실패: ' + e.message); }
 };
@@ -1416,6 +1388,7 @@ function navigate(page) {
   if (page === 'dashboard') renderDashboard();
   if (page === 'field') initProtectionPage();
   if (page === 'alarm') renderAlarm();
+  if (page === 'photos') initPhotosPage();
   if (page === 'regulation') renderRegulation();
   if (page === 'emergency') initEmergencyPage();
   if (page === 'docs') initDocsPage();
@@ -1461,10 +1434,25 @@ async function calcSiteProgressFromCache(siteName) {
   };
 }
 
+// ===== 현장사진 =====
+window.switchPhotosSite = function(siteId) {
+  currentPhotosSite = siteId;
+  document.querySelectorAll('.photos-site-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.psite === siteId);
+  });
+  initDroneView();
+};
+
+async function initPhotosPage() {
+  _droneSubTab = _droneSubTab || 'drone';
+  _slideCanvasReady = false;
+  _overlayCanvasReady = false;
+  await initDroneView();
+}
+
 // ===== 대시보드 =====
 async function renderDashboard() {
   initMap();
-  initDroneView();
   _updateDashControls();
   if (typeof _syncZoneForSite === 'function') _syncZoneForSite();
   if (typeof window._syncGasExposureForSite === 'function') window._syncGasExposureForSite(currentDashSite);
