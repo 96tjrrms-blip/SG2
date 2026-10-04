@@ -116,10 +116,10 @@ function _renderProtTable() {
   if (hasPipes) {
     // ── 1. 전체 합계: Final 목표 vs 현재 현황 ──
     h += '<div class="prot-section-label">📊 전체 합계</div>';
-    h += '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">';
 
-    // 왼쪽: 테이블
-    h += '<div style="flex:1;min-width:260px">';
+    // 왼쪽: 테이블 (content 너비에 맞게 auto)
+    h += '<div style="flex:0 0 auto">';
     h += '<div style="overflow-x:auto"><table class="prot-table prot-summary-table">';
     h += '<thead><tr>';
     h += '<th class="prot-th prot-col-measure">항목</th>';
@@ -152,8 +152,8 @@ function _renderProtTable() {
     if (em) h += '<button class="prot-inline-add" onclick="addGrandMeasure()">＋ 항목 추가</button>';
     h += '</div>'; // 테이블 컨테이너
 
-    // 오른쪽: 차트
-    h += '<div id="prot-chart" style="flex-shrink:0;align-self:center"></div>';
+    // 오른쪽: 차트 (남은 공간 차지, 중앙 정렬)
+    h += '<div id="prot-chart" style="flex:1;min-width:300px;display:flex;justify-content:center;align-items:flex-start"></div>';
     h += '</div>'; // flex container
 
     // ── 2. 배관별 독립 테이블 ──
@@ -429,7 +429,7 @@ function _renderChart() {
   }
 
   const COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#f97316'];
-  const cx = 150, cy = 150, outerR = 132;
+  const cx = 160, cy = 160, outerR = 142;
   const n = d.measures.length;
   const minR = 8;
   const gap = n <= 1 ? 28 : Math.min(28, Math.floor((outerR - minR) / (n - 1)));
@@ -466,9 +466,9 @@ function _renderChart() {
       ? `<span style="color:${color};font-weight:700;min-width:34px;text-align:right">${pct}%</span>`
       : `<span style="color:#94a3b8;font-size:10px;min-width:34px;text-align:right">목표없음</span>`;
 
-    legend += `<div style="display:flex;align-items:center;gap:5px;font-size:11px">` +
+    legend += `<div style="display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;padding:2px 6px 2px 0">` +
       `<span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>` +
-      `<span style="color:#374151;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.label}</span>` +
+      `<span style="color:#374151">${m.label}</span>` +
       pctLabel +
       `</div>`;
   });
@@ -477,13 +477,13 @@ function _renderChart() {
     ? Math.round(ratios.reduce((a,b) => a+b, 0) / ratios.length * 100) : '-';
 
   const size = cx * 2;
-  el.innerHTML = `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">` +
-    `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0">` +
+  el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:12px">` +
+    `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
     rings +
-    `<text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="26" font-weight="700" fill="#1e3a5f">${avgPct}${typeof avgPct==='number'?'%':''}</text>` +
-    `<text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="11" fill="#6b7280">평균 달성률</text>` +
+    `<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="28" font-weight="700" fill="#1e3a5f">${avgPct}${typeof avgPct==='number'?'%':''}</text>` +
+    `<text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="12" fill="#6b7280">평균 달성률</text>` +
     `</svg>` +
-    `<div style="display:flex;flex-direction:column;gap:8px;min-width:120px;max-width:200px">${legend}</div>` +
+    `<div style="display:flex;flex-wrap:wrap;gap:2px 4px;justify-content:center;max-width:${size}px">${legend}</div>` +
     `</div>`;
 }
 

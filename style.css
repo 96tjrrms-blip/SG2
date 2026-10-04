@@ -652,11 +652,11 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .prot-grand-total-cell { font-weight: 700 !important; background: #dbeafe !important; color: #1d4ed8 !important; text-align: center; }
 .prot-section-label { font-size: 12px; font-weight: 700; color: #374151; padding: 8px 0 5px; letter-spacing: 0.3px; }
 .prot-section-pipes { margin-top: 24px; border-top: 2px solid #e2e8f0; padding-top: 10px; }
-.prot-summary-table { table-layout: auto; width: auto; }
-.prot-summary-table .prot-td, .prot-summary-table .prot-th { padding: 5px 7px !important; }
-.prot-summary-table .prot-col-measure { width: 110px; min-width: 80px !important; position: static !important; left: auto !important; }
-.prot-th-target { width: 76px; min-width: 60px !important; background: #f0fdf4 !important; color: #15803d !important; text-align: center; }
-.prot-th-current { width: 76px; min-width: 60px !important; background: #eff6ff !important; color: #1d4ed8 !important; text-align: center; }
+.prot-summary-table { table-layout: auto; width: auto; white-space: nowrap; }
+.prot-summary-table .prot-td, .prot-summary-table .prot-th { padding: 4px 8px !important; }
+.prot-summary-table .prot-col-measure { width: auto; min-width: 0 !important; position: static !important; left: auto !important; }
+.prot-th-target { width: auto; min-width: 0 !important; background: #f0fdf4 !important; color: #15803d !important; text-align: center; }
+.prot-th-current { width: auto; min-width: 0 !important; background: #eff6ff !important; color: #1d4ed8 !important; text-align: center; }
 .prot-th-swap { width: 64px !important; min-width: 64px !important; background: #f8fafc !important; text-align: center; }
 .prot-target-cell { text-align: center; font-weight: 600; color: #15803d; background: #f0fdf4 !important; }
 .prot-target-cell.prot-editable:hover { background: #dcfce7 !important; cursor: pointer; outline: 1px dashed #16a34a; }
