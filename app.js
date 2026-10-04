@@ -1040,8 +1040,10 @@ window._setOverlayWidth = function(w) {
 
 window._toggleOverlayVisible = function() {
   _overlayVisible = !_overlayVisible;
-  const btn = document.getElementById('overlay-visible-btn');
-  if (btn) { btn.textContent = _overlayVisible ? '👁 ON' : '👁 OFF'; btn.style.color = _overlayVisible ? '#475569' : '#9ca3af'; }
+  ['overlay-visible-btn', 'drone-overlay-vis-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) { btn.textContent = _overlayVisible ? '👁 ON' : '👁 OFF'; btn.style.color = _overlayVisible ? '#475569' : '#9ca3af'; }
+  });
   const canvas = document.getElementById('drone-overlay-canvas');
   if (!canvas) return;
   if (_overlayVisible) { _syncOverlayCanvasSize(); _renderOverlayCanvas(canvas, canvas.dataset.path); }
