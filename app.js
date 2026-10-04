@@ -1600,7 +1600,6 @@ window.switchPhotosSite = function(siteId) {
 async function initPhotosPage() {
   _droneSubTab = _droneSubTab || 'drone';
   _slideCanvasReady = false;
-  _overlayCanvasReady = false;
   await initDroneView();
 }
 
