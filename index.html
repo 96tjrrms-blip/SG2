@@ -485,11 +485,14 @@
         <div class="pm-empty">불러오는 중...</div>
       </div>
       <div class="pm-footer">
-        <label id="pm-upload-footer" class="pm-upload-label">
-          📷 사진 추가
-          <input type="file" id="pm-file-input" accept="image/*" multiple
-            style="display:none" onchange="handlePhotoUpload(this)">
-        </label>
+        <span id="pm-upload-footer" style="display:flex;gap:6px;flex-wrap:wrap">
+          <label class="pm-upload-label">
+            📷 사진 추가
+            <input type="file" id="pm-file-input" accept="image/*" multiple
+              style="display:none" onchange="handlePhotoUpload(this)">
+          </label>
+          <button class="pm-upload-label" style="border:none;background:#475569" onclick="openConstrPicker()">🏗 공사사진에서 가져오기</button>
+        </span>
         <button class="cm-btn-cancel" onclick="closePhotoModal()">닫기</button>
       </div>
     </div>
@@ -840,12 +843,12 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js?v=7"></script>
+<script src="supabase.js?v=8"></script>
 <script src="mapConfig.js?v=7"></script>
 <script src="boring-data.js?v=7"></script>
 <script src="boring.js?v=7"></script>
 <script src="parking.js?v=7"></script>
-<script src="map.js?v=7"></script>
+<script src="map.js?v=8"></script>
 <script src="pipe-editor.js?v=7"></script>
 <script src="emergency.js?v=7"></script>
 <script src="protection.js?v=9"></script>

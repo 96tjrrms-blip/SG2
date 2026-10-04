@@ -262,6 +262,25 @@ async function listPipePhotos(segId, subSegId) {
     }));
 }
 
+// 버킷 내 다른 경로의 사진(예: 공사사진)을 배관 사진 폴더로 복사
+async function copyToPipePhoto(srcPath, segId, subSegId, idx) {
+  const ext    = (srcPath.split('.').pop() || 'jpg').toLowerCase();
+  const folder = subSegId ? `${segId}/${subSegId}` : segId;
+  const path   = `${folder}/${Date.now()}${idx ? '_' + idx : ''}.${ext}`;
+  const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).copy(srcPath, path);
+  if (error) {
+    // copy 권한이 없으면 다운로드 후 재업로드
+    const res = await fetch(getPipePhotoUrl(srcPath));
+    if (!res.ok) throw error;
+    const blob = await res.blob();
+    const { error: upErr } = await sb.storage.from(PIPE_PHOTO_BUCKET).upload(path, blob, {
+      cacheControl: '3600', upsert: false, contentType: blob.type || 'image/jpeg'
+    });
+    if (upErr) throw upErr;
+  }
+  return { path, url: getPipePhotoUrl(path) };
+}
+
 async function deletePipePhotoStorage(path) {
   const { error } = await sb.storage.from(PIPE_PHOTO_BUCKET).remove([path]);
   if (error) throw error;

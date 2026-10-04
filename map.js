@@ -716,6 +716,114 @@ async function handlePhotoUpload(input) {
   }
 }
 
+// ── 공사사진에서 가져오기 ──────────────────────────────────────
+const _CP_SITES = [['S015', '#S-015 환기구'], ['115st', '115 정거장'], ['S016', '#S-016 환기구']];
+let _cpSite = null;
+let _cpPhotos = [];
+let _cpSelected = new Set();
+
+function openConstrPicker() {
+  if (!_photoModalSegId) return;
+  let el = document.getElementById('constr-picker');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'constr-picker';
+    el.className = 'color-modal';
+    el.style.zIndex = '1500';
+    el.onclick = e => { if (e.target === el) closeConstrPicker(); };
+    el.innerHTML = `
+      <div class="cm-panel pm-panel" style="max-width:640px">
+        <div class="cm-header">
+          <span>🏗 공사사진에서 가져오기</span>
+          <button class="cm-close" onclick="closeConstrPicker()">✕</button>
+        </div>
+        <div id="cp-tabs" style="display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap"></div>
+        <div class="pm-body" id="cp-body" style="max-height:55vh"></div>
+        <div class="pm-footer">
+          <button class="cm-btn-cancel" onclick="closeConstrPicker()">취소</button>
+          <button id="cp-import-btn" class="pm-upload-label" style="border:none" onclick="importConstrPhotos()">가져오기</button>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+  _cpSelected = new Set();
+  _selectConstrPickerSite(_cpSite || (typeof currentDashSite !== 'undefined' ? currentDashSite : '115st'));
+}
+
+function closeConstrPicker() {
+  const el = document.getElementById('constr-picker');
+  if (el) el.style.display = 'none';
+}
+
+async function _selectConstrPickerSite(siteId) {
+  _cpSite = siteId;
+  _cpSelected = new Set();
+  document.getElementById('cp-tabs').innerHTML = _CP_SITES.map(([id, name]) =>
+    `<button class="dash-site-tab${id === siteId ? ' active' : ''}" onclick="_selectConstrPickerSite('${id}')">${name}</button>`
+  ).join('');
+  _updateConstrPickerBtn();
+  const body = document.getElementById('cp-body');
+  body.innerHTML = '<div class="pm-empty">불러오는 중...</div>';
+  _cpPhotos = await listConstrPhotos(siteId);
+  if (_cpSite !== siteId) return;
+  if (!_cpPhotos.length) {
+    body.innerHTML = '<div class="pm-empty">이 현장에 공사사진이 없습니다</div>';
+    return;
+  }
+  body.innerHTML = `<div class="pm-grid">${_cpPhotos.map((p, i) => `
+    <div class="pm-photo-item" id="cp-item-${i}" onclick="_toggleConstrPick(${i})" style="cursor:pointer">
+      <img src="${p.url}" style="cursor:pointer" loading="lazy">
+      <div id="cp-check-${i}" style="position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:50%;
+        border:2px solid #fff;background:rgba(0,0,0,0.35);color:#fff;font-size:13px;font-weight:700;
+        display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.4)"></div>
+    </div>`).join('')}</div>`;
+}
+
+function _toggleConstrPick(i) {
+  if (_cpSelected.has(i)) _cpSelected.delete(i); else _cpSelected.add(i);
+  const on = _cpSelected.has(i);
+  document.getElementById('cp-item-' + i).style.borderColor = on ? '#2563eb' : 'transparent';
+  const chk = document.getElementById('cp-check-' + i);
+  chk.style.background = on ? '#2563eb' : 'rgba(0,0,0,0.35)';
+  chk.textContent = on ? '✓' : '';
+  _updateConstrPickerBtn();
+}
+
+function _updateConstrPickerBtn() {
+  const btn = document.getElementById('cp-import-btn');
+  const n = _cpSelected.size;
+  btn.textContent = n ? `가져오기 (${n}장)` : '가져오기';
+  btn.disabled = !n;
+  btn.style.opacity = n ? '1' : '0.5';
+}
+
+async function importConstrPhotos() {
+  const segId    = _photoModalSegId;
+  const subSegId = _photoModalSubId;
+  if (!segId || !_cpSelected.size) return;
+  const btn = document.getElementById('cp-import-btn');
+  btn.disabled = true;
+  btn.textContent = '가져오는 중...';
+  try {
+    const existing = await listPipePhotos(segId, subSegId);
+    let first = null, i = 0;
+    for (const idx of _cpSelected) {
+      const r = await copyToPipePhoto(_cpPhotos[idx].path, segId, subSegId, ++i);
+      if (!first) first = r;
+    }
+    if (first && !existing.length && !_getRepPhoto(segId, subSegId)) {
+      _setRepPhoto(segId, subSegId, first.url, first.path);
+      _refreshPopupPhoto(segId, subSegId, first.url);
+    }
+    closeConstrPicker();
+    _renderPhotoGrid(segId, subSegId);
+  } catch(e) {
+    alert('가져오기 오류: ' + e.message);
+    _updateConstrPickerBtn();
+  }
+}
+
 function _refreshPopupPhoto(segId, subSegId, url) {
   if (subSegId === '_pipe') {
     const area = document.querySelector('.pp-photo-area');
