@@ -175,7 +175,7 @@ function _renderProtTable() {
       }
       h += '</div>';
 
-      h += '<div style="overflow-x:auto"><table class="prot-table">';
+      h += '<div style="overflow-x:auto"><table class="prot-table no-pipes">';
       h += '<thead><tr>';
       h += '<th class="prot-th prot-col-measure">항목</th>';
       h += '<th class="prot-th prot-col-total">합계</th>';
