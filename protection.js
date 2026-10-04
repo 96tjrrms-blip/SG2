@@ -399,55 +399,62 @@ function _renderChart() {
   const el = document.getElementById('prot-chart');
   if (!el) return;
 
-  const COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899'];
-  const validMs = d.measures.filter(m => {
-    const t = parseFloat(d.targets[m.id]);
-    return !isNaN(t) && t > 0;
-  });
-
-  if (validMs.length === 0) {
-    el.innerHTML = '<div style="color:#94a3b8;font-size:11px;padding:20px 8px;text-align:center;line-height:1.6">Final 목표값을<br>입력하면<br>차트 표시</div>';
+  if (d.measures.length === 0) {
+    el.innerHTML = '<div style="color:#94a3b8;font-size:11px;padding:20px 8px;text-align:center;line-height:1.6">전체 합계 항목을<br>추가하면<br>차트 표시</div>';
     return;
   }
 
-  const cx = 75, cy = 75, outerR = 62, gap = 14, sw = 10;
+  const COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#f97316'];
+  const cx = 110, cy = 110, outerR = 96, gap = 13, sw = 11;
   let rings = '', legend = '', ratios = [];
 
-  validMs.forEach((m, i) => {
-    const target = parseFloat(d.targets[m.id]);
+  d.measures.forEach((m, i) => {
+    const targetStr = d.targets[m.id];
+    const target = parseFloat(targetStr);
+    const hasTarget = !isNaN(target) && target > 0;
     const raw = _grandTotal(m.id);
     const current = (raw === '-' ? 0 : parseFloat(raw)) || 0;
-    const ratio = Math.min(current / target, 1);
-    ratios.push(ratio);
+    const ratio = hasTarget ? Math.min(current / target, 1) : 0;
+    if (hasTarget) ratios.push(ratio);
+
     const r = outerR - i * gap;
-    if (r < 15) return;
+    if (r < 10) return;
+
     const circ = 2 * Math.PI * r;
     const filled = +(circ * ratio).toFixed(2);
     const empty = +(circ - filled).toFixed(2);
     const color = COLORS[i % COLORS.length];
-    const pct = Math.round(ratio * 100);
+    const pct = hasTarget ? Math.round(ratio * 100) : null;
+
     rings += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e8edf3" stroke-width="${sw}"/>`;
-    rings += `<g transform="rotate(-90,${cx},${cy})">` +
-      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" ` +
-      `stroke-dasharray="${filled} ${empty}" stroke-linecap="round"/>` +
-      `</g>`;
+    if (filled > 0) {
+      rings += `<g transform="rotate(-90,${cx},${cy})">` +
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" ` +
+        `stroke-dasharray="${filled} ${empty}" stroke-linecap="round"/>` +
+        `</g>`;
+    }
+
+    const pctLabel = pct !== null
+      ? `<span style="color:${color};font-weight:700;min-width:34px;text-align:right">${pct}%</span>`
+      : `<span style="color:#94a3b8;font-size:10px;min-width:34px;text-align:right">목표없음</span>`;
+
     legend += `<div style="display:flex;align-items:center;gap:5px;font-size:11px">` +
       `<span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>` +
       `<span style="color:#374151;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.label}</span>` +
-      `<span style="color:${color};font-weight:700;min-width:32px;text-align:right">${pct}%</span>` +
+      pctLabel +
       `</div>`;
   });
 
   const avgPct = ratios.length > 0
-    ? Math.round(ratios.reduce((a,b) => a+b, 0) / ratios.length * 100) : 0;
+    ? Math.round(ratios.reduce((a,b) => a+b, 0) / ratios.length * 100) : '-';
 
-  el.innerHTML = `<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">` +
-    `<svg width="150" height="150" viewBox="0 0 150 150" style="flex-shrink:0">` +
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">` +
+    `<svg width="220" height="220" viewBox="0 0 220 220" style="flex-shrink:0">` +
     rings +
-    `<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="18" font-weight="700" fill="#1e3a5f">${avgPct}%</text>` +
-    `<text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="9" fill="#6b7280">평균 달성률</text>` +
+    `<text x="${cx}" y="${cy-5}" text-anchor="middle" font-size="22" font-weight="700" fill="#1e3a5f">${avgPct}${typeof avgPct==='number'?'%':''}</text>` +
+    `<text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="#6b7280">평균 달성률</text>` +
     `</svg>` +
-    `<div style="display:flex;flex-direction:column;gap:7px;min-width:110px;max-width:180px">${legend}</div>` +
+    `<div style="display:flex;flex-direction:column;gap:8px;min-width:120px;max-width:200px">${legend}</div>` +
     `</div>`;
 }
 
