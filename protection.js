@@ -57,9 +57,10 @@ function _pd() {
   if (!_protCache[_protSite]) _protCache[_protSite] = _emptyProt(_protSite);
   const d = _protCache[_protSite];
   if (!d.targets) d.targets = {};
-  // 기존 데이터 마이그레이션: pipe.measures 없으면 d.measures 복사
+  // 기존 데이터 마이그레이션
   d.pipes.forEach(pipe => {
     if (!pipe.measures) pipe.measures = d.measures.map(m => ({ ...m }));
+    if (!pipe.dates) pipe.dates = [...(d.dates || [])]; // 기존 공유 날짜 복사
   });
   return d;
 }
@@ -68,8 +69,10 @@ function _rk(pid, mid, dt) { return `${pid}|${mid}|${dt}`; }
 
 function _colTotal(pid, mid) {
   const d = _pd();
+  const pipe = d.pipes.find(p => p.id === pid);
+  const dates = (pipe && pipe.dates) ? pipe.dates : (d.dates || []);
   let s = 0, any = false;
-  d.dates.forEach(dt => {
+  dates.forEach(dt => {
     const v = d.records[_rk(pid, mid, dt)];
     if (v !== undefined && v !== '') { s += parseFloat(v) || 0; any = true; }
   });
@@ -79,21 +82,14 @@ function _colTotal(pid, mid) {
 function _grandTotal(mid) {
   const d = _pd();
   let s = 0, any = false;
-  d.pipes.forEach(p => d.dates.forEach(dt => {
-    const v = d.records[_rk(p.id, mid, dt)];
-    if (v !== undefined && v !== '') { s += parseFloat(v) || 0; any = true; }
-  }));
-  return any ? s : '-';
-}
-
-function _dateColSum(mid, dt) {
-  const d = _pd();
-  let s = 0, any = false;
   d.pipes.forEach(p => {
-    const v = d.records[_rk(p.id, mid, dt)];
-    if (v !== undefined && v !== '') { s += parseFloat(v) || 0; any = true; }
+    const dates = p.dates ? p.dates : (d.dates || []);
+    dates.forEach(dt => {
+      const v = d.records[_rk(p.id, mid, dt)];
+      if (v !== undefined && v !== '') { s += parseFloat(v) || 0; any = true; }
+    });
   });
-  return any ? s : '';
+  return any ? s : '-';
 }
 
 // ===== 렌더 =====
@@ -105,6 +101,8 @@ function _renderProtTable() {
 
   const tb = document.getElementById('prot-toolbar');
   if (tb) tb.style.display = em ? 'flex' : 'none';
+  const dateBtn = document.getElementById('prot-date-btn');
+  if (dateBtn) dateBtn.style.display = (em && !hasPipes) ? '' : 'none';
 
   const hasPipes = d.pipes.length > 0;
 
@@ -162,6 +160,7 @@ function _renderProtTable() {
     h += '<div class="prot-section-label prot-section-pipes">🔧 배관별 상세</div>';
     d.pipes.forEach((pipe, pi) => {
       const pipeMeasures = pipe.measures || [];
+      const pipeDates = pipe.dates || [];
       h += '<div class="prot-pipe-block">';
       h += '<div class="prot-pipe-block-header">';
       h += `<span class="prot-pipe-name${em ? ' prot-editable' : ''}"${em ? ` onclick="_editProtPipeName('${pipe.id}',this)"` : ''}>`;
@@ -170,6 +169,7 @@ function _renderProtTable() {
       if (em) {
         h += `<span style="display:flex;gap:6px;margin-left:auto;align-items:center">`;
         h += `<button class="prot-pipe-add-btn" onclick="addPipeMeasure('${pipe.id}')">＋ 항목</button>`;
+        h += `<button class="prot-pipe-add-btn" onclick="addPipeDate('${pipe.id}')">📅 날짜</button>`;
         h += `<button class="prot-del" style="color:#fca5a5;border-color:#fca5a5" onclick="_delProtPipe('${pipe.id}')">✕ 배관삭제</button>`;
         h += '</span>';
       }
@@ -179,15 +179,15 @@ function _renderProtTable() {
       h += '<thead><tr>';
       h += '<th class="prot-th prot-col-measure">항목</th>';
       h += '<th class="prot-th prot-col-total">합계</th>';
-      d.dates.forEach(dt => {
+      pipeDates.forEach(dt => {
         const lbl = dt.slice(5).replace('-', '/');
-        h += `<th class="prot-th prot-col-date">${lbl}${(em && pi === 0) ? `<button class="prot-del" onclick="_delProtDate('${dt}')">✕</button>` : ''}</th>`;
+        h += `<th class="prot-th prot-col-date">${lbl}${em ? `<button class="prot-del" onclick="_delPipeDate('${pipe.id}','${dt}')">✕</button>` : ''}</th>`;
       });
       h += '</tr></thead><tbody>';
 
+      const emptyColspan = 2 + pipeDates.length;
       if (pipeMeasures.length === 0) {
-        const cols = 2 + d.dates.length;
-        h += `<tr><td colspan="${cols}" class="prot-empty" style="padding:18px;font-size:12px">${em ? '＋ 항목 버튼으로 항목을 추가하세요' : '항목 없음'}</td></tr>`;
+        h += `<tr><td colspan="${emptyColspan}" class="prot-empty" style="padding:18px;font-size:12px">${em ? '＋ 항목 버튼으로 항목을 추가하세요' : '항목 없음'}</td></tr>`;
       } else {
         pipeMeasures.forEach(m => {
           h += '<tr>';
@@ -197,21 +197,20 @@ function _renderProtTable() {
           if (em) h += `<button class="prot-del" onclick="_delPipeMeasure('${pipe.id}','${m.id}')">✕</button>`;
           h += '</div></td>';
           h += `<td class="prot-td prot-col-total">${_colTotal(pipe.id, m.id)}</td>`;
-          d.dates.forEach(dt => {
+          pipeDates.forEach(dt => {
             const val = d.records[_rk(pipe.id, m.id, dt)] || '';
             h += `<td class="prot-cell" data-pipe="${pipe.id}" data-measure="${m.id}" data-date="${dt}" onclick="editProtCell(this)">${val}</td>`;
           });
           h += '</tr>';
         });
+        if (pipeDates.length === 0 && em) {
+          h += `<tr><td colspan="${emptyColspan}" class="prot-empty" style="padding:14px;font-size:11px;color:#94a3b8">📅 날짜 버튼으로 날짜를 추가하세요</td></tr>`;
+        }
       }
 
       h += '</tbody></table></div>';
       h += '</div>'; // prot-pipe-block
     });
-
-    if (d.dates.length === 0) {
-      h += `<p class="prot-hint">${em ? '📅 날짜 추가 버튼을 눌러 첫 번째 점검일을 추가하세요.' : '점검 날짜가 없습니다.'}</p>`;
-    }
   } else {
     // 배관 없음 (15환기구 등)
     h += '<div style="overflow-x:auto"><table class="prot-table">';
@@ -323,6 +322,19 @@ window.addProtDate = function() {
   _saveProt().then(() => _renderProtTable());
 };
 
+window.addPipeDate = function(pipeId) {
+  const today = new Date().toISOString().split('T')[0];
+  const val = prompt('날짜 입력 (YYYY-MM-DD):', today);
+  if (!val || !val.match(/^\d{4}-\d{2}-\d{2}$/)) return;
+  const d = _pd();
+  const pipe = d.pipes.find(p => p.id === pipeId);
+  if (!pipe) return;
+  if (!pipe.dates) pipe.dates = [];
+  if (pipe.dates.includes(val)) { alert('이미 추가된 날짜입니다.'); return; }
+  pipe.dates.push(val); pipe.dates.sort();
+  _saveProt().then(() => _renderProtTable());
+};
+
 window.addProtPipe = function() {
   const name = prompt('배관명을 입력하세요\n(예: MB 300A, 인입관-1)');
   if (name === null) return;
@@ -353,6 +365,18 @@ window._delProtDate = function(date) {
   const d = _pd();
   d.dates = d.dates.filter(x => x !== date);
   Object.keys(d.records).forEach(k => { if (k.endsWith(`|${date}`)) delete d.records[k]; });
+  _saveProt().then(() => _renderProtTable());
+};
+
+window._delPipeDate = function(pipeId, date) {
+  if (!confirm(`"${date.slice(5).replace('-','/')}" 날짜 열을 삭제하시겠습니까?`)) return;
+  const d = _pd();
+  const pipe = d.pipes.find(p => p.id === pipeId);
+  if (!pipe) return;
+  pipe.dates = (pipe.dates || []).filter(x => x !== date);
+  Object.keys(d.records).forEach(k => {
+    if (k.startsWith(`${pipeId}|`) && k.endsWith(`|${date}`)) delete d.records[k];
+  });
   _saveProt().then(() => _renderProtTable());
 };
 

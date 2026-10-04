@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -523,7 +523,7 @@
 
       <!-- 편집 툴바 (편집 모드에서만 표시) -->
       <div id="prot-toolbar" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-        <button class="zone-btn" onclick="addProtDate()">📅 날짜 추가</button>
+        <button id="prot-date-btn" class="zone-btn" onclick="addProtDate()">📅 날짜 추가</button>
         <button class="zone-btn" onclick="addProtPipe()">＋ 배관 추가</button>
         <button id="prot-save-btn" onclick="saveProtNow()"
           style="padding:6px 16px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;
