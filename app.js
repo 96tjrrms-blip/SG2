@@ -1,7 +1,8 @@
 // ===== 편집 잠금 =====
 const _EDIT_PW       = '3002';
 const _EDIT_AUTH_KEY = 'sg2_edit_auth_v1';
-window._editMode = localStorage.getItem(_EDIT_AUTH_KEY) === '1';
+window._editMode = false;
+localStorage.removeItem(_EDIT_AUTH_KEY);
 
 function _applyEditMode() {
   const em = window._editMode;
