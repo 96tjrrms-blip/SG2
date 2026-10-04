@@ -648,10 +648,18 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .prot-pipe-name.prot-editable:hover { background: #eff6ff; outline: 1px dashed #0d2b5e; }
 .prot-pipe-sep td { height: 4px; background: #e2e8f0; padding: 0; border: none; }
 .prot-grand-row .prot-td { background: #f0f9ff !important; }
-.prot-grand-pipe  { font-weight: 700; color: #0d2b5e; font-size: 12px; text-align: center; }
 .prot-grand-measure { font-weight: 600; font-size: 12px; }
-.prot-grand-cell { text-align: center; padding: 6px 8px; font-weight: 400; color: #93c5fd; border: 1px solid #dbeafe; background: #f0f9ff; font-size: 11px; }
-.prot-grand-total-cell { font-weight: 700 !important; background: #dbeafe !important; color: #1d4ed8 !important; }
+.prot-grand-total-cell { font-weight: 700 !important; background: #dbeafe !important; color: #1d4ed8 !important; text-align: center; }
+.prot-section-label { font-size: 12px; font-weight: 700; color: #374151; padding: 8px 0 5px; letter-spacing: 0.3px; }
+.prot-section-pipes { margin-top: 24px; border-top: 2px solid #e2e8f0; padding-top: 10px; }
+.prot-summary-table { max-width: 400px; }
+.prot-th-target { min-width: 110px; background: #f0fdf4 !important; color: #15803d !important; }
+.prot-th-current { min-width: 110px; background: #eff6ff !important; color: #1d4ed8 !important; }
+.prot-target-cell { text-align: center; font-weight: 600; color: #15803d; background: #f0fdf4 !important; }
+.prot-target-cell.prot-editable:hover { background: #dcfce7 !important; cursor: pointer; outline: 1px dashed #16a34a; }
+.prot-pipe-block { margin-top: 14px; border: 1px solid #dbeafe; border-radius: 8px; overflow: hidden; }
+.prot-pipe-block-header { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: #1e3a5f; color: #fff; font-size: 13px; font-weight: 700; }
+.prot-pipe-block-header .prot-pipe-name.prot-editable:hover { background: rgba(255,255,255,0.15); cursor: pointer; border-radius: 3px; padding: 0 4px; outline: 1px dashed rgba(255,255,255,0.5); }
 .prot-empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
 .prot-hint { padding: 10px 16px; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; margin: 0; }
 

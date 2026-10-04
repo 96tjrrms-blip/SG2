@@ -31,7 +31,8 @@ function _emptyProt(s) {
     pipes: [],
     measures: (PROT_DEFAULT_MEASURES[s] || []).map(m => ({ ...m })),
     dates: [],
-    records: {}
+    records: {},
+    targets: {}
   };
 }
 
@@ -54,7 +55,9 @@ async function _saveProt() {
 
 function _pd() {
   if (!_protCache[_protSite]) _protCache[_protSite] = _emptyProt(_protSite);
-  return _protCache[_protSite];
+  const d = _protCache[_protSite];
+  if (!d.targets) d.targets = {};
+  return d;
 }
 
 function _rk(pid, mid, dt) { return `${pid}|${mid}|${dt}`; }
@@ -106,84 +109,93 @@ function _renderProtTable() {
     return;
   }
 
-  let h = `<div style="overflow-x:auto"><table class="prot-table${hasPipes ? '' : ' no-pipes'}">`;
-
-  // ── 헤더 ──
-  h += '<thead><tr>';
-  if (hasPipes) h += '<th class="prot-th prot-col-pipe">배관</th>';
-  h += '<th class="prot-th prot-col-measure">항목</th>';
-  h += '<th class="prot-th prot-col-total">합계</th>';
-  d.dates.forEach(dt => {
-    const lbl = dt.slice(5).replace('-', '/');
-    h += `<th class="prot-th prot-col-date">${lbl}${em ? `<button class="prot-del" onclick="_delProtDate('${dt}')">✕</button>` : ''}</th>`;
-  });
-  h += '</tr></thead>';
-
-  // ── 바디 ──
-  h += '<tbody>';
+  let h = '';
 
   if (hasPipes) {
-    const cols = 1 + 1 + 1 + d.dates.length;
+    // ── 1. 전체 합계: Final 목표 vs 현재 현황 (날짜 없음) ──
+    h += '<div class="prot-section-label">📊 전체 합계</div>';
+    h += '<div style="overflow-x:auto"><table class="prot-table prot-summary-table">';
+    h += '<thead><tr>';
+    h += '<th class="prot-th prot-col-measure">항목</th>';
+    h += '<th class="prot-th prot-th-target">Final 목표</th>';
+    h += '<th class="prot-th prot-th-current">현재 현황</th>';
+    h += '</tr></thead><tbody>';
+    d.measures.forEach(m => {
+      const target = (d.targets[m.id] != null && d.targets[m.id] !== '') ? d.targets[m.id] : '';
+      const current = _grandTotal(m.id);
+      h += '<tr class="prot-grand-row">';
+      h += `<td class="prot-td prot-col-measure prot-grand-measure">${m.label}</td>`;
+      h += `<td class="prot-td prot-target-cell${em ? ' prot-editable' : ''}"${em ? ` onclick="editProtTarget(this,'${m.id}')"` : ''}>`;
+      h += target !== '' ? target : (em ? '<em style="color:#94a3b8;font-style:normal;font-size:11px">클릭하여 입력</em>' : '-');
+      h += '</td>';
+      h += `<td class="prot-td prot-grand-total-cell">${current}</td>`;
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
 
-    // 전체 합계 (복수 배관 시) — 맨 위
-    if (d.pipes.length > 1 && d.measures.length > 0 && d.dates.length > 0) {
-      d.measures.forEach((m, mi) => {
-        h += '<tr class="prot-grand-row">';
-        if (mi === 0) {
-          h += `<td class="prot-td prot-col-pipe prot-grand-pipe" rowspan="${d.measures.length}">전체 합계</td>`;
-        }
-        h += `<td class="prot-td prot-col-measure prot-grand-measure">${m.label}</td>`;
-        h += `<td class="prot-td prot-col-total prot-grand-total-cell">${_grandTotal(m.id)}</td>`;
+    // ── 2. 배관별 독립 테이블 ──
+    if (d.measures.length > 0) {
+      h += '<div class="prot-section-label prot-section-pipes">🔧 배관별 상세</div>';
+      d.pipes.forEach((pipe, pi) => {
+        h += '<div class="prot-pipe-block">';
+        h += '<div class="prot-pipe-block-header">';
+        h += `<span class="prot-pipe-name${em ? ' prot-editable' : ''}"${em ? ` onclick="_editProtPipeName('${pipe.id}',this)"` : ''}>`;
+        h += pipe.name || '<em style="color:rgba(255,255,255,0.5);font-style:normal">이름 없음</em>';
+        h += '</span>';
+        if (em) h += `<button class="prot-del" style="color:#fca5a5;border-color:#fca5a5;margin-left:auto" onclick="_delProtPipe('${pipe.id}')">✕ 삭제</button>`;
+        h += '</div>';
+
+        h += '<div style="overflow-x:auto"><table class="prot-table">';
+        h += '<thead><tr>';
+        h += '<th class="prot-th prot-col-measure">항목</th>';
+        h += '<th class="prot-th prot-col-total">합계</th>';
         d.dates.forEach(dt => {
-          const s = _dateColSum(m.id, dt);
-          h += `<td class="prot-grand-cell">${s}</td>`;
+          const lbl = dt.slice(5).replace('-', '/');
+          h += `<th class="prot-th prot-col-date">${lbl}${(em && pi === 0) ? `<button class="prot-del" onclick="_delProtDate('${dt}')">✕</button>` : ''}</th>`;
         });
-        h += '</tr>';
+        h += '</tr></thead><tbody>';
+
+        d.measures.forEach((m, mi) => {
+          h += '<tr>';
+          h += '<td class="prot-td prot-col-measure">';
+          h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">';
+          h += `<span>${m.label}</span>`;
+          if (em && pi === 0) h += `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>`;
+          h += '</div></td>';
+          h += `<td class="prot-td prot-col-total">${_colTotal(pipe.id, m.id)}</td>`;
+          d.dates.forEach(dt => {
+            const val = d.records[_rk(pipe.id, m.id, dt)] || '';
+            h += `<td class="prot-cell" data-pipe="${pipe.id}" data-measure="${m.id}" data-date="${dt}" onclick="editProtCell(this)">${val}</td>`;
+          });
+          h += '</tr>';
+        });
+
+        h += '</tbody></table></div>';
+        h += '</div>'; // prot-pipe-block
       });
-      h += `<tr class="prot-pipe-sep"><td colspan="${cols}"></td></tr>`;
     }
 
-    d.pipes.forEach((pipe, pi) => {
-      d.measures.forEach((m, mi) => {
-        h += '<tr>';
-        if (mi === 0) {
-          h += `<td class="prot-td prot-col-pipe" rowspan="${d.measures.length}">
-            <div class="prot-pipe-cell">
-              <span class="prot-pipe-name${em ? ' prot-editable' : ''}"
-                ${em ? `onclick="_editProtPipeName('${pipe.id}',this)"` : ''}>
-                ${pipe.name || '<em style="color:#94a3b8;font-style:normal">이름 없음</em>'}
-              </span>
-              ${em ? `<button class="prot-del prot-del-pipe" onclick="_delProtPipe('${pipe.id}')">✕ 삭제</button>` : ''}
-            </div>
-          </td>`;
-        }
-        h += `<td class="prot-td prot-col-measure">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
-            <span>${m.label}</span>
-            ${(em && pi === 0) ? `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>` : ''}
-          </div>
-        </td>`;
-        h += `<td class="prot-td prot-col-total">${_colTotal(pipe.id, m.id)}</td>`;
-        d.dates.forEach(dt => {
-          const val = d.records[_rk(pipe.id, m.id, dt)] || '';
-          h += `<td class="prot-cell" data-pipe="${pipe.id}" data-measure="${m.id}" data-date="${dt}" onclick="editProtCell(this)">${val}</td>`;
-        });
-        h += '</tr>';
-      });
-      if (pi < d.pipes.length - 1) {
-        h += `<tr class="prot-pipe-sep"><td colspan="${cols}"></td></tr>`;
-      }
-    });
+    if (d.dates.length === 0) {
+      h += `<p class="prot-hint">${em ? '📅 날짜 추가 버튼을 눌러 첫 번째 점검일을 추가하세요.' : '점검 날짜가 없습니다.'}</p>`;
+    }
   } else {
     // 배관 없음 (15환기구 등)
-    d.measures.forEach((m) => {
+    h += '<div style="overflow-x:auto"><table class="prot-table">';
+    h += '<thead><tr>';
+    h += '<th class="prot-th prot-col-measure">항목</th>';
+    h += '<th class="prot-th prot-col-total">합계</th>';
+    d.dates.forEach(dt => {
+      const lbl = dt.slice(5).replace('-', '/');
+      h += `<th class="prot-th prot-col-date">${lbl}${em ? `<button class="prot-del" onclick="_delProtDate('${dt}')">✕</button>` : ''}</th>`;
+    });
+    h += '</tr></thead><tbody>';
+    d.measures.forEach(m => {
       h += '<tr>';
-      h += `<td class="prot-td prot-col-measure">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
-          <span>${m.label}</span>
-          ${em ? `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>` : ''}
-        </div>
-      </td>`;
+      h += '<td class="prot-td prot-col-measure">';
+      h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">';
+      h += `<span>${m.label}</span>`;
+      if (em) h += `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>`;
+      h += '</div></td>';
       h += `<td class="prot-td prot-col-total">${_colTotal('site', m.id)}</td>`;
       d.dates.forEach(dt => {
         const val = d.records[_rk('site', m.id, dt)] || '';
@@ -191,14 +203,11 @@ function _renderProtTable() {
       });
       h += '</tr>';
     });
+    h += '</tbody></table></div>';
+    if (d.dates.length === 0) {
+      h += `<p class="prot-hint">${em ? '📅 날짜 추가 버튼을 눌러 첫 번째 점검일을 추가하세요.' : '점검 날짜가 없습니다.'}</p>`;
+    }
   }
-
-  h += '</tbody></table>';
-
-  if (d.dates.length === 0) {
-    h += `<p class="prot-hint">${em ? '📅 날짜 추가 버튼을 눌러 첫 번째 점검일을 추가하세요.' : '점검 날짜가 없습니다.'}</p>`;
-  }
-  h += '</div>';
 
   wrap.innerHTML = h;
   _renderRegSection();
@@ -218,6 +227,27 @@ window.editProtCell = function(td) {
     const val = inp.value.trim();
     const d = _pd(), key = _rk(pipe, measure, date);
     if (val === '') delete d.records[key]; else d.records[key] = val;
+    await _saveProt();
+    _renderProtTable();
+  };
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') _renderProtTable();
+  });
+};
+
+window.editProtTarget = function(td, mid) {
+  if (!window._editMode || td.querySelector('input')) return;
+  const hasPlaceholder = !!td.querySelector('em');
+  const cur = hasPlaceholder ? '' : (td.textContent || '').trim();
+  td.innerHTML = `<input type="text" class="prot-cell-input" value="${cur}" placeholder="목표값 입력 (예: 100m)">`;
+  const inp = td.querySelector('input');
+  inp.focus(); inp.select();
+  const commit = async () => {
+    const val = inp.value.trim();
+    const d = _pd();
+    if (val === '') delete d.targets[mid]; else d.targets[mid] = val;
     await _saveProt();
     _renderProtTable();
   };
