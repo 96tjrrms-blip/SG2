@@ -652,14 +652,22 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .prot-grand-total-cell { font-weight: 700 !important; background: #dbeafe !important; color: #1d4ed8 !important; text-align: center; }
 .prot-section-label { font-size: 12px; font-weight: 700; color: #374151; padding: 8px 0 5px; letter-spacing: 0.3px; }
 .prot-section-pipes { margin-top: 24px; border-top: 2px solid #e2e8f0; padding-top: 10px; }
-.prot-summary-table { max-width: 400px; }
+.prot-summary-table { max-width: 480px; }
 .prot-th-target { min-width: 110px; background: #f0fdf4 !important; color: #15803d !important; }
 .prot-th-current { min-width: 110px; background: #eff6ff !important; color: #1d4ed8 !important; }
+.prot-th-swap { width: 52px !important; background: #f8fafc !important; }
 .prot-target-cell { text-align: center; font-weight: 600; color: #15803d; background: #f0fdf4 !important; }
 .prot-target-cell.prot-editable:hover { background: #dcfce7 !important; cursor: pointer; outline: 1px dashed #16a34a; }
+.prot-swap-btn { display: inline-block; width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 3px; background: #fff; color: #475569; font-size: 10px; cursor: pointer; line-height: 1; padding: 0; }
+.prot-swap-btn:hover:not(:disabled) { background: #e2e8f0; }
+.prot-swap-btn:disabled { opacity: 0.25; cursor: default; }
+.prot-inline-add { margin-top: 8px; padding: 5px 12px; border: 1px dashed #94a3b8; border-radius: 6px; background: #fff; color: #475569; font-size: 12px; cursor: pointer; width: 100%; text-align: center; }
+.prot-inline-add:hover { background: #f1f5f9; border-color: #64748b; }
 .prot-pipe-block { margin-top: 14px; border: 1px solid #dbeafe; border-radius: 8px; overflow: hidden; }
 .prot-pipe-block-header { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: #1e3a5f; color: #fff; font-size: 13px; font-weight: 700; }
 .prot-pipe-block-header .prot-pipe-name.prot-editable:hover { background: rgba(255,255,255,0.15); cursor: pointer; border-radius: 3px; padding: 0 4px; outline: 1px dashed rgba(255,255,255,0.5); }
+.prot-pipe-add-btn { padding: 3px 9px; border: 1px solid rgba(255,255,255,0.5); border-radius: 5px; background: rgba(255,255,255,0.12); color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.prot-pipe-add-btn:hover { background: rgba(255,255,255,0.25); }
 .prot-empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
 .prot-hint { padding: 10px 16px; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; margin: 0; }
 

@@ -57,6 +57,10 @@ function _pd() {
   if (!_protCache[_protSite]) _protCache[_protSite] = _emptyProt(_protSite);
   const d = _protCache[_protSite];
   if (!d.targets) d.targets = {};
+  // 기존 데이터 마이그레이션: pipe.measures 없으면 d.measures 복사
+  d.pipes.forEach(pipe => {
+    if (!pipe.measures) pipe.measures = d.measures.map(m => ({ ...m }));
+  });
   return d;
 }
 
@@ -105,62 +109,92 @@ function _renderProtTable() {
   const hasPipes = d.pipes.length > 0;
 
   if (!hasPipes && d.measures.length === 0) {
-    wrap.innerHTML = `<div class="prot-empty">${em ? '항목 추가 버튼을 클릭하여 시작하세요.' : '데이터가 없습니다.'}</div>`;
+    wrap.innerHTML = `<div class="prot-empty">${em ? '배관 추가 버튼을 클릭하여 시작하세요.' : '데이터가 없습니다.'}</div>`;
     return;
   }
 
   let h = '';
 
   if (hasPipes) {
-    // ── 1. 전체 합계: Final 목표 vs 현재 현황 (날짜 없음) ──
+    // ── 1. 전체 합계: Final 목표 vs 현재 현황 ──
     h += '<div class="prot-section-label">📊 전체 합계</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">';
+
+    // 왼쪽: 테이블
+    h += '<div style="flex:1;min-width:260px">';
     h += '<div style="overflow-x:auto"><table class="prot-table prot-summary-table">';
     h += '<thead><tr>';
     h += '<th class="prot-th prot-col-measure">항목</th>';
+    if (em) h += '<th class="prot-th prot-th-swap">순서</th>';
     h += '<th class="prot-th prot-th-target">Final 목표</th>';
     h += '<th class="prot-th prot-th-current">현재 현황</th>';
+    if (em) h += '<th class="prot-th" style="width:28px"></th>';
     h += '</tr></thead><tbody>';
-    d.measures.forEach(m => {
+
+    d.measures.forEach((m, idx) => {
       const target = (d.targets[m.id] != null && d.targets[m.id] !== '') ? d.targets[m.id] : '';
       const current = _grandTotal(m.id);
       h += '<tr class="prot-grand-row">';
       h += `<td class="prot-td prot-col-measure prot-grand-measure">${m.label}</td>`;
+      if (em) {
+        h += `<td class="prot-td prot-th-swap" style="text-align:center;white-space:nowrap;padding:2px 4px">`;
+        h += `<button class="prot-swap-btn" onclick="_swapGrandMeasure(${idx},-1)"${idx===0?' disabled':''}>▲</button>`;
+        h += `<button class="prot-swap-btn" onclick="_swapGrandMeasure(${idx},1)"${idx===d.measures.length-1?' disabled':''}>▼</button>`;
+        h += '</td>';
+      }
       h += `<td class="prot-td prot-target-cell${em ? ' prot-editable' : ''}"${em ? ` onclick="editProtTarget(this,'${m.id}')"` : ''}>`;
       h += target !== '' ? target : (em ? '<em style="color:#94a3b8;font-style:normal;font-size:11px">클릭하여 입력</em>' : '-');
       h += '</td>';
       h += `<td class="prot-td prot-grand-total-cell">${current}</td>`;
+      if (em) h += `<td class="prot-td" style="text-align:center;padding:2px"><button class="prot-del" onclick="_delGrandMeasure('${m.id}')">✕</button></td>`;
       h += '</tr>';
     });
+
     h += '</tbody></table></div>';
+    if (em) h += '<button class="prot-inline-add" onclick="addGrandMeasure()">＋ 항목 추가</button>';
+    h += '</div>'; // 테이블 컨테이너
+
+    // 오른쪽: 차트
+    h += '<div id="prot-chart" style="flex-shrink:0;align-self:center"></div>';
+    h += '</div>'; // flex container
 
     // ── 2. 배관별 독립 테이블 ──
-    if (d.measures.length > 0) {
-      h += '<div class="prot-section-label prot-section-pipes">🔧 배관별 상세</div>';
-      d.pipes.forEach((pipe, pi) => {
-        h += '<div class="prot-pipe-block">';
-        h += '<div class="prot-pipe-block-header">';
-        h += `<span class="prot-pipe-name${em ? ' prot-editable' : ''}"${em ? ` onclick="_editProtPipeName('${pipe.id}',this)"` : ''}>`;
-        h += pipe.name || '<em style="color:rgba(255,255,255,0.5);font-style:normal">이름 없음</em>';
+    h += '<div class="prot-section-label prot-section-pipes">🔧 배관별 상세</div>';
+    d.pipes.forEach((pipe, pi) => {
+      const pipeMeasures = pipe.measures || [];
+      h += '<div class="prot-pipe-block">';
+      h += '<div class="prot-pipe-block-header">';
+      h += `<span class="prot-pipe-name${em ? ' prot-editable' : ''}"${em ? ` onclick="_editProtPipeName('${pipe.id}',this)"` : ''}>`;
+      h += pipe.name || '<em style="color:rgba(255,255,255,0.5);font-style:normal">이름 없음</em>';
+      h += '</span>';
+      if (em) {
+        h += `<span style="display:flex;gap:6px;margin-left:auto;align-items:center">`;
+        h += `<button class="prot-pipe-add-btn" onclick="addPipeMeasure('${pipe.id}')">＋ 항목</button>`;
+        h += `<button class="prot-del" style="color:#fca5a5;border-color:#fca5a5" onclick="_delProtPipe('${pipe.id}')">✕ 배관삭제</button>`;
         h += '</span>';
-        if (em) h += `<button class="prot-del" style="color:#fca5a5;border-color:#fca5a5;margin-left:auto" onclick="_delProtPipe('${pipe.id}')">✕ 삭제</button>`;
-        h += '</div>';
+      }
+      h += '</div>';
 
-        h += '<div style="overflow-x:auto"><table class="prot-table">';
-        h += '<thead><tr>';
-        h += '<th class="prot-th prot-col-measure">항목</th>';
-        h += '<th class="prot-th prot-col-total">합계</th>';
-        d.dates.forEach(dt => {
-          const lbl = dt.slice(5).replace('-', '/');
-          h += `<th class="prot-th prot-col-date">${lbl}${(em && pi === 0) ? `<button class="prot-del" onclick="_delProtDate('${dt}')">✕</button>` : ''}</th>`;
-        });
-        h += '</tr></thead><tbody>';
+      h += '<div style="overflow-x:auto"><table class="prot-table">';
+      h += '<thead><tr>';
+      h += '<th class="prot-th prot-col-measure">항목</th>';
+      h += '<th class="prot-th prot-col-total">합계</th>';
+      d.dates.forEach(dt => {
+        const lbl = dt.slice(5).replace('-', '/');
+        h += `<th class="prot-th prot-col-date">${lbl}${(em && pi === 0) ? `<button class="prot-del" onclick="_delProtDate('${dt}')">✕</button>` : ''}</th>`;
+      });
+      h += '</tr></thead><tbody>';
 
-        d.measures.forEach((m, mi) => {
+      if (pipeMeasures.length === 0) {
+        const cols = 2 + d.dates.length;
+        h += `<tr><td colspan="${cols}" class="prot-empty" style="padding:18px;font-size:12px">${em ? '＋ 항목 버튼으로 항목을 추가하세요' : '항목 없음'}</td></tr>`;
+      } else {
+        pipeMeasures.forEach(m => {
           h += '<tr>';
           h += '<td class="prot-td prot-col-measure">';
           h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">';
           h += `<span>${m.label}</span>`;
-          if (em && pi === 0) h += `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>`;
+          if (em) h += `<button class="prot-del" onclick="_delPipeMeasure('${pipe.id}','${m.id}')">✕</button>`;
           h += '</div></td>';
           h += `<td class="prot-td prot-col-total">${_colTotal(pipe.id, m.id)}</td>`;
           d.dates.forEach(dt => {
@@ -169,11 +203,11 @@ function _renderProtTable() {
           });
           h += '</tr>';
         });
+      }
 
-        h += '</tbody></table></div>';
-        h += '</div>'; // prot-pipe-block
-      });
-    }
+      h += '</tbody></table></div>';
+      h += '</div>'; // prot-pipe-block
+    });
 
     if (d.dates.length === 0) {
       h += `<p class="prot-hint">${em ? '📅 날짜 추가 버튼을 눌러 첫 번째 점검일을 추가하세요.' : '점검 날짜가 없습니다.'}</p>`;
@@ -194,7 +228,7 @@ function _renderProtTable() {
       h += '<td class="prot-td prot-col-measure">';
       h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">';
       h += `<span>${m.label}</span>`;
-      if (em) h += `<button class="prot-del" onclick="_delProtMeasure('${m.id}')">✕</button>`;
+      if (em) h += `<button class="prot-del" onclick="_delGrandMeasure('${m.id}')">✕</button>`;
       h += '</div></td>';
       h += `<td class="prot-td prot-col-total">${_colTotal('site', m.id)}</td>`;
       d.dates.forEach(dt => {
@@ -204,12 +238,14 @@ function _renderProtTable() {
       h += '</tr>';
     });
     h += '</tbody></table></div>';
+    if (em) h += '<button class="prot-inline-add" onclick="addGrandMeasure()">＋ 항목 추가</button>';
     if (d.dates.length === 0) {
       h += `<p class="prot-hint">${em ? '📅 날짜 추가 버튼을 눌러 첫 번째 점검일을 추가하세요.' : '점검 날짜가 없습니다.'}</p>`;
     }
   }
 
   wrap.innerHTML = h;
+  if (hasPipes) _renderChart();
   _renderRegSection();
 }
 
@@ -294,11 +330,21 @@ window.addProtPipe = function() {
   _saveProt().then(() => _renderProtTable());
 };
 
-window.addProtMeasure = function() {
-  const label = prompt('항목명을 입력하세요\n(예: 외부손상점검(EA))');
+window.addGrandMeasure = function() {
+  const label = prompt('전체 합계에 추가할 항목명을 입력하세요\n(예: 노출길이(m))');
   if (!label) return;
-  const isSum = confirm('이 항목의 합계를 계산합니까?\n\n확인: 합계 계산 (EA 등)\n취소: 최근값 표시 (노출길이 등)');
-  _pd().measures.push({ id: `pm${Date.now()}`, label: label.trim(), isSum });
+  _pd().measures.push({ id: `gm${Date.now()}`, label: label.trim(), isSum: true });
+  _saveProt().then(() => _renderProtTable());
+};
+
+window.addPipeMeasure = function(pipeId) {
+  const label = prompt('배관 항목명을 입력하세요\n(예: 매달기(EA))');
+  if (!label) return;
+  const d = _pd();
+  const pipe = d.pipes.find(p => p.id === pipeId);
+  if (!pipe) return;
+  if (!pipe.measures) pipe.measures = [];
+  pipe.measures.push({ id: `pm${Date.now()}`, label: label.trim(), isSum: true });
   _saveProt().then(() => _renderProtTable());
 };
 
@@ -318,13 +364,92 @@ window._delProtPipe = function(pipeId) {
   _saveProt().then(() => _renderProtTable());
 };
 
-window._delProtMeasure = function(mid) {
-  if (!confirm('이 항목과 관련 데이터를 모두 삭제하시겠습니까?')) return;
+window._delGrandMeasure = function(mid) {
+  if (!confirm('전체 합계에서 이 항목을 삭제할까요?\n(배관별 항목에는 영향 없음)')) return;
   const d = _pd();
   d.measures = d.measures.filter(m => m.id !== mid);
-  Object.keys(d.records).forEach(k => { if (k.split('|')[1] === mid) delete d.records[k]; });
+  if (d.targets[mid] != null) delete d.targets[mid];
   _saveProt().then(() => _renderProtTable());
 };
+
+window._swapGrandMeasure = function(idx, dir) {
+  const d = _pd();
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= d.measures.length) return;
+  [d.measures[idx], d.measures[newIdx]] = [d.measures[newIdx], d.measures[idx]];
+  _saveProt().then(() => _renderProtTable());
+};
+
+window._delPipeMeasure = function(pipeId, mid) {
+  if (!confirm('이 항목과 관련 날짜 데이터를 모두 삭제할까요?')) return;
+  const d = _pd();
+  const pipe = d.pipes.find(p => p.id === pipeId);
+  if (!pipe || !pipe.measures) return;
+  pipe.measures = pipe.measures.filter(m => m.id !== mid);
+  Object.keys(d.records).forEach(k => {
+    if (k.startsWith(`${pipeId}|${mid}|`)) delete d.records[k];
+  });
+  _saveProt().then(() => _renderProtTable());
+};
+
+// ===== 차트 =====
+
+function _renderChart() {
+  const d = _pd();
+  const el = document.getElementById('prot-chart');
+  if (!el) return;
+
+  const COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899'];
+  const validMs = d.measures.filter(m => {
+    const t = parseFloat(d.targets[m.id]);
+    return !isNaN(t) && t > 0;
+  });
+
+  if (validMs.length === 0) {
+    el.innerHTML = '<div style="color:#94a3b8;font-size:11px;padding:20px 8px;text-align:center;line-height:1.6">Final 목표값을<br>입력하면<br>차트 표시</div>';
+    return;
+  }
+
+  const cx = 75, cy = 75, outerR = 62, gap = 14, sw = 10;
+  let rings = '', legend = '', ratios = [];
+
+  validMs.forEach((m, i) => {
+    const target = parseFloat(d.targets[m.id]);
+    const raw = _grandTotal(m.id);
+    const current = (raw === '-' ? 0 : parseFloat(raw)) || 0;
+    const ratio = Math.min(current / target, 1);
+    ratios.push(ratio);
+    const r = outerR - i * gap;
+    if (r < 15) return;
+    const circ = 2 * Math.PI * r;
+    const filled = +(circ * ratio).toFixed(2);
+    const empty = +(circ - filled).toFixed(2);
+    const color = COLORS[i % COLORS.length];
+    const pct = Math.round(ratio * 100);
+    rings += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e8edf3" stroke-width="${sw}"/>`;
+    rings += `<g transform="rotate(-90,${cx},${cy})">` +
+      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" ` +
+      `stroke-dasharray="${filled} ${empty}" stroke-linecap="round"/>` +
+      `</g>`;
+    legend += `<div style="display:flex;align-items:center;gap:5px;font-size:11px">` +
+      `<span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>` +
+      `<span style="color:#374151;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.label}</span>` +
+      `<span style="color:${color};font-weight:700;min-width:32px;text-align:right">${pct}%</span>` +
+      `</div>`;
+  });
+
+  const avgPct = ratios.length > 0
+    ? Math.round(ratios.reduce((a,b) => a+b, 0) / ratios.length * 100) : 0;
+
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">` +
+    `<svg width="150" height="150" viewBox="0 0 150 150" style="flex-shrink:0">` +
+    rings +
+    `<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="18" font-weight="700" fill="#1e3a5f">${avgPct}%</text>` +
+    `<text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="9" fill="#6b7280">평균 달성률</text>` +
+    `</svg>` +
+    `<div style="display:flex;flex-direction:column;gap:7px;min-width:110px;max-width:180px">${legend}</div>` +
+    `</div>`;
+}
 
 // ===== 수동 저장 =====
 
