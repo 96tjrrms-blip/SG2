@@ -99,12 +99,12 @@ function _renderProtTable() {
   const wrap = document.getElementById('prot-table-wrap');
   if (!wrap) return;
 
+  const hasPipes = d.pipes.length > 0;
+
   const tb = document.getElementById('prot-toolbar');
   if (tb) tb.style.display = em ? 'flex' : 'none';
   const dateBtn = document.getElementById('prot-date-btn');
   if (dateBtn) dateBtn.style.display = (em && !hasPipes) ? '' : 'none';
-
-  const hasPipes = d.pipes.length > 0;
 
   if (!hasPipes && d.measures.length === 0) {
     wrap.innerHTML = `<div class="prot-empty">${em ? '배관 추가 버튼을 클릭하여 시작하세요.' : '데이터가 없습니다.'}</div>`;
