@@ -119,13 +119,13 @@ function _renderProtTable() {
     h += '<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">';
 
     // 왼쪽: 테이블 (content 너비에 맞게 auto)
-    h += '<div style="flex:0 0 auto;margin-left:clamp(0px,4vw,60px)">';
+    h += '<div style="flex:0 0 auto;margin-left:clamp(0px,4vw,60px);margin-top:14px">';
     h += '<div style="overflow-x:auto"><table class="prot-table prot-summary-table">';
     h += '<thead><tr>';
-    h += '<th class="prot-th prot-col-measure">항목</th>';
+    h += '<th class="prot-th prot-col-measure" style="width:170px">항목</th>';
     if (em) h += '<th class="prot-th prot-th-swap">순서</th>';
-    h += '<th class="prot-th prot-th-target">Final 목표</th>';
-    h += '<th class="prot-th prot-th-current">현재 현황</th>';
+    h += '<th class="prot-th prot-th-target" style="width:130px">Final 목표</th>';
+    h += '<th class="prot-th prot-th-current" style="width:130px">현재 현황</th>';
     if (em) h += '<th class="prot-th" style="width:28px"></th>';
     h += '</tr></thead><tbody>';
 
