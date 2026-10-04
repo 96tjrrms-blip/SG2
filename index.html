@@ -45,11 +45,11 @@
     <div class="nav-item" data-page="field" onclick="navigate('field')">
       <span class="icon">🔧</span> 방호조치
     </div>
-    <div class="nav-item" data-page="emergency" onclick="navigate('emergency')">
-      <span class="icon">🚨</span> 비상대응방안
-    </div>
     <div class="nav-item" data-page="docs" onclick="navigate('docs')">
       <span class="icon">📁</span> 협의자료
+    </div>
+    <div class="nav-item" data-page="emergency" onclick="navigate('emergency')">
+      <span class="icon">🚨</span> 비상대응방안
     </div>
     <div class="nav-item" data-page="regulation" onclick="navigate('regulation')">
       <span class="icon">📋</span> 규정집
@@ -650,7 +650,7 @@
                 style="width:20px;height:20px;border-radius:50%;background:#1e293b;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;padding:0"></button>
             </div>
             <button id="overlay-visible-btn" onclick="_toggleOverlayVisible()"
-              style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;margin-left:auto">👁 ON</button>
+              style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer;margin-left:auto;color:#9ca3af">👁 OFF</button>
             <button onclick="_undoLastOverlay()" title="마지막 항목 삭제"
               style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer">↩</button>
             <button onclick="_clearCurrentOverlay()"
@@ -688,7 +688,7 @@
               <span id="drone-slide-counter" style="font-size:12px;color:#6b7280"></span>
               <div style="display:flex;align-items:center;gap:6px">
               <button id="drone-overlay-vis-btn" onclick="_toggleOverlayVisible()"
-                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;cursor:pointer">👁 ON</button>
+                style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#9ca3af;font-size:12px;cursor:pointer">👁 OFF</button>
               <div id="drone-slide-edit-row" style="display:flex;gap:6px">
                 <button onclick="_moveCurrDroneToConstr()"
                   style="padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;cursor:pointer">📷 공사사진으로 이동</button>
@@ -853,7 +853,7 @@
 <script src="emergency.js?v=7"></script>
 <script src="protection.js?v=9"></script>
 <script src="docs.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 
 <!-- 지도 줌/패닝 -->
 <script>

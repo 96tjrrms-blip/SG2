@@ -998,7 +998,7 @@ function _initSlideCanvas() {
 
 // ── 드론 배관/밸브 오버레이 ───────────────────────────────────
 let _droneOverlay   = {};
-let _overlayVisible = true;
+let _overlayVisible = false; // 기본 OFF, 버튼으로 켜기
 let _overlayEditOpen = false;
 // _overlayMode declared above with draw vars
 let _overlayColor   = '#3b82f6';
@@ -1166,6 +1166,7 @@ function _updateOverlayUI() {
 
 window._toggleOverlayToolbar = function() {
   _overlayEditOpen = !_overlayEditOpen;
+  if (_overlayEditOpen && !_overlayVisible) _toggleOverlayVisible(); // 그리기 편집 시 자동 ON
   const toolbar = document.getElementById('drone-overlay-toolbar');
   const btn     = document.getElementById('overlay-edit-btn');
   if (toolbar) toolbar.style.display = _overlayEditOpen ? '' : 'none';
