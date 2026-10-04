@@ -81,12 +81,20 @@ function _colTotal(pid, mid) {
 
 function _grandTotal(mid) {
   const d = _pd();
+  const globalMeasure = d.measures.find(m => m.id === mid);
+  const matchLabel = globalMeasure ? globalMeasure.label : null;
   let s = 0, any = false;
   d.pipes.forEach(p => {
+    const pipeMeasures = p.measures || [];
     const dates = p.dates ? p.dates : (d.dates || []);
-    dates.forEach(dt => {
-      const v = d.records[_rk(p.id, mid, dt)];
-      if (v !== undefined && v !== '') { s += parseFloat(v) || 0; any = true; }
+    // 정확한 ID 일치 + 라벨 일치(기존 데이터 호환)
+    const lookupIds = new Set([mid]);
+    if (matchLabel) pipeMeasures.forEach(pm => { if (pm.label === matchLabel) lookupIds.add(pm.id); });
+    lookupIds.forEach(lookupId => {
+      dates.forEach(dt => {
+        const v = d.records[_rk(p.id, lookupId, dt)];
+        if (v !== undefined && v !== '') { s += parseFloat(v) || 0; any = true; }
+      });
     });
   });
   return any ? s : '-';
@@ -125,7 +133,7 @@ function _renderProtTable() {
     h += '<th class="prot-th prot-col-measure" style="width:170px">항목</th>';
     if (em) h += '<th class="prot-th prot-th-swap">순서</th>';
     h += '<th class="prot-th prot-th-target" style="width:130px">Final 목표</th>';
-    h += '<th class="prot-th prot-th-current" style="width:130px">현재 현황</th>';
+    h += '<th class="prot-th prot-th-current" style="width:130px">현재 현황<div style="font-size:10px;font-weight:400;opacity:0.7;margin-top:2px">배관별 합계 자동집계</div></th>';
     if (em) h += '<th class="prot-th" style="width:28px"></th>';
     h += '</tr></thead><tbody>';
 
@@ -356,7 +364,18 @@ window.addPipeMeasure = function(pipeId) {
   const pipe = d.pipes.find(p => p.id === pipeId);
   if (!pipe) return;
   if (!pipe.measures) pipe.measures = [];
-  pipe.measures.push({ id: `pm${Date.now()}`, label: label.trim(), isSum: true });
+  const trimmedLabel = label.trim();
+  if (pipe.measures.find(m => m.label === trimmedLabel)) { alert('이미 추가된 항목입니다.'); return; }
+  // 전체합계에 같은 라벨이 있으면 해당 ID 재사용 → 롤업 연동
+  let globalMatch = d.measures.find(m => m.label === trimmedLabel);
+  let newId;
+  if (globalMatch) {
+    newId = globalMatch.id;
+  } else {
+    newId = `pm${Date.now()}`;
+    d.measures.push({ id: newId, label: trimmedLabel, isSum: true });
+  }
+  pipe.measures.push({ id: newId, label: trimmedLabel, isSum: true });
   _saveProt().then(() => _renderProtTable());
 };
 
