@@ -947,6 +947,26 @@ function _initSlideCanvas() {
     if (!_drawMode) return;
     const path = canvas.dataset.path;
     e.preventDefault();
+
+    if (_drawMode === 'poly') {
+      const now = Date.now();
+      const r = canvas.getBoundingClientRect();
+      const pt = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+      if (now - _lastPolyClickMs < 350 && _polyInProgress && _polyInProgress.pts.length >= 1) {
+        _finalizePoly(canvas);
+        return;
+      }
+      _lastPolyClickMs = now;
+      if (!_polyInProgress) {
+        _polyInProgress = { path, pts: [pt] };
+      } else {
+        _polyInProgress.pts.push(pt);
+      }
+      _drawStrokesOnCanvas(canvas, path);
+      _drawPolyGhost(canvas);
+      return;
+    }
+
     canvas.setPointerCapture(e.pointerId);
     drawing = true;
     const r = canvas.getBoundingClientRect();
@@ -957,13 +977,22 @@ function _initSlideCanvas() {
     _drawStrokesOnCanvas(canvas, path);
   });
   canvas.addEventListener('pointermove', e => {
-    if (!drawing || !curStroke) return;
     const path = canvas.dataset.path;
+    if (_drawMode === 'poly' && _polyInProgress) {
+      const r = canvas.getBoundingClientRect();
+      _drawStrokesOnCanvas(canvas, path);
+      _drawPolyGhost(canvas, e.clientX - r.left, e.clientY - r.top);
+      return;
+    }
+    if (!drawing || !curStroke) return;
     const r = canvas.getBoundingClientRect();
     curStroke.pts.push({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
     _drawStrokesOnCanvas(canvas, path);
   });
-  canvas.addEventListener('pointerup',     () => { if (drawing) { drawing = false; curStroke = null; _saveDroneDrawStrokes(); } });
+  canvas.addEventListener('pointerup', () => {
+    if (_drawMode === 'poly') return;
+    if (drawing) { drawing = false; curStroke = null; _saveDroneDrawStrokes(); }
+  });
   canvas.addEventListener('pointercancel', () => { drawing = false; curStroke = null; });
 }
 
