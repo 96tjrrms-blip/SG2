@@ -1017,6 +1017,44 @@ function _saveOverlayData() {
   localStorage.setItem(_overlayKey(currentPhotosSite), JSON.stringify(_droneOverlay));
 }
 
+function _drawButterflyValve(ctx, x, y, r, color, label) {
+  ctx.save();
+  // 왼쪽 날개
+  ctx.beginPath();
+  ctx.moveTo(x - r, y - r); ctx.lineTo(x, y); ctx.lineTo(x - r, y + r);
+  ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, r * 0.18); ctx.stroke();
+  // 오른쪽 날개
+  ctx.beginPath();
+  ctx.moveTo(x + r, y - r); ctx.lineTo(x, y); ctx.lineTo(x + r, y + r);
+  ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, r * 0.18); ctx.stroke();
+  // 중심 수평선
+  ctx.beginPath();
+  ctx.moveTo(x - r, y); ctx.lineTo(x + r, y);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, r * 0.22); ctx.stroke();
+  // 수직 스템
+  ctx.beginPath();
+  ctx.moveTo(x, y - r); ctx.lineTo(x, y - r * 1.9);
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, r * 0.28); ctx.stroke();
+  // 핸드휠 원
+  ctx.beginPath();
+  ctx.arc(x, y - r * 2.3, r * 0.5, 0, Math.PI * 2);
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, r * 0.28); ctx.stroke();
+  // 이름 레이블
+  if (label) {
+    const fs = Math.max(10, Math.round(r * 1.3));
+    ctx.font = `bold ${fs}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = Math.max(1, r * 0.35);
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(label, x, y + r * 2.8);
+    ctx.fillStyle = color; ctx.fillText(label, x, y + r * 2.8);
+  }
+  ctx.restore();
+}
+
 function _renderOverlayCanvas(canvas, path) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1038,25 +1076,7 @@ function _renderOverlayCanvas(canvas, path) {
 
   (data.valves || []).forEach(v => {
     const x = v.x * W, y = v.y * H, r = v.size || 10;
-    ctx.save();
-    // diamond shape
-    ctx.beginPath();
-    ctx.moveTo(x,     y - r);
-    ctx.lineTo(x + r, y);
-    ctx.lineTo(x,     y + r);
-    ctx.lineTo(x - r, y);
-    ctx.closePath();
-    ctx.fillStyle   = v.color || '#ef4444';
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth   = 2;
-    ctx.stroke();
-    // cross inside
-    ctx.beginPath();
-    ctx.moveTo(x - r * 0.45, y); ctx.lineTo(x + r * 0.45, y);
-    ctx.moveTo(x, y - r * 0.45); ctx.lineTo(x, y + r * 0.45);
-    ctx.stroke();
-    ctx.restore();
+    _drawButterflyValve(ctx, x, y, r, v.color || '#ef4444', v.name || '');
   });
 }
 
@@ -1082,8 +1102,9 @@ function _initOverlayCanvas() {
     const ny = (e.clientY - r.top)  / r.height;
     if (_overlayMode === 'valve') {
       const path = canvas.dataset.path;
+      const name = prompt('밸브 이름을 입력하세요 (없으면 빈칸):', '차단밸브') ?? '';
       if (!_droneOverlay[path]) _droneOverlay[path] = { pipes: [], valves: [] };
-      _droneOverlay[path].valves.push({ x: nx, y: ny, color: _overlayColor, size: _overlayWidth + 6 });
+      _droneOverlay[path].valves.push({ x: nx, y: ny, color: _overlayColor, size: _overlayWidth + 6, name });
       _lastOverlayType = 'valve';
       _saveOverlayData();
       _renderOverlayCanvas(canvas, path);
