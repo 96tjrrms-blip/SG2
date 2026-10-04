@@ -515,11 +515,13 @@ let _dronePhotos = [];
 
 // ── 드론 그리기 ──────────────────────────────────────────────
 const DRONE_DRAW_KEY = 'drone_draw_v1';
-let _drawMode   = null;        // null | 'pen' | 'eraser'
+let _drawMode   = null;        // null | 'pen' | 'eraser' | 'poly'
 let _drawColor  = '#ef4444';
 let _drawSize   = 4;
 let _droneStrokes = {};        // { [path]: [{tool,color,size,pts:[{x,y}]}] }
 try { _droneStrokes = JSON.parse(localStorage.getItem(DRONE_DRAW_KEY) || '{}'); } catch {}
+let _polyInProgress  = null;   // { path, pts:[{x,y}] } — 진행 중인 직선 다각형
+let _lastPolyClickMs = 0;      // 더블클릭 감지용
 
 // 배관/밸브 오버레이 모드 (선언은 여기서 — 초기화는 오버레이 블록에서)
 let _overlayMode = null;
@@ -527,6 +529,71 @@ let _overlayMode = null;
 function _saveDroneDrawStrokes() {
   localStorage.setItem(DRONE_DRAW_KEY, JSON.stringify(_droneStrokes));
 }
+
+// 직선 다각형 — 진행 중인 경로를 ghost(점선 미리보기)와 함께 렌더링
+function _drawPolyGhost(canvas, ghostX, ghostY) {
+  if (!_polyInProgress || !_polyInProgress.pts.length) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pts = _polyInProgress.pts;
+  ctx.save();
+  ctx.strokeStyle = _drawColor;
+  ctx.lineWidth = _drawSize;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // 확정된 구간은 실선
+  if (pts.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x * W, pts[0].y * H);
+    pts.slice(1).forEach(p => ctx.lineTo(p.x * W, p.y * H));
+    ctx.stroke();
+  }
+  // 커서까지는 점선
+  if (ghostX !== undefined) {
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pts[pts.length - 1].x * W, pts[pts.length - 1].y * H);
+    ctx.lineTo(ghostX, ghostY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // 꼭짓점 점
+  ctx.fillStyle = _drawColor;
+  pts.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x * W, p.y * H, Math.max(3, _drawSize / 2), 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function _finalizePoly(canvas) {
+  if (!_polyInProgress) return;
+  const path = canvas.dataset.path;
+  const pts = [..._polyInProgress.pts];
+  _polyInProgress = null;
+  _lastPolyClickMs = 0;
+  if (pts.length >= 2) {
+    if (!_droneStrokes[path]) _droneStrokes[path] = [];
+    _droneStrokes[path].push({ tool: 'poly', color: _drawColor, size: _drawSize, pts });
+    _saveDroneDrawStrokes();
+  }
+  _drawStrokesOnCanvas(canvas, path);
+}
+
+function _cancelPoly() {
+  if (!_polyInProgress) return;
+  const path = _polyInProgress.path;
+  _polyInProgress = null;
+  _lastPolyClickMs = 0;
+  const canvas = document.getElementById('drone-slide-canvas');
+  if (canvas) _drawStrokesOnCanvas(canvas, path);
+}
+
+// ESC 키로 직선 취소
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && _polyInProgress) _cancelPoly();
+});
 
 function _drawStrokesOnCanvas(canvas, path) {
   const ctx = canvas.getContext('2d');
@@ -574,6 +641,29 @@ function _initDroneCanvas(canvas) {
   canvas.addEventListener('pointerdown', e => {
     if (!_drawMode) return;
     e.preventDefault();
+
+    // 직선(poly) 모드: 클릭으로 꼭짓점 추가, 더블클릭으로 완성
+    if (_drawMode === 'poly') {
+      const now = Date.now();
+      const r = canvas.getBoundingClientRect();
+      const pt = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+      if (now - _lastPolyClickMs < 350 && _polyInProgress && _polyInProgress.pts.length >= 1) {
+        // 더블클릭 → 완성
+        _finalizePoly(canvas);
+        return;
+      }
+      _lastPolyClickMs = now;
+      if (!_polyInProgress) {
+        _polyInProgress = { path, pts: [pt] };
+      } else {
+        _polyInProgress.pts.push(pt);
+      }
+      _drawStrokesOnCanvas(canvas, path);
+      _drawPolyGhost(canvas);
+      return;
+    }
+
+    // 펜/지우개 모드: 드래그로 자유형 그리기
     canvas.setPointerCapture(e.pointerId);
     drawing = true;
     const r = canvas.getBoundingClientRect();
@@ -584,19 +674,30 @@ function _initDroneCanvas(canvas) {
     _drawStrokesOnCanvas(canvas, path);
   });
   canvas.addEventListener('pointermove', e => {
+    if (_drawMode === 'poly' && _polyInProgress) {
+      const r = canvas.getBoundingClientRect();
+      _drawStrokesOnCanvas(canvas, path);
+      _drawPolyGhost(canvas, e.clientX - r.left, e.clientY - r.top);
+      return;
+    }
     if (!drawing || !curStroke) return;
     const r = canvas.getBoundingClientRect();
     curStroke.pts.push({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
     _drawStrokesOnCanvas(canvas, path);
   });
-  canvas.addEventListener('pointerup', () => { if (drawing) { drawing = false; curStroke = null; _saveDroneDrawStrokes(); } });
+  canvas.addEventListener('pointerup', () => {
+    if (_drawMode === 'poly') return;
+    if (drawing) { drawing = false; curStroke = null; _saveDroneDrawStrokes(); }
+  });
   canvas.addEventListener('pointercancel', () => { drawing = false; curStroke = null; });
 }
 
 function _updateDrawToolUI() {
   const penBtn    = document.getElementById('draw-pen-btn');
   const eraserBtn = document.getElementById('draw-eraser-btn');
+  const polyBtn = document.getElementById('draw-poly-btn');
   if (penBtn)    { penBtn.style.background = _drawMode === 'pen' ? '#0d2b5e' : '#fff'; penBtn.style.color = _drawMode === 'pen' ? '#fff' : ''; penBtn.style.borderColor = _drawMode === 'pen' ? '#0d2b5e' : '#cbd5e1'; }
+  if (polyBtn)   { polyBtn.style.background = _drawMode === 'poly' ? '#0d2b5e' : '#fff'; polyBtn.style.color = _drawMode === 'poly' ? '#fff' : ''; polyBtn.style.borderColor = _drawMode === 'poly' ? '#0d2b5e' : '#cbd5e1'; }
   if (eraserBtn) { eraserBtn.style.background = _drawMode === 'eraser' ? '#0d2b5e' : '#fff'; eraserBtn.style.color = _drawMode === 'eraser' ? '#fff' : ''; eraserBtn.style.borderColor = _drawMode === 'eraser' ? '#0d2b5e' : '#cbd5e1'; }
   document.querySelectorAll('.draw-color-btn').forEach(btn => {
     btn.style.boxShadow = btn.dataset.color === _drawColor ? '0 0 0 3px #0d2b5e' : '0 0 0 1px #cbd5e1';
@@ -616,10 +717,11 @@ window._toggleDrawToolbar = function() {
   const toggleBtn = document.getElementById('draw-toggle-btn');
   if (toolbar)   toolbar.style.display = _drawToolbarOpen ? '' : 'none';
   if (toggleBtn) { toggleBtn.style.background = _drawToolbarOpen ? '#0d2b5e' : '#fff'; toggleBtn.style.color = _drawToolbarOpen ? '#fff' : '#475569'; toggleBtn.style.borderColor = _drawToolbarOpen ? '#0d2b5e' : '#cbd5e1'; }
-  if (!_drawToolbarOpen) { _drawMode = null; _updateDrawToolUI(); }
+  if (!_drawToolbarOpen) { _cancelPoly(); _drawMode = null; _updateDrawToolUI(); }
 };
 
 window._setDrawTool = function(tool) {
+  if (_drawMode !== tool && _polyInProgress) _cancelPoly();
   _drawMode = _drawMode === tool ? null : tool;
   if (_drawMode && _overlayMode) { _overlayMode = null; _updateOverlayUI(); }
   _updateDrawToolUI();
