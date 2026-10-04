@@ -123,6 +123,26 @@ function _renderProtTable() {
   h += '<tbody>';
 
   if (hasPipes) {
+    const cols = 1 + 1 + 1 + d.dates.length;
+
+    // 전체 합계 (복수 배관 시) — 맨 위
+    if (d.pipes.length > 1 && d.measures.length > 0 && d.dates.length > 0) {
+      d.measures.forEach((m, mi) => {
+        h += '<tr class="prot-grand-row">';
+        if (mi === 0) {
+          h += `<td class="prot-td prot-col-pipe prot-grand-pipe" rowspan="${d.measures.length}">전체 합계</td>`;
+        }
+        h += `<td class="prot-td prot-col-measure prot-grand-measure">${m.label}</td>`;
+        h += `<td class="prot-td prot-col-total prot-grand-total-cell">${_grandTotal(m.id)}</td>`;
+        d.dates.forEach(dt => {
+          const s = _dateColSum(m.id, dt);
+          h += `<td class="prot-grand-cell">${s}</td>`;
+        });
+        h += '</tr>';
+      });
+      h += `<tr class="prot-pipe-sep"><td colspan="${cols}"></td></tr>`;
+    }
+
     d.pipes.forEach((pipe, pi) => {
       d.measures.forEach((m, mi) => {
         h += '<tr>';
@@ -151,27 +171,9 @@ function _renderProtTable() {
         h += '</tr>';
       });
       if (pi < d.pipes.length - 1) {
-        const cols = (hasPipes ? 1 : 0) + 1 + 1 + d.dates.length;
         h += `<tr class="prot-pipe-sep"><td colspan="${cols}"></td></tr>`;
       }
     });
-
-    // 전체 합계 (복수 배관 시)
-    if (d.pipes.length > 1 && d.measures.length > 0 && d.dates.length > 0) {
-      d.measures.forEach((m, mi) => {
-        h += '<tr class="prot-grand-row">';
-        if (mi === 0) {
-          h += `<td class="prot-td prot-col-pipe prot-grand-pipe" rowspan="${d.measures.length}">전체 합계</td>`;
-        }
-        h += `<td class="prot-td prot-col-measure prot-grand-measure">${m.label}</td>`;
-        h += `<td class="prot-td prot-col-total prot-grand-total-cell">${_grandTotal(m.id)}</td>`;
-        d.dates.forEach(dt => {
-          const s = _dateColSum(m.id, dt);
-          h += `<td class="prot-grand-cell">${s}</td>`;
-        });
-        h += '</tr>';
-      });
-    }
   } else {
     // 배관 없음 (15환기구 등)
     d.measures.forEach((m) => {
