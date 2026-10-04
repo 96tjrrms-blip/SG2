@@ -1387,7 +1387,6 @@ function navigate(page) {
 
   if (page === 'dashboard') renderDashboard();
   if (page === 'field') initProtectionPage();
-  if (page === 'alarm') renderAlarm();
   if (page === 'photos') initPhotosPage();
   if (page === 'regulation') renderRegulation();
   if (page === 'emergency') initEmergencyPage();
@@ -1689,47 +1688,6 @@ async function getSoonItems() {
   return soon;
 }
 
-async function renderAlarm() {
-  const delays = await getDelayItems();
-  const soon = await getSoonItems();
-
-  document.getElementById('delay-count').textContent = delays.length + '건';
-  document.getElementById('soon-count').textContent = soon.length + '건';
-
-  document.getElementById('delay-list').innerHTML = delays.length === 0
-    ? '<div style="text-align:center;color:#9ca3af;padding:20px;font-size:13px">기간 초과 항목이 없습니다.</div>'
-    : delays.map(({ row, siteName, diff }) => `
-      <div class="alarm-item delay-item">
-        <div class="alarm-info">
-          <div class="alarm-name">${row.item_name} (${row.category} · ${row.spec || ''})</div>
-          <div class="alarm-detail">예정일 ${row.due_date} · ${siteName}</div>
-        </div>
-        <div class="alarm-days delay-days">D+${diff} 초과</div>
-        <button class="btn btn-danger" style="font-size:12px" onclick="sendAlarmSMS(${row.id})">문자 발송</button>
-      </div>
-    `).join('');
-
-  document.getElementById('soon-list').innerHTML = soon.length === 0
-    ? '<div style="text-align:center;color:#9ca3af;padding:20px;font-size:13px">7일 내 예정 항목이 없습니다.</div>'
-    : soon.map(({ row, siteName, diff }) => `
-      <div class="alarm-item soon-item">
-        <div class="alarm-info">
-          <div class="alarm-name">${row.item_name} (${row.category} · ${row.spec || ''})</div>
-          <div class="alarm-detail">예정일 ${row.due_date} · ${siteName}</div>
-        </div>
-        <div class="alarm-days soon-days">D-${diff}</div>
-        <button class="btn btn-secondary" style="font-size:12px" onclick="sendAlarmSMS(${row.id})">사전 안내</button>
-      </div>
-    `).join('');
-}
-
-async function sendAlarmSMS(fieldItemId) {
-  const row = await fetchFieldItem(fieldItemId);
-  const msg = `[삼천리 도시가스] 인동선 11공구 ${row.item_name}(${row.category}) 안전이행 확인 요청. 예정일: ${row.due_date}. 조치 부탁드립니다.`;
-  const phone = '01000000000';
-  window.location.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
-  await insertSmsLog(fieldItemId, phone, msg);
-}
 
 // ===== 규정집 =====
 let regCategory = '전체';

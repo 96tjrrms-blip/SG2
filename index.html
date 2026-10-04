@@ -45,9 +45,6 @@
     <div class="nav-item" data-page="field" onclick="navigate('field')">
       <span class="icon">🔧</span> 방호조치현황
     </div>
-    <div class="nav-item" data-page="alarm" onclick="navigate('alarm')">
-      <span class="icon">🔔</span> 알람
-    </div>
     <div class="nav-item" data-page="emergency" onclick="navigate('emergency')">
       <span class="icon">🚨</span> 비상대응방안
     </div>
@@ -557,27 +554,6 @@
     <div id="prot-manual-section" style="display:none"></div>
   </div>
 
-  <!-- 알람 -->
-  <div class="page" id="page-alarm">
-    <div class="page-title">알람</div>
-    <div class="page-subtitle">기간 초과 및 예정 항목</div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="alarm-section-title">
-        ⚠️ 기간 초과 항목
-        <span class="alarm-badge badge-red" id="delay-count">0건</span>
-      </div>
-      <div id="delay-list"></div>
-    </div>
-
-    <div class="card">
-      <div class="alarm-section-title">
-        🕐 7일 내 예정 항목
-        <span class="alarm-badge badge-amber" id="soon-count">0건</span>
-      </div>
-      <div id="soon-list"></div>
-    </div>
-  </div>
 
   <!-- 현장사진 -->
   <div class="page" id="page-photos">
