@@ -466,9 +466,9 @@ function _renderChart() {
       ? `<span style="color:${color};font-weight:700;min-width:34px;text-align:right">${pct}%</span>`
       : `<span style="color:#94a3b8;font-size:10px;min-width:34px;text-align:right">목표없음</span>`;
 
-    legend += `<div style="display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;padding:2px 6px 2px 0">` +
-      `<span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>` +
-      `<span style="color:#374151">${m.label}</span>` +
+    legend += `<div style="display:flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap">` +
+      `<span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>` +
+      `<span style="color:#374151;flex:1">${m.label}</span>` +
       pctLabel +
       `</div>`;
   });
@@ -477,13 +477,13 @@ function _renderChart() {
     ? Math.round(ratios.reduce((a,b) => a+b, 0) / ratios.length * 100) : '-';
 
   const size = cx * 2;
-  el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:12px">` +
-    `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">` +
+    `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0">` +
     rings +
     `<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="28" font-weight="700" fill="#1e3a5f">${avgPct}${typeof avgPct==='number'?'%':''}</text>` +
     `<text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="12" fill="#6b7280">평균 달성률</text>` +
     `</svg>` +
-    `<div style="display:flex;flex-wrap:wrap;gap:2px 4px;justify-content:center;max-width:${size}px">${legend}</div>` +
+    `<div style="display:flex;flex-direction:column;gap:9px;min-width:130px">${legend}</div>` +
     `</div>`;
 }
 
