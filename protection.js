@@ -405,7 +405,11 @@ function _renderChart() {
   }
 
   const COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#f97316'];
-  const cx = 110, cy = 110, outerR = 96, gap = 13, sw = 11;
+  const cx = 150, cy = 150, outerR = 132;
+  const n = d.measures.length;
+  const minR = 8;
+  const gap = n <= 1 ? 28 : Math.min(28, Math.floor((outerR - minR) / (n - 1)));
+  const sw = Math.max(4, Math.min(16, gap - 3));
   let rings = '', legend = '', ratios = [];
 
   d.measures.forEach((m, i) => {
@@ -418,7 +422,7 @@ function _renderChart() {
     if (hasTarget) ratios.push(ratio);
 
     const r = outerR - i * gap;
-    if (r < 10) return;
+    if (r < minR) return;
 
     const circ = 2 * Math.PI * r;
     const filled = +(circ * ratio).toFixed(2);
@@ -448,11 +452,12 @@ function _renderChart() {
   const avgPct = ratios.length > 0
     ? Math.round(ratios.reduce((a,b) => a+b, 0) / ratios.length * 100) : '-';
 
-  el.innerHTML = `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">` +
-    `<svg width="220" height="220" viewBox="0 0 220 220" style="flex-shrink:0">` +
+  const size = cx * 2;
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">` +
+    `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0">` +
     rings +
-    `<text x="${cx}" y="${cy-5}" text-anchor="middle" font-size="22" font-weight="700" fill="#1e3a5f">${avgPct}${typeof avgPct==='number'?'%':''}</text>` +
-    `<text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="#6b7280">평균 달성률</text>` +
+    `<text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="26" font-weight="700" fill="#1e3a5f">${avgPct}${typeof avgPct==='number'?'%':''}</text>` +
+    `<text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="11" fill="#6b7280">평균 달성률</text>` +
     `</svg>` +
     `<div style="display:flex;flex-direction:column;gap:8px;min-width:120px;max-width:200px">${legend}</div>` +
     `</div>`;
