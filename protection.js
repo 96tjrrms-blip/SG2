@@ -119,7 +119,7 @@ function _renderProtTable() {
     h += '<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">';
 
     // 왼쪽: 테이블 (content 너비에 맞게 auto)
-    h += '<div style="flex:0 0 auto">';
+    h += '<div style="flex:0 0 auto;margin-left:clamp(0px,4vw,60px)">';
     h += '<div style="overflow-x:auto"><table class="prot-table prot-summary-table">';
     h += '<thead><tr>';
     h += '<th class="prot-th prot-col-measure">항목</th>';
