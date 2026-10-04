@@ -650,7 +650,7 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .prot-grand-row .prot-td { background: #f0f9ff !important; }
 .prot-grand-pipe  { font-weight: 700; color: #0d2b5e; font-size: 12px; text-align: center; }
 .prot-grand-measure { font-weight: 600; font-size: 12px; }
-.prot-grand-cell { text-align: center; padding: 6px 8px; font-weight: 600; color: #0369a1; border: 1px solid #bfdbfe; background: #f0f9ff; }
+.prot-grand-cell { text-align: center; padding: 6px 8px; font-weight: 400; color: #93c5fd; border: 1px solid #dbeafe; background: #f0f9ff; font-size: 11px; }
 .prot-grand-total-cell { font-weight: 700 !important; background: #dbeafe !important; color: #1d4ed8 !important; }
 .prot-empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
 .prot-hint { padding: 10px 16px; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; margin: 0; }
