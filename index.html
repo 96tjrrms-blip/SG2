@@ -745,45 +745,70 @@
       </div>
     </div>
 
-    <!-- 컨트롤 바 -->
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center;min-height:32px">
-      <div id="emerg-edit-controls" style="display:none;gap:6px">
-        <button onclick="startEmergValveAdd()"
-          style="padding:5px 12px;border-radius:7px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;font-size:12px;font-weight:600;cursor:pointer">
-          🔧 밸브 추가
-        </button>
-        <button onclick="startEmergScenarioAdd()"
-          style="padding:5px 12px;border-radius:7px;border:1px solid #fca5a5;background:#fff1f2;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer">
-          ⚠️ 사고지점 추가
-        </button>
+    <!-- 서브 탭 -->
+    <div style="display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:14px">
+      <button id="emerg-subtab-plan" onclick="showEmergSubTab('plan')"
+        style="padding:8px 20px;border:none;background:none;font-size:13px;font-weight:700;color:#0d2b5e;cursor:pointer;border-bottom:2px solid #0d2b5e;margin-bottom:-2px">
+        비상대응방안
+      </button>
+      <button id="emerg-subtab-contacts" onclick="showEmergSubTab('contacts')"
+        style="padding:8px 20px;border:none;background:none;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px">
+        비상연락망
+      </button>
+    </div>
+
+    <!-- ① 비상대응방안 패널 -->
+    <div id="emerg-plan-panel">
+      <!-- 컨트롤 바 -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center;min-height:32px">
+        <div id="emerg-edit-controls" style="display:none;gap:6px">
+          <button onclick="startEmergValveAdd()"
+            style="padding:5px 12px;border-radius:7px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;font-size:12px;font-weight:600;cursor:pointer">
+            🔧 밸브 추가
+          </button>
+          <button onclick="startEmergScenarioAdd()"
+            style="padding:5px 12px;border-radius:7px;border:1px solid #fca5a5;background:#fff1f2;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer">
+            ⚠️ 사고지점 추가
+          </button>
+        </div>
+        <div id="emerg-mode-hint" style="font-size:12px;color:#64748b">
+          사고지점(⚠)을 클릭하면 차단 밸브를 확인할 수 있습니다
+        </div>
       </div>
-      <div id="emerg-mode-hint" style="font-size:12px;color:#64748b">
-        사고지점(⚠)을 클릭하면 차단 밸브를 확인할 수 있습니다
+
+      <div class="card" style="padding:16px">
+        <div id="emerg-map-container" class="map-container" style="position:relative;overflow:hidden;background:#e2e8f0">
+          <div id="emerg-map-zoomable" style="position:relative;width:100%">
+            <img id="emerg-map-img" src="map.png" alt="비상대응 도면" style="width:100%;display:block">
+            <svg id="emerg-svg" xmlns="http://www.w3.org/2000/svg"
+              style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></svg>
+          </div>
+          <svg id="emerg-overlay-svg" xmlns="http://www.w3.org/2000/svg"
+            style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:12;overflow:hidden"></svg>
+          <div id="emerg-valve-overlay" onclick="_onEmergValveClick(event)"
+            style="display:none;position:absolute;inset:0;z-index:19;cursor:crosshair;background:rgba(22,163,74,0.06)"></div>
+          <div id="emerg-scenario-overlay" onclick="_onEmergScenarioClick(event)"
+            style="display:none;position:absolute;inset:0;z-index:19;cursor:crosshair;background:rgba(239,68,68,0.05)"></div>
+          <div id="emerg-popup"
+            style="display:none;position:absolute;bottom:16px;left:16px;z-index:50;
+              background:#fff;border-radius:12px;padding:14px 16px;width:290px;max-height:55%;overflow-y:auto;
+              box-shadow:0 4px 20px rgba(0,0,0,0.18);border:1px solid #fecaca">
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card" style="padding:16px">
-      <div id="emerg-map-container" class="map-container" style="position:relative;overflow:hidden;background:#e2e8f0">
-        <div id="emerg-map-zoomable" style="position:relative;width:100%">
-          <img id="emerg-map-img" src="map.png" alt="비상대응 도면" style="width:100%;display:block">
-          <svg id="emerg-svg" xmlns="http://www.w3.org/2000/svg"
-            style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></svg>
-        </div>
-        <!-- 마커 오버레이 -->
-        <svg id="emerg-overlay-svg" xmlns="http://www.w3.org/2000/svg"
-          style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:12;overflow:hidden"></svg>
-        <!-- 밸브 추가 오버레이 -->
-        <div id="emerg-valve-overlay" onclick="_onEmergValveClick(event)"
-          style="display:none;position:absolute;inset:0;z-index:19;cursor:crosshair;background:rgba(22,163,74,0.06)"></div>
-        <!-- 사고지점 추가 오버레이 -->
-        <div id="emerg-scenario-overlay" onclick="_onEmergScenarioClick(event)"
-          style="display:none;position:absolute;inset:0;z-index:19;cursor:crosshair;background:rgba(239,68,68,0.05)"></div>
-        <!-- 사고지점 클릭 팝업 -->
-        <div id="emerg-popup"
-          style="display:none;position:absolute;bottom:16px;left:16px;z-index:50;
-            background:#fff;border-radius:12px;padding:14px 16px;width:290px;max-height:55%;overflow-y:auto;
-            box-shadow:0 4px 20px rgba(0,0,0,0.18);border:1px solid #fecaca">
-        </div>
+    <!-- ② 비상연락망 패널 -->
+    <div id="emerg-contacts-panel" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:13px;color:#64748b">사이트별 비상 연락망</span>
+        <button onclick="addEmergContact()"
+          style="padding:6px 14px;border-radius:7px;border:1px solid #0d2b5e;background:#0d2b5e;color:#fff;font-size:12px;font-weight:600;cursor:pointer">
+          + 연락처 추가
+        </button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="emerg-contacts-table"></div>
       </div>
     </div>
   </div>
@@ -850,7 +875,7 @@
 <script src="parking.js?v=7"></script>
 <script src="map.js?v=8"></script>
 <script src="pipe-editor.js?v=7"></script>
-<script src="emergency.js?v=7"></script>
+<script src="emergency.js?v=8"></script>
 <script src="protection.js?v=9"></script>
 <script src="docs.js?v=7"></script>
 <script src="app.js?v=8"></script>

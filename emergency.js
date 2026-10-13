@@ -11,6 +11,31 @@ let _emergValves    = [];   // [{ id, x, y, label }]
 let _emergScenarios = [];   // [{ id, x, y, label, desc, procedure, internalValves:[], externalValves:[{name,location,note}] }]
 let _emergMode      = 'view';   // 'view' | 'addValve' | 'addScenario'
 let _emergActive    = null;     // 활성 시나리오 id
+let _emergSubTab    = 'plan';   // 'plan' | 'contacts'
+let _emergContacts  = [];       // [{ id, role, name, phone, note }]
+
+// ===== 서브탭 전환 =====
+window.showEmergSubTab = function(tab) {
+  _emergSubTab = tab;
+  const planPanel     = document.getElementById('emerg-plan-panel');
+  const contactsPanel = document.getElementById('emerg-contacts-panel');
+  const btnPlan       = document.getElementById('emerg-subtab-plan');
+  const btnContacts   = document.getElementById('emerg-subtab-contacts');
+  const isPlan = tab === 'plan';
+  if (planPanel)     planPanel.style.display     = isPlan ? '' : 'none';
+  if (contactsPanel) contactsPanel.style.display = isPlan ? 'none' : '';
+  if (btnPlan) {
+    btnPlan.style.color = isPlan ? '#0d2b5e' : '#6b7280';
+    btnPlan.style.fontWeight = isPlan ? '700' : '600';
+    btnPlan.style.borderBottomColor = isPlan ? '#0d2b5e' : 'transparent';
+  }
+  if (btnContacts) {
+    btnContacts.style.color = isPlan ? '#6b7280' : '#0d2b5e';
+    btnContacts.style.fontWeight = isPlan ? '600' : '700';
+    btnContacts.style.borderBottomColor = isPlan ? 'transparent' : '#0d2b5e';
+  }
+  if (tab === 'contacts') _renderEmergContacts();
+};
 
 // ===== 사이트 전환 =====
 window.switchEmergSite = function(siteId) {
@@ -21,6 +46,7 @@ window.switchEmergSite = function(siteId) {
   if (img) img.src = _EMERG_IMGS[siteId] || 'map.png';
   _loadEmergData(siteId);
   _renderEmergPipes();
+  if (_emergSubTab === 'contacts') _loadEmergContacts(siteId).then(_renderEmergContacts);
 };
 
 // ===== 데이터 로드/저장 =====
@@ -29,10 +55,12 @@ async function _loadEmergData(siteId) {
     const rows = await fetchAllPipeSettings();
     _emergValves    = rows[`_emerg_valves_${siteId}`]?.colors    ?? [];
     _emergScenarios = rows[`_emerg_scenarios_${siteId}`]?.colors ?? [];
+    _emergContacts  = rows[`_emerg_contacts_${siteId}`]?.contacts ?? [];
   } catch {
-    _emergValves = []; _emergScenarios = [];
+    _emergValves = []; _emergScenarios = []; _emergContacts = [];
   }
   _renderEmergMarkers();
+  if (_emergSubTab === 'contacts') _renderEmergContacts();
 }
 
 function _saveEmergValves() {
@@ -41,6 +69,147 @@ function _saveEmergValves() {
 function _saveEmergScenarios() {
   upsertPipeSettings(`_emerg_scenarios_${_emergSite}`, { colors: _emergScenarios }).catch(e => console.warn('emerg scenario save:', e));
 }
+
+// ===== 비상연락망 =====
+async function _loadEmergContacts(siteId) {
+  try {
+    const rows = await fetchAllPipeSettings();
+    _emergContacts = rows[`_emerg_contacts_${siteId}`]?.contacts ?? [];
+  } catch {
+    _emergContacts = [];
+  }
+}
+
+function _saveEmergContacts() {
+  upsertPipeSettings(`_emerg_contacts_${_emergSite}`, { contacts: _emergContacts })
+    .catch(e => console.warn('emerg contacts save:', e));
+}
+
+function _renderEmergContacts() {
+  const el = document.getElementById('emerg-contacts-table');
+  if (!el) return;
+  if (!_emergContacts.length) {
+    el.innerHTML = `<div style="text-align:center;padding:36px;color:#9ca3af;font-size:13px">
+      등록된 연락처가 없습니다<br>
+      <small style="font-size:11px">+ 연락처 추가 버튼으로 등록하세요</small>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151;width:90px">직책</th>
+          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151;width:80px">이름</th>
+          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151;width:140px">연락처</th>
+          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151">비고</th>
+          <th style="padding:10px 14px;text-align:center;font-weight:600;color:#374151;width:100px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${_emergContacts.map((c, i) => `
+          <tr style="border-bottom:1px solid #f1f5f9;${i % 2 ? 'background:#fafafa' : ''}">
+            <td style="padding:10px 14px;color:#475569;font-size:12px">${_esc(c.role)}</td>
+            <td style="padding:10px 14px;font-weight:600;color:#0d2b5e">${_esc(c.name)}</td>
+            <td style="padding:10px 14px">
+              ${c.phone
+                ? `<a href="tel:${_esc(c.phone)}" style="color:#0d2b5e;font-weight:600;text-decoration:none">📞 ${_esc(c.phone)}</a>`
+                : '<span style="color:#9ca3af">-</span>'}
+            </td>
+            <td style="padding:10px 14px;color:#6b7280;font-size:12px">${_esc(c.note)}</td>
+            <td style="padding:10px 14px;text-align:center">
+              <div style="display:flex;gap:4px;justify-content:center">
+                <button onclick="editEmergContact('${c.id}')"
+                  style="padding:3px 9px;border-radius:5px;border:1px solid #cbd5e1;background:#fff;font-size:11px;cursor:pointer;color:#475569">수정</button>
+                <button onclick="deleteEmergContact('${c.id}')"
+                  style="padding:3px 9px;border-radius:5px;border:1px solid #fca5a5;background:#fff;font-size:11px;cursor:pointer;color:#ef4444">삭제</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function _esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _showContactModal(contact) {
+  const isNew = !contact;
+  const c = contact || { id: `ec_${Date.now()}`, role: '', name: '', phone: '', note: '' };
+  const modal = document.getElementById('emerg-modal');
+  const body  = document.getElementById('emerg-modal-body');
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;font-size:16px;color:#0d2b5e">${isNew ? '연락처 추가' : '연락처 수정'}</h3>
+      <button onclick="document.getElementById('emerg-modal').style.display='none'"
+        style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">직책</label>
+        <input id="ec-role" value="${_esc(c.role)}" placeholder="예: 현장소장"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">이름 <span style="color:#ef4444">*</span></label>
+        <input id="ec-name" value="${_esc(c.name)}" placeholder="홍길동"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">연락처</label>
+        <input id="ec-phone" value="${_esc(c.phone)}" placeholder="010-0000-0000" type="tel"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">비고</label>
+        <input id="ec-note" value="${_esc(c.note)}" placeholder="담당업무, 근무지 등"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+      <button onclick="document.getElementById('emerg-modal').style.display='none'"
+        style="padding:8px 18px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#374151;font-size:13px;cursor:pointer">취소</button>
+      <button onclick="_saveContactModal('${c.id}', ${isNew})"
+        style="padding:8px 18px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+    </div>`;
+  modal.style.display = 'flex';
+}
+
+window._saveContactModal = function(id, isNew) {
+  const name = document.getElementById('ec-name').value.trim();
+  if (!name) { alert('이름을 입력해주세요.'); return; }
+  const c = {
+    id,
+    role:  document.getElementById('ec-role').value.trim(),
+    name,
+    phone: document.getElementById('ec-phone').value.trim(),
+    note:  document.getElementById('ec-note').value.trim(),
+  };
+  if (isNew) {
+    _emergContacts.push(c);
+  } else {
+    const idx = _emergContacts.findIndex(x => x.id === id);
+    if (idx >= 0) _emergContacts[idx] = c;
+  }
+  _saveEmergContacts();
+  _renderEmergContacts();
+  document.getElementById('emerg-modal').style.display = 'none';
+};
+
+window.addEmergContact = function() { _showContactModal(null); };
+
+window.editEmergContact = function(id) {
+  const c = _emergContacts.find(x => x.id === id);
+  if (c) _showContactModal(c);
+};
+
+window.deleteEmergContact = function(id) {
+  if (!confirm('이 연락처를 삭제하시겠습니까?')) return;
+  _emergContacts = _emergContacts.filter(x => x.id !== id);
+  _saveEmergContacts();
+  _renderEmergContacts();
+};
 
 // ===== 마커 좌표 계산 (줌 없음, 퍼센트 기반) =====
 function _emergScreenPos(xPct, yPct) {
