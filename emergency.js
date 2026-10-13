@@ -12,7 +12,6 @@ let _emergScenarios = [];   // [{ id, x, y, label, desc, procedure, internalValv
 let _emergMode      = 'view';   // 'view' | 'addValve' | 'addScenario'
 let _emergActive    = null;     // 활성 시나리오 id
 let _emergSubTab    = 'plan';   // 'plan' | 'contacts'
-let _emergContacts  = [];       // [{ id, role, name, phone, note }]
 
 // ===== 서브탭 전환 =====
 window.showEmergSubTab = function(tab) {
@@ -55,9 +54,9 @@ async function _loadEmergData(siteId) {
     const rows = await fetchAllPipeSettings();
     _emergValves    = rows[`_emerg_valves_${siteId}`]?.colors    ?? [];
     _emergScenarios = rows[`_emerg_scenarios_${siteId}`]?.colors ?? [];
-    _emergContacts  = rows[`_emerg_contacts_${siteId}`]?.contacts ?? [];
+    _emergOrgChart  = rows[`_emerg_contacts_${siteId}`]?.chart ?? _ORG_DEFAULT();
   } catch {
-    _emergValves = []; _emergScenarios = []; _emergContacts = [];
+    _emergValves = []; _emergScenarios = []; _emergOrgChart = _ORG_DEFAULT();
   }
   _renderEmergMarkers();
   if (_emergSubTab === 'contacts') _renderEmergContacts();
@@ -70,145 +69,230 @@ function _saveEmergScenarios() {
   upsertPipeSettings(`_emerg_scenarios_${_emergSite}`, { colors: _emergScenarios }).catch(e => console.warn('emerg scenario save:', e));
 }
 
-// ===== 비상연락망 =====
+// ===== 비상연락망 (조직도) =====
+let _emergOrgChart  = null;
+let _emergOrgEditMode = false;
+
+const _ORG_DEFAULT = () => ({
+  title: '합동감시체제 조직표',
+  leftTitle: '공사 시공자측',
+  rightTitle: '(주)삼천리 도시가스 사업자측',
+  rows: []
+});
+
 async function _loadEmergContacts(siteId) {
   try {
     const rows = await fetchAllPipeSettings();
-    _emergContacts = rows[`_emerg_contacts_${siteId}`]?.contacts ?? [];
+    _emergOrgChart = rows[`_emerg_contacts_${siteId}`]?.chart ?? null;
+    if (!_emergOrgChart) _emergOrgChart = _ORG_DEFAULT();
   } catch {
-    _emergContacts = [];
+    _emergOrgChart = _ORG_DEFAULT();
   }
 }
 
 function _saveEmergContacts() {
-  upsertPipeSettings(`_emerg_contacts_${_emergSite}`, { contacts: _emergContacts })
-    .catch(e => console.warn('emerg contacts save:', e));
-}
-
-function _renderEmergContacts() {
-  const el = document.getElementById('emerg-contacts-table');
-  if (!el) return;
-  if (!_emergContacts.length) {
-    el.innerHTML = `<div style="text-align:center;padding:36px;color:#9ca3af;font-size:13px">
-      등록된 연락처가 없습니다<br>
-      <small style="font-size:11px">+ 연락처 추가 버튼으로 등록하세요</small>
-    </div>`;
-    return;
-  }
-  el.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead>
-        <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
-          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151;width:90px">직책</th>
-          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151;width:80px">이름</th>
-          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151;width:140px">연락처</th>
-          <th style="padding:10px 14px;text-align:left;font-weight:600;color:#374151">비고</th>
-          <th style="padding:10px 14px;text-align:center;font-weight:600;color:#374151;width:100px"></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${_emergContacts.map((c, i) => `
-          <tr style="border-bottom:1px solid #f1f5f9;${i % 2 ? 'background:#fafafa' : ''}">
-            <td style="padding:10px 14px;color:#475569;font-size:12px">${_esc(c.role)}</td>
-            <td style="padding:10px 14px;font-weight:600;color:#0d2b5e">${_esc(c.name)}</td>
-            <td style="padding:10px 14px">
-              ${c.phone
-                ? `<a href="tel:${_esc(c.phone)}" style="color:#0d2b5e;font-weight:600;text-decoration:none">📞 ${_esc(c.phone)}</a>`
-                : '<span style="color:#9ca3af">-</span>'}
-            </td>
-            <td style="padding:10px 14px;color:#6b7280;font-size:12px">${_esc(c.note)}</td>
-            <td style="padding:10px 14px;text-align:center">
-              <div style="display:flex;gap:4px;justify-content:center">
-                <button onclick="editEmergContact('${c.id}')"
-                  style="padding:3px 9px;border-radius:5px;border:1px solid #cbd5e1;background:#fff;font-size:11px;cursor:pointer;color:#475569">수정</button>
-                <button onclick="deleteEmergContact('${c.id}')"
-                  style="padding:3px 9px;border-radius:5px;border:1px solid #fca5a5;background:#fff;font-size:11px;cursor:pointer;color:#ef4444">삭제</button>
-              </div>
-            </td>
-          </tr>`).join('')}
-      </tbody>
-    </table>`;
+  upsertPipeSettings(`_emerg_contacts_${_emergSite}`, { chart: _emergOrgChart })
+    .catch(e => console.warn('emerg org save:', e));
 }
 
 function _esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function _showContactModal(contact) {
-  const isNew = !contact;
-  const c = contact || { id: `ec_${Date.now()}`, role: '', name: '', phone: '', note: '' };
+function _renderEmergContacts() {
+  const el = document.getElementById('emerg-contacts-table');
+  if (!el) return;
+  const org = _emergOrgChart || _ORG_DEFAULT();
+  const em  = _emergOrgEditMode;
+
+  const BOX_BASE = `flex:1;border-radius:7px;padding:9px 10px;text-align:center;
+    min-height:64px;display:flex;flex-direction:column;justify-content:center;gap:3px;`;
+  const BOX_FILLED = BOX_BASE + `border:1.5px solid #334155;background:#fff;cursor:${em?'pointer':'default'};`;
+  const BOX_EMPTY  = BOX_BASE + `border:1.5px dashed #cbd5e1;background:#f8fafc;opacity:0.6;cursor:${em?'pointer':'default'};`;
+  const CTR_BASE   = `width:110px;flex-shrink:0;border-radius:7px;padding:8px 6px;text-align:center;
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;
+    color:#334155;white-space:pre-line;line-height:1.5;cursor:${em?'pointer':'default'};`;
+  const CTR_FILLED = CTR_BASE + `border:1.5px solid #475569;background:#fff;`;
+  const CTR_EMPTY  = CTR_BASE + `border:1.5px dashed #cbd5e1;background:#f8fafc;opacity:0.4;`;
+  const ARM = `width:16px;flex-shrink:0;display:flex;align-items:center;`;
+  const LINE = `width:100%;height:2px;background:#6b7280;`;
+
+  const renderBox = (cell, rid, side) => {
+    if (!cell) return `<div style="${BOX_EMPTY}" onclick="${em?`_editOrgCell('${rid}','${side}')`:''}">
+      ${em ? `<span style="font-size:11px;color:#9ca3af">클릭하여 추가</span>` : ''}
+    </div>`;
+    const phoneHtml = cell.phone
+      ? `<a href="tel:${_esc(cell.phone)}" style="color:#0d2b5e;font-size:11.5px;font-weight:500;text-decoration:none" onclick="event.stopPropagation()">📞 ${_esc(cell.phone)}</a>`
+      : '';
+    return `<div style="${BOX_FILLED}" onclick="${em?`_editOrgCell('${rid}','${side}')`:''}">
+      ${cell.role ? `<div style="font-size:11px;color:#64748b;line-height:1.3">${_esc(cell.role)}</div>` : ''}
+      ${cell.name ? `<div style="font-size:13px;font-weight:700;color:#0d2b5e">${_esc(cell.name)}</div>` : ''}
+      ${phoneHtml}
+    </div>`;
+  };
+
+  const renderCenter = (center, rid) => {
+    const hasLine = !!center;
+    const armHtml = `<div style="${ARM}"><div style="${hasLine ? LINE : 'width:100%;'}"></div></div>`;
+    const box = center
+      ? `<div style="${CTR_FILLED}" onclick="${em?`_editOrgCell('${rid}','center')`:''}">
+           ${_esc(center.label || '')}${em ? ' ✎' : ''}
+         </div>`
+      : `<div style="${CTR_EMPTY}" onclick="${em?`_editOrgCell('${rid}','center')`:''}">
+           ${em ? `<span style="font-size:10px;color:#aaa">+중앙</span>` : ''}
+         </div>`;
+    return armHtml + box + armHtml;
+  };
+
+  const rowsHtml = org.rows.map(row => `
+    <div style="display:flex;align-items:stretch;gap:0;margin-bottom:8px">
+      ${renderBox(row.left, row.id, 'left')}
+      ${renderCenter(row.center, row.id)}
+      ${renderBox(row.right, row.id, 'right')}
+      ${em ? `<div style="display:flex;align-items:center;padding-left:8px">
+        <button onclick="_deleteOrgRow('${row.id}')"
+          style="padding:3px 8px;border-radius:5px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:11px;cursor:pointer">✕</button>
+      </div>` : ''}
+    </div>`).join('');
+
+  const headerPad = em ? 'padding-right:44px' : '';
+  el.innerHTML = `
+    <div style="padding:16px">
+      <div style="text-align:center;font-size:14px;font-weight:700;color:#1e293b;padding:8px 0 14px;
+        border-bottom:1px solid #e2e8f0;margin-bottom:14px;cursor:${em?'pointer':'default'}"
+        onclick="${em?'_editOrgTitle()':''}">
+        &lt; ${_esc(org.title)} &gt;${em ? ' <span style="font-size:11px;color:#94a3b8">✎</span>' : ''}
+      </div>
+      <div style="display:flex;align-items:center;margin-bottom:10px;${headerPad}">
+        <div style="flex:1;text-align:center;font-weight:700;font-size:13px;color:#0d2b5e;cursor:${em?'pointer':'default'}"
+          onclick="${em?`_editOrgGroupTitle('left')`:''}">
+          ${_esc(org.leftTitle)}${em ? ' <span style="font-size:10px;color:#94a3b8">✎</span>' : ''}
+        </div>
+        <div style="width:142px;flex-shrink:0"></div>
+        <div style="flex:1;text-align:center;font-weight:700;font-size:13px;color:#0d2b5e;cursor:${em?'pointer':'default'}"
+          onclick="${em?`_editOrgGroupTitle('right')`:''}">
+          ${_esc(org.rightTitle)}${em ? ' <span style="font-size:10px;color:#94a3b8">✎</span>' : ''}
+        </div>
+      </div>
+      ${rowsHtml}
+      ${org.rows.length === 0 ? `<div style="text-align:center;padding:28px 0;color:#9ca3af;font-size:13px">
+        행을 추가해 조직도를 만들어보세요</div>` : ''}
+      ${em ? `<button onclick="_addOrgRow()"
+        style="width:100%;margin-top:8px;padding:10px;border-radius:7px;border:1.5px dashed #94a3b8;
+          background:#f8fafc;color:#64748b;font-size:13px;cursor:pointer;font-weight:500">+ 행 추가</button>` : ''}
+    </div>`;
+}
+
+// ── 조직도 편집 함수 ─────────────────────────────────────────
+
+window.toggleEmergOrgEdit = function() {
+  _emergOrgEditMode = !_emergOrgEditMode;
+  const btn = document.getElementById('emerg-org-edit-btn');
+  if (btn) {
+    btn.textContent = _emergOrgEditMode ? '✓ 편집 완료' : '편집';
+    btn.style.background = _emergOrgEditMode ? '#0d2b5e' : '#fff';
+    btn.style.color = _emergOrgEditMode ? '#fff' : '#0d2b5e';
+  }
+  _renderEmergContacts();
+};
+
+window._editOrgTitle = function() {
+  const val = prompt('조직표 제목', _emergOrgChart.title);
+  if (val === null) return;
+  _emergOrgChart.title = val.trim() || _emergOrgChart.title;
+  _saveEmergContacts(); _renderEmergContacts();
+};
+
+window._editOrgGroupTitle = function(side) {
+  const cur = side === 'left' ? _emergOrgChart.leftTitle : _emergOrgChart.rightTitle;
+  const val = prompt((side === 'left' ? '왼쪽' : '오른쪽') + ' 그룹명', cur);
+  if (val === null) return;
+  const v = val.trim() || cur;
+  if (side === 'left') _emergOrgChart.leftTitle = v; else _emergOrgChart.rightTitle = v;
+  _saveEmergContacts(); _renderEmergContacts();
+};
+
+window._addOrgRow = function() {
+  if (!_emergOrgChart) _emergOrgChart = _ORG_DEFAULT();
+  _emergOrgChart.rows.push({ id: `r_${Date.now()}`, left: null, center: null, right: null });
+  _saveEmergContacts(); _renderEmergContacts();
+};
+
+window._deleteOrgRow = function(rowId) {
+  if (!confirm('이 행을 삭제하시겠습니까?')) return;
+  _emergOrgChart.rows = _emergOrgChart.rows.filter(r => r.id !== rowId);
+  _saveEmergContacts(); _renderEmergContacts();
+};
+
+window._editOrgCell = function(rowId, side) {
+  if (!_emergOrgEditMode) return;
+  const row = _emergOrgChart.rows.find(r => r.id === rowId);
+  if (!row) return;
+
+  if (side === 'center') {
+    const cur = row.center?.label ?? '';
+    const val = prompt('가운데 박스 내용 (줄바꿈: Enter)', cur);
+    if (val === null) return;
+    row.center = val.trim() ? { label: val.trim() } : null;
+    _saveEmergContacts(); _renderEmergContacts();
+    return;
+  }
+
+  const cell = row[side] || { role: '', name: '', phone: '' };
   const modal = document.getElementById('emerg-modal');
   const body  = document.getElementById('emerg-modal-body');
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="margin:0;font-size:16px;color:#0d2b5e">${isNew ? '연락처 추가' : '연락처 수정'}</h3>
+      <h3 style="margin:0;font-size:15px;color:#0d2b5e">${side === 'left' ? '왼쪽' : '오른쪽'} 칸 편집</h3>
       <button onclick="document.getElementById('emerg-modal').style.display='none'"
         style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1">✕</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;flex-direction:column;gap:11px">
       <div>
-        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">직책</label>
-        <input id="ec-role" value="${_esc(c.role)}" placeholder="예: 현장소장"
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">직책/직위</label>
+        <input id="oc-role" value="${_esc(cell.role)}" placeholder="예: 현장안전관리 총괄자"
           style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
       </div>
       <div>
-        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">이름 <span style="color:#ef4444">*</span></label>
-        <input id="ec-name" value="${_esc(c.name)}" placeholder="홍길동"
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">이름</label>
+        <input id="oc-name" value="${_esc(cell.name)}" placeholder="홍길동"
           style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">연락처</label>
-        <input id="ec-phone" value="${_esc(c.phone)}" placeholder="010-0000-0000" type="tel"
-          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
-      </div>
-      <div>
-        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">비고</label>
-        <input id="ec-note" value="${_esc(c.note)}" placeholder="담당업무, 근무지 등"
+        <input id="oc-phone" value="${_esc(cell.phone)}" placeholder="010-0000-0000" type="tel"
           style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
       </div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
-      <button onclick="document.getElementById('emerg-modal').style.display='none'"
-        style="padding:8px 18px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#374151;font-size:13px;cursor:pointer">취소</button>
-      <button onclick="_saveContactModal('${c.id}', ${isNew})"
-        style="padding:8px 18px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:20px">
+      <button onclick="_clearOrgCell('${rowId}','${side}')"
+        style="padding:8px 14px;border-radius:7px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:12px;cursor:pointer">칸 비우기</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('emerg-modal').style.display='none'"
+          style="padding:8px 16px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#374151;font-size:13px;cursor:pointer">취소</button>
+        <button onclick="_saveOrgCell('${rowId}','${side}')"
+          style="padding:8px 18px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+      </div>
     </div>`;
   modal.style.display = 'flex';
-}
+};
 
-window._saveContactModal = function(id, isNew) {
-  const name = document.getElementById('ec-name').value.trim();
-  if (!name) { alert('이름을 입력해주세요.'); return; }
-  const c = {
-    id,
-    role:  document.getElementById('ec-role').value.trim(),
-    name,
-    phone: document.getElementById('ec-phone').value.trim(),
-    note:  document.getElementById('ec-note').value.trim(),
-  };
-  if (isNew) {
-    _emergContacts.push(c);
-  } else {
-    const idx = _emergContacts.findIndex(x => x.id === id);
-    if (idx >= 0) _emergContacts[idx] = c;
-  }
-  _saveEmergContacts();
-  _renderEmergContacts();
+window._saveOrgCell = function(rowId, side) {
+  const row = _emergOrgChart.rows.find(r => r.id === rowId);
+  if (!row) return;
+  const role  = document.getElementById('oc-role').value.trim();
+  const name  = document.getElementById('oc-name').value.trim();
+  const phone = document.getElementById('oc-phone').value.trim();
+  row[side] = (role || name || phone) ? { role, name, phone } : null;
+  _saveEmergContacts(); _renderEmergContacts();
   document.getElementById('emerg-modal').style.display = 'none';
 };
 
-window.addEmergContact = function() { _showContactModal(null); };
-
-window.editEmergContact = function(id) {
-  const c = _emergContacts.find(x => x.id === id);
-  if (c) _showContactModal(c);
-};
-
-window.deleteEmergContact = function(id) {
-  if (!confirm('이 연락처를 삭제하시겠습니까?')) return;
-  _emergContacts = _emergContacts.filter(x => x.id !== id);
-  _saveEmergContacts();
-  _renderEmergContacts();
+window._clearOrgCell = function(rowId, side) {
+  const row = _emergOrgChart.rows.find(r => r.id === rowId);
+  if (row) row[side] = null;
+  _saveEmergContacts(); _renderEmergContacts();
+  document.getElementById('emerg-modal').style.display = 'none';
 };
 
 // ===== 마커 좌표 계산 (줌 없음, 퍼센트 기반) =====
