@@ -54,7 +54,7 @@ async function _loadEmergData(siteId) {
     const rows = await fetchAllPipeSettings();
     _emergValves    = rows[`_emerg_valves_${siteId}`]?.colors    ?? [];
     _emergScenarios = rows[`_emerg_scenarios_${siteId}`]?.colors ?? [];
-    _emergOrgChart  = rows[`_emerg_contacts_${siteId}`]?.chart ?? _ORG_DEFAULT();
+    _emergOrgChart  = rows[`_emerg_contacts_${siteId}`]?.colors ?? _ORG_DEFAULT();
   } catch {
     _emergValves = []; _emergScenarios = []; _emergOrgChart = _ORG_DEFAULT();
   }
@@ -83,15 +83,14 @@ const _ORG_DEFAULT = () => ({
 async function _loadEmergContacts(siteId) {
   try {
     const rows = await fetchAllPipeSettings();
-    _emergOrgChart = rows[`_emerg_contacts_${siteId}`]?.chart ?? null;
-    if (!_emergOrgChart) _emergOrgChart = _ORG_DEFAULT();
+    _emergOrgChart = rows[`_emerg_contacts_${siteId}`]?.colors ?? _ORG_DEFAULT();
   } catch {
     _emergOrgChart = _ORG_DEFAULT();
   }
 }
 
 function _saveEmergContacts() {
-  upsertPipeSettings(`_emerg_contacts_${_emergSite}`, { chart: _emergOrgChart })
+  upsertPipeSettings(`_emerg_contacts_${_emergSite}`, { colors: _emergOrgChart })
     .catch(e => console.warn('emerg org save:', e));
 }
 
