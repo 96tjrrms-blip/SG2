@@ -802,10 +802,17 @@
     <div id="emerg-contacts-panel" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <span style="font-size:13px;color:#64748b">사이트별 비상 연락망 조직표</span>
-        <button id="emerg-org-edit-btn" onclick="toggleEmergOrgEdit()"
-          style="padding:6px 14px;border-radius:7px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">
-          편집
-        </button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span id="emerg-save-toast" style="display:none;font-size:12px;color:#16a34a;font-weight:600">저장됨 ✓</span>
+          <button onclick="saveEmergOrgNow()"
+            style="padding:6px 14px;border-radius:7px;border:1px solid #16a34a;background:#16a34a;color:#fff;font-size:12px;font-weight:600;cursor:pointer">
+            저장
+          </button>
+          <button id="emerg-org-edit-btn" onclick="toggleEmergOrgEdit()"
+            style="padding:6px 14px;border-radius:7px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">
+            편집
+          </button>
+        </div>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
         <div id="emerg-contacts-table"></div>

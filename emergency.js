@@ -185,6 +185,16 @@ function _renderEmergContacts() {
 
 // ── 조직도 편집 함수 ─────────────────────────────────────────
 
+window.saveEmergOrgNow = function() {
+  if (!_emergOrgChart) return;
+  _saveEmergContacts();
+  const toast = document.getElementById('emerg-save-toast');
+  if (toast) {
+    toast.style.display = 'inline';
+    setTimeout(() => { toast.style.display = 'none'; }, 2000);
+  }
+};
+
 window.toggleEmergOrgEdit = function() {
   _emergOrgEditMode = !_emergOrgEditMode;
   const btn = document.getElementById('emerg-org-edit-btn');
