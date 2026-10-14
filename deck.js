@@ -350,7 +350,7 @@ function renderDeckStages() {
   if (_deckEdit) {
     _renderDeckEditOverlay(svg, data, sw);
     _deckArrowDefs(svg, 'deckb-');
-    data.stages.forEach(st => { const g = _deckDrawDetails(svg, 'deckb-', st); if (g) g.classList.add('on'); });
+    data.stages.forEach(st => _deckDrawDetails(svg, 'deckb-', st));
     if (_deckMode === 'work') {
       const r = Math.max(6, _mapNatW / 220);
       (_deckSel()?.route || []).forEach(q => svg.appendChild(_deckEl('circle', { cx: q[0], cy: q[1], r, fill: '#fff', stroke: '#0891b2', 'stroke-width': sw })));
@@ -452,11 +452,11 @@ function renderDeckLabels() {
   _syncDeckFrontTransform();
   if (_deckEdit || !_deckVisible()) return;
   const fs = Math.max(18, _mapNatW / 100);
-  // 점검루트·작업 표시: 평소 흐리게, 해당 단계 호버 시 선명하게
+  // 점검루트·작업 표시: 기본으로 항상 표시, 다른 단계에 커서를 올렸을 때만 숨김
   _deckArrowDefs(svg, 'deckl-');
   _deckCurrentStrips().forEach(({ stage: st }) => {
     const g = _deckDrawDetails(svg, 'deckl-', st);
-    if (g && st.id === _deckHoverId) g.classList.add('on');
+    if (g && _deckHoverId && st.id !== _deckHoverId) g.classList.add('off');
   });
   // 라벨은 구역 가운데를 가리지 않도록 정거장 외곽 왼쪽 바깥에 두고 화살표로 가리킴
   // 공간이 부족하면 두 줄로 줄바꿈 → 그래도 부족하면 글씨 축소, 지도 밖으로는 안 나가게
@@ -537,7 +537,7 @@ function _applyDeckHover() {
   });
   _renderDeckFront(strip && strip.stage.status === 'done' ? strip : null);
   document.querySelectorAll('#deck-label-svg .deck-detail').forEach(g =>
-    g.classList.toggle('on', g.dataset.id === _deckHoverId));
+    g.classList.toggle('off', !!_deckHoverId && g.dataset.id !== _deckHoverId));
   if (strip) { _showDeckTooltip(strip.stage); _deckTipShown = true; }
   else if (_deckTipShown) { _hidePipeTooltip(); _deckTipShown = false; }
 }
