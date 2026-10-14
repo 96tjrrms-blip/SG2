@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=21">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -95,7 +95,6 @@
         <span id="onoff-arrow">▸</span> ON/OFF
       </button>
       <div id="onoff-group" class="ctrl-group-items" style="display:none">
-        <button id="zone-toggle-btn" class="zone-btn" onclick="toggleZoneVisible()">🚧 공사구역 표시</button>
         <button id="deck-toggle-btn" class="zone-btn" onclick="toggleDeckVisible()">🟫 복공현황 숨기기</button>
         <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
         <button id="boring-toggle-btn" class="zone-btn" onclick="toggleBoringVisible()">⊕ 천공위치 표시</button>
@@ -106,9 +105,7 @@
         <span id="edit-arrow">▸</span> 편집
       </button>
       <div id="edit-group" class="ctrl-group-items" style="display:none">
-        <button class="zone-btn zone-btn-edit" onclick="startZoneEdit()">✏️ 구역 편집</button>
         <button class="zone-btn" onclick="startDeckEdit()" style="background:#f1f5f9;color:#334155;border-color:#94a3b8">🟫 복공 단계 편집</button>
-        <button class="zone-btn" onclick="startLabelMove()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">🔤 텍스트 이동</button>
         <button class="zone-btn zone-btn-entrance" onclick="startEntranceEdit()">🚪 입구 편집</button>
         <button id="boring-edit-btn" class="zone-btn" onclick="toggleBoringMarkerEdit()" style="background:#fff7ed;color:#c2410c;border-color:#fdba74">✏ 마커 편집</button>
         <div id="boring-marker-sub" style="display:none;gap:4px;flex-wrap:wrap">
@@ -932,8 +929,8 @@
 <script src="boring-data.js?v=7"></script>
 <script src="boring.js?v=7"></script>
 <script src="parking.js?v=7"></script>
-<script src="map.js?v=9"></script>
-<script src="deck.js?v=5"></script>
+<script src="map.js?v=10"></script>
+<script src="deck.js?v=7"></script>
 <script src="pipe-editor.js?v=7"></script>
 <script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>

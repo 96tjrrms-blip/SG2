@@ -132,6 +132,7 @@ function renderAllPipes() {
   if (typeof renderBoringPoints  === 'function') renderBoringPoints();
   if (typeof renderParkingSpots  === 'function') renderParkingSpots();
   if (typeof renderRegulatorSpots === 'function') renderRegulatorSpots();
+  if (typeof renderDeckLabels === 'function') renderDeckLabels();
 }
 
 // 해당 파이프 위에 있는 밸브들의 fraction 목록 반환 (오름차순)
@@ -1187,32 +1188,7 @@ function _renderConstructionZone() {
   }
 
   const d = _loadZoneData();
-  if (!d.visible || d.points.length < 3) return;
-
-  const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-  poly.setAttribute('points', d.points.map(p => p.join(',')).join(' '));
-  poly.setAttribute('fill', 'rgba(251,146,60,0.18)');
-  poly.setAttribute('stroke', '#f97316');
-  poly.setAttribute('stroke-width', sw * 1.5);
-  poly.setAttribute('stroke-dasharray', `${_mapNatW / 80} ${_mapNatW / 120}`);
-  poly.setAttribute('stroke-linejoin', 'round');
-  svg.appendChild(poly);
-
-  // 라벨 위치: 저장된 위치 우선, 없으면 폴리곤 중심
-  const defCx = d.points.reduce((s, p) => s + p[0], 0) / d.points.length;
-  const defCy = d.points.reduce((s, p) => s + p[1], 0) / d.points.length;
-  const cx = d.labelX ?? defCx;
-  const cy = d.labelY ?? defCy;
-  const fs = Math.max(18, _mapNatW / 100);
-  const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  lbl.setAttribute('x', cx); lbl.setAttribute('y', cy + fs * 0.35);
-  lbl.setAttribute('text-anchor', 'middle');
-  lbl.setAttribute('fill', '#ea580c'); lbl.setAttribute('font-size', fs);
-  lbl.setAttribute('font-weight', '800');
-  lbl.setAttribute('paint-order', 'stroke');
-  lbl.setAttribute('stroke', '#fff'); lbl.setAttribute('stroke-width', fs * 0.3);
-  lbl.textContent = '🚧 현재공사구역';
-  svg.appendChild(lbl);
+  // 공사구역 다각형/라벨 표시는 복공 단계(작업중) 표시로 대체됨 — 입구 마커만 표시
 
   // 입구 마커 (깃발 스타일)
   const entrances = d.entrances || [];

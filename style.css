@@ -705,7 +705,7 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 
 /* ── 복공 단계 (호버 불투명도 + 입체) ── */
 .deck-stage { opacity: 0.5; transition: opacity 0.2s ease; pointer-events: none; }
-.deck-stage.deck-hover { opacity: 1; }
+.deck-stage.deck-hover, .deck-stage.deck-active { opacity: 1; }
 .deck-stage.deck-hidden { opacity: 0; }
 .deck-shadow { pointer-events: none; opacity: 0.25; }
 .deck-stage.deck-selected { opacity: 1; }
@@ -713,13 +713,16 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .deck-stage.deck-dim { opacity: 0.45; }
 .deck-label { pointer-events: none; }
 .deck-mode-btn.deck-mode-on { background: #0f172a; color: #fff; border-color: #0f172a; }
-#deck-front-svg {
+.deck-layer-svg {
   position: absolute; top: 0; left: 0; width: 100%;
-  transform-origin: 0 0; z-index: 14; pointer-events: none; overflow: visible;
+  transform-origin: 0 0; z-index: 13; pointer-events: none; overflow: visible;
 }
+#deck-front-svg { z-index: 14; }
 #deck-front-svg .deck-stage { opacity: 1; }
 #deck-front-svg .deck-front { animation: deckPop 0.22s ease-out forwards; }
 #deck-front-svg .deck-front-shadow { animation: deckShadow 0.22s ease-out forwards; }
+#deck-front-svg .deck-front-pipes { animation: deckPipes 0.22s ease-out forwards; }
+@keyframes deckPipes { from { opacity: 0; } to { opacity: 0.5; } }
 @keyframes deckPop { from { transform: translateY(0); opacity: 0.6; } to { transform: translateY(var(--deck-lift, -8px)); opacity: 1; } }
 @keyframes deckShadow { from { opacity: 0; } to { opacity: 0.45; } }
 .deck-summary {

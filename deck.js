@@ -2,7 +2,7 @@
 // pipe_settings key: '_deck_{siteId}', colors column =
 //   { outline:[[x,y]...], dir:'down'|'up'|'right'|'left', splits:[0.25,0.5,0.75], stages:[{id,name,status,date,memo}] }
 // 정거장 외곽(outline)을 한 번 그리고, dir 방향으로 splits 비율에서 잘라 단계별 구역을 만든다.
-// 표시 ON/OFF는 보는 사람별(localStorage), 단계 데이터는 Supabase 공유
+// 표시 ON/OFF는 접속마다 기본 ON, 단계 데이터는 Supabase 공유
 
 const DECK_STATUS = {
   done: { label: '복공완료', icon: '✅', stroke: '#7a1f14' },
@@ -75,13 +75,12 @@ async function _saveDeckData(siteId, data) {
   await upsertPipeSettings(`_deck_${siteId}`, { colors: data });
 }
 
-function _deckVisible() {
-  try { return localStorage.getItem(`sg2_deck_visible_${_deckSite()}`) !== 'false'; } catch { return true; }
-}
+// 페이지를 열 때마다 항상 표시 상태로 시작 (숨기기는 이번 접속 동안만 유지)
+let _deckShown = true;
+function _deckVisible() { return _deckShown; }
 
 window.toggleDeckVisible = function() {
-  const next = !_deckVisible();
-  try { localStorage.setItem(`sg2_deck_visible_${_deckSite()}`, String(next)); } catch {}
+  _deckShown = !_deckShown;
   renderAllPipes();
 };
 
@@ -255,14 +254,19 @@ function _deckDrawStrip(svg, p, { stage: st, pts }) {
       points: _deckPts(pts), fill: 'none', stroke: 'rgba(255,200,180,0.7)',
       'stroke-width': sw * 0.6, 'stroke-linejoin': 'round',
     }));
-  } else {
-    const isWip = st.status === 'wip';
+  } else if (st.status === 'wip') {
+    // 작업중: 공사구역 표시처럼 항상 선명하게
+    g.classList.add('deck-active');
     g.appendChild(_deckEl('polygon', {
-      points: _deckPts(pts),
-      fill: `url(#${p}${isWip ? 'wip' : 'plan'})`,
-      stroke: isWip ? '#ea580c' : '#f8fafc',
-      'stroke-width': sw * 0.8, 'stroke-linejoin': 'round',
-      ...(isWip ? {} : { 'stroke-dasharray': `${_mapNatW / 90} ${_mapNatW / 140}` }),
+      points: _deckPts(pts), fill: 'rgba(251,146,60,0.22)',
+      stroke: '#f97316', 'stroke-width': sw * 1.5, 'stroke-linejoin': 'round',
+      'stroke-dasharray': `${_mapNatW / 80} ${_mapNatW / 120}`,
+    }));
+  } else {
+    g.appendChild(_deckEl('polygon', {
+      points: _deckPts(pts), fill: `url(#${p}plan)`,
+      stroke: '#f8fafc', 'stroke-width': sw * 0.8, 'stroke-linejoin': 'round',
+      'stroke-dasharray': `${_mapNatW / 90} ${_mapNatW / 140}`,
     }));
   }
   svg.appendChild(g);
@@ -315,6 +319,28 @@ function renderDeckStages() {
   else { _renderDeckSummary(data); _applyDeckHover(); }
 }
 
+// 작업중 단계 상시 라벨 ("🚧 3단계 작업중") — 배관/밸브 위에 그림
+function renderDeckLabels() {
+  // 천공 마커(overlay-svg)보다 위 층에 그려야 가려지지 않음
+  const svg = _deckLayerSvg('deck-label-svg');
+  if (!svg) return;
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${_mapNatW} ${_mapNatH}`);
+  _syncDeckFrontTransform();
+  if (_deckEdit || !_deckVisible()) return;
+  const fs = Math.max(18, _mapNatW / 100);
+  _deckCurrentStrips().filter(s => s.stage.status === 'wip').forEach(({ stage: st, pts }) => {
+    const [cx, cy] = _deckCentroid(pts);
+    const t = _deckEl('text', {
+      class: 'deck-label', x: cx, y: cy + fs * 0.35, 'text-anchor': 'middle',
+      fill: '#ea580c', 'font-size': fs, 'font-weight': '800',
+      'paint-order': 'stroke', stroke: '#fff', 'stroke-width': fs * 0.3,
+    });
+    t.textContent = `🚧 ${st.name} 작업중`;
+    svg.appendChild(t);
+  });
+}
+
 // ── 호버: 좌표로 판정 (마커/배관 위에서도 동작) ─────────────────
 function _setDeckHover(id) {
   if (id === _deckHoverId) return;
@@ -336,23 +362,26 @@ function _applyDeckHover() {
 }
 
 // 복공완료 구역을 배관·천공 마커보다 위(맨 앞)에 띄우는 층
-function _deckFrontSvg() {
-  let fsvg = document.getElementById('deck-front-svg');
-  if (!fsvg) {
+function _deckLayerSvg(id) {
+  let el = document.getElementById(id);
+  if (!el) {
     const mc = document.getElementById('map-container');
     if (!mc) return null;
-    fsvg = _deckEl('svg', { id: 'deck-front-svg' });
-    mc.appendChild(fsvg);
+    el = _deckEl('svg', { id, class: 'deck-layer-svg' });
+    mc.appendChild(el);
   }
-  return fsvg;
+  return el;
 }
+function _deckFrontSvg() { return _deckLayerSvg('deck-front-svg'); }
 
+// 지도 줌/이동을 따라가도록 변환 동기화
 function _syncDeckFrontTransform() {
-  const fsvg = document.getElementById('deck-front-svg');
   const z = document.getElementById('map-zoomable');
-  if (!fsvg || !z) return;
-  fsvg.style.height = z.offsetHeight + 'px';
-  fsvg.style.transform = z.style.transform || '';
+  if (!z) return;
+  document.querySelectorAll('.deck-layer-svg').forEach(el => {
+    el.style.height = z.offsetHeight + 'px';
+    el.style.transform = z.style.transform || '';
+  });
 }
 
 function _renderDeckFront(strip) {
@@ -368,6 +397,20 @@ function _renderDeckFront(strip) {
   g.classList.add('deck-front');
   g.style.setProperty('--deck-lift', `${-_deckGeom().depth * 0.8}px`);
   if (shadow) shadow.classList.add('deck-front-shadow');
+
+  // 구역 안에 들어오는 배관선만 복공 위에 반투명으로 비춤
+  const clipId = 'deckf-pipeclip';
+  const clip = _deckEl('clipPath', { id: clipId });
+  clip.appendChild(_deckEl('polygon', { points: _deckPts(strip.pts) }));
+  fsvg.appendChild(clip);
+  const pipes = _deckEl('g', { class: 'deck-front-pipes', 'clip-path': `url(#${clipId})` });
+  document.querySelectorAll('#map-svg polyline').forEach(pl => {
+    if (pl.closest('.deck-stage') || pl.classList.contains('pipe-hit') || pl.classList.contains('pipe-preview')) return;
+    const c = pl.cloneNode(false);
+    c.removeAttribute('filter');
+    pipes.appendChild(c);
+  });
+  fsvg.appendChild(pipes);
 }
 
 function _deckHitAt(e) {
@@ -504,7 +547,7 @@ window.saveDeckEdit = async function() {
   try {
     await _saveDeckData(siteId, _deckNormalize(_deckDraft));
   } catch (e) { alert('복공 단계 저장 실패: ' + e.message); return; }
-  try { localStorage.setItem(`sg2_deck_visible_${siteId}`, 'true'); } catch {}
+  _deckShown = true;
   cancelDeckEdit();
 };
 
