@@ -702,6 +702,16 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .deck-detail.on { opacity: 1; }
 .deck-detail.on .deck-route { animation: deckRoute 0.8s linear infinite; }
 @keyframes deckRoute { to { stroke-dashoffset: calc(var(--deck-dash, 50px) * -1); } }
+.deck-callout { pointer-events: none; }
+.deck-work-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px;
+  background: #fff7ed; border: 1px solid #fdba74; border-radius: 999px;
+  font-size: 11px; color: #9a3412; line-height: 1.6;
+}
+.deck-work-chip button {
+  border: none; background: #fdba74; color: #7c2d12; border-radius: 50%;
+  width: 16px; height: 16px; font-size: 10px; line-height: 1; cursor: pointer; padding: 0;
+}
 .deck-mode-btn.deck-mode-on { background: #0f172a; color: #fff; border-color: #0f172a; }
 .deck-layer-svg {
   position: absolute; top: 0; left: 0; width: 100%;

@@ -369,6 +369,9 @@ function _deckArrowDefs(svg, p) {
     <marker id="${p}arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="${sw * 1.1}" markerHeight="${sw * 1.1}"
       markerUnits="userSpaceOnUse" orient="auto">
       <path d="M1,1 L9,5 L1,9 z" fill="#0e7490" stroke="#fff" stroke-width="1"/>
+    </marker>
+    <marker id="${p}callout-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/>
     </marker>`;
   svg.appendChild(defs);
 }
@@ -432,16 +435,51 @@ function renderDeckLabels() {
     const g = _deckDrawDetails(svg, 'deckl-', st);
     if (g && st.id === _deckHoverId) g.classList.add('on');
   });
+  // 라벨은 구역 가운데를 가리지 않도록 정거장 외곽 왼쪽 바깥에 두고 화살표로 가리킴
+  const outline = _getDeckData(_deckSite()).outline;
+  const oMinX = Math.min(...outline.map(q => q[0]));
+  const oMaxX = Math.max(...outline.map(q => q[0]));
   _deckCurrentStrips().filter(s => s.stage.status === 'wip').forEach(({ stage: st, pts }) => {
-    const [cx, cy] = _deckCentroid(pts);
+    const cy = _deckCentroid(pts)[1];
+    const label = `🚧 ${st.name} 작업중` + (+st.progress > 0 ? ` · 복공 ${st.progress}%` : '');
+    const tw = label.length * fs * 0.62 + fs;
+    const th = fs * 1.7;
+    const gap = fs * 3;
+    // 왼쪽 공간이 부족하면 오른쪽 바깥으로
+    const left = oMinX - gap - tw >= 0;
+    const [ex0, ex1] = _deckEdgeXAt(pts, cy);
+    const tipX = left ? ex0 : ex1;
+    const boxX = left ? oMinX - gap - tw : oMaxX + gap;
+    const tailX = left ? boxX + tw : boxX;
+
+    const g = _deckEl('g', { class: 'deck-callout' });
+    g.appendChild(_deckEl('line', {
+      x1: tailX, y1: cy, x2: tipX + (left ? -fs * 0.2 : fs * 0.2), y2: cy,
+      stroke: '#ea580c', 'stroke-width': fs * 0.18, 'marker-end': 'url(#deckl-callout-arrow)',
+    }));
+    g.appendChild(_deckEl('rect', {
+      x: boxX, y: cy - th / 2, width: tw, height: th, rx: th / 2,
+      fill: '#fff7ed', stroke: '#ea580c', 'stroke-width': fs * 0.12,
+    }));
     const t = _deckEl('text', {
-      class: 'deck-label', x: cx, y: cy + fs * 0.35, 'text-anchor': 'middle',
-      fill: '#ea580c', 'font-size': fs, 'font-weight': '800',
-      'paint-order': 'stroke', stroke: '#fff', 'stroke-width': fs * 0.3,
+      class: 'deck-label', x: boxX + tw / 2, y: cy + fs * 0.35, 'text-anchor': 'middle',
+      fill: '#c2410c', 'font-size': fs, 'font-weight': '800',
     });
-    t.textContent = `🚧 ${st.name} 작업중` + (+st.progress > 0 ? ` · 복공 ${st.progress}%` : '');
-    svg.appendChild(t);
+    t.textContent = label;
+    g.appendChild(t);
+    svg.appendChild(g);
   });
+}
+
+// 수평선 y와 다각형이 만나는 가장 왼쪽/오른쪽 x
+function _deckEdgeXAt(pts, y) {
+  const xs = [];
+  pts.forEach((a, i) => {
+    const b = pts[(i + 1) % pts.length];
+    if ((a[1] - y) * (b[1] - y) <= 0 && a[1] !== b[1]) xs.push(a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]));
+  });
+  if (!xs.length) xs.push(...pts.map(q => q[0]));
+  return [Math.min(...xs), Math.max(...xs)];
 }
 
 // ── 호버: 좌표로 판정 (마커/배관 위에서도 동작) ─────────────────
@@ -697,6 +735,11 @@ function _renderDeckEditBar() {
   document.getElementById('deck-prog-input').value = +st?.progress || 0;
   document.getElementById('deck-prog-label').textContent = `${+st?.progress || 0}%`;
   document.getElementById('deck-prog-dir').value = st?.progDir || 'right';
+  const list = document.getElementById('deck-work-list');
+  list.innerHTML = (st?.works || []).map((w, k) =>
+    `<span class="deck-work-chip">${_deckEsc(`${w.icon || ''} ${w.text || ''}`)}` +
+    `<button onclick="_deckDeleteWork(${k})" title="삭제">✕</button></span>`).join('') ||
+    '<span style="font-size:11px;color:#94a3b8">작업 표시 없음</span>';
   document.getElementById('deck-hint').textContent = isOutline
     ? `① 빈 곳 클릭: 꼭짓점 추가 · 꼭짓점 드래그: 이동 · 꼭짓점 우클릭: 삭제 (현재 ${_deckDraft.outline.length}개)`
     : isWork
@@ -709,6 +752,15 @@ function _renderDeckEditBar() {
 let _deckTool = 'work'; // ③ 모드: 'work'(작업 표시) | 'route'(점검루트)
 
 window._deckSetTool = function(tool) { _deckTool = tool; _renderDeckEditBar(); renderAllPipes(); };
+
+window._deckDeleteWork = function(k) {
+  const st = _deckSel();
+  const w = st?.works?.[k];
+  if (!w || !confirm(`'${w.icon || ''} ${w.text || ''}' 작업 표시를 삭제할까요?`)) return;
+  st.works.splice(k, 1);
+  _renderDeckEditBar();
+  renderAllPipes();
+};
 
 window._deckClearRoute = function() {
   const st = _deckSel();
@@ -919,6 +971,7 @@ function _onDeckMapClick(x, y) {
       if (!hit) return;
       const st = _deckSel();
       if (hit.type === 'w') st.works.splice(hit.k, 1); else st.route.splice(hit.k, 1);
+      _renderDeckEditBar();
       renderAllPipes();
       return;
     }
