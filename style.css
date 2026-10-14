@@ -703,11 +703,14 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .reg-save-btn { background: #16a34a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; margin-right:3px; }
 .reg-edit-inp { width:100%; border:1px solid #93c5fd; border-radius:4px; padding:3px 6px; font-size:13px; text-align:center; background:#fff; }
 
-/* ── 복공 단계 (호버 불투명도) ── */
-.deck-stage { opacity: 0.35; transition: opacity 0.2s ease; cursor: pointer; }
-.deck-stage:hover, .deck-stage.deck-pinned { opacity: 0.95; }
-.deck-stage.deck-selected { opacity: 0.9; cursor: crosshair; }
-.deck-stage.deck-dim { opacity: 0.25; }
+/* ── 복공 단계 (호버 불투명도 + 입체) ── */
+.deck-stage { opacity: 0.75; transition: opacity 0.2s ease, transform 0.2s ease; cursor: pointer; }
+.deck-stage:hover, .deck-stage.deck-pinned { opacity: 1; transform: translateY(var(--deck-lift, -6px)); }
+.deck-stage.deck-selected { opacity: 1; cursor: crosshair; }
+.deck-stage.deck-selected > polygon:last-child { stroke: #2563eb; }
+.deck-stage.deck-dim { opacity: 0.45; }
+.deck-shadow { pointer-events: none; }
+.deck-mode-btn.deck-mode-on { background: #0f172a; color: #fff; border-color: #0f172a; }
 .deck-label { pointer-events: none; opacity: 0.85; }
 .deck-summary {
   position: absolute; top: 54px; left: 10px; z-index: 25;

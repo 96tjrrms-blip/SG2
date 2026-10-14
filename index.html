@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=18">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -139,9 +139,22 @@
     </div>
     <!-- 복공 단계 편집 바 -->
     <div id="deck-edit-bar" class="zone-controls zone-edit-mode" style="display:none;flex-wrap:wrap;gap:6px;border-color:#94a3b8;background:#f1f5f9">
-      <span class="zone-hint" style="color:#334155;flex-basis:100%">🟫 단계 선택 → 지도 클릭으로 꼭짓점 추가 (3개 이상)</span>
+      <span id="deck-hint" class="zone-hint" style="color:#334155;flex-basis:100%"></span>
+      <button id="deck-mode-outline" class="zone-btn deck-mode-btn" onclick="_deckSetMode('outline')">① 정거장 외곽</button>
+      <button id="deck-mode-split" class="zone-btn deck-mode-btn" onclick="_deckSetMode('split')">② 단계 나누기</button>
+      <span id="deck-outline-tools" style="display:none;gap:6px">
+        <button class="zone-btn" onclick="_deckUndoPoint()">↩ 되돌리기</button>
+        <button class="zone-btn" onclick="_deckClearOutline()">🗑 외곽 다시 그리기</button>
+      </span>
+      <span style="width:1px;background:#cbd5e1;align-self:stretch"></span>
+      <select id="deck-dir-sel" onchange="_deckSetDir(this.value)" class="deck-input" title="1단계부터 진행 방향">
+        <option value="down">위 → 아래</option>
+        <option value="up">아래 → 위</option>
+        <option value="right">왼쪽 → 오른쪽</option>
+        <option value="left">오른쪽 → 왼쪽</option>
+      </select>
+      <button class="zone-btn" onclick="_deckEvenOut()">⇔ 균등 분할</button>
       <select id="deck-stage-sel" onchange="_deckSelectStage(this.value)" class="deck-input"></select>
-      <button class="zone-btn" onclick="_deckAddStage()">+ 단계</button>
       <select id="deck-status-sel" onchange="_deckSetField('status', this.value)" class="deck-input">
         <option value="done">✅ 복공완료</option>
         <option value="wip">🚧 작업중</option>
@@ -149,8 +162,7 @@
       </select>
       <input type="date" id="deck-date-input" onchange="_deckSetField('date', this.value)" class="deck-input">
       <input type="text" id="deck-memo-input" placeholder="메모" oninput="_deckSetField('memo', this.value)" class="deck-input" style="width:120px">
-      <button class="zone-btn" onclick="_deckUndoPoint()">↩ 되돌리기</button>
-      <button class="zone-btn" onclick="_deckClearPoints()">🗑 다시 그리기</button>
+      <button class="zone-btn" onclick="_deckAddStage()">+ 단계</button>
       <button class="zone-btn" onclick="_deckDeleteStage()" style="color:#dc2626">단계 삭제</button>
       <button class="zone-btn zone-btn-save" onclick="saveDeckEdit()">✓ 저장</button>
       <button class="zone-btn zone-btn-cancel" onclick="cancelDeckEdit()">✕ 취소</button>
@@ -920,7 +932,7 @@
 <script src="boring.js?v=7"></script>
 <script src="parking.js?v=7"></script>
 <script src="map.js?v=9"></script>
-<script src="deck.js?v=1"></script>
+<script src="deck.js?v=3"></script>
 <script src="pipe-editor.js?v=7"></script>
 <script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>
