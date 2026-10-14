@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -138,6 +138,19 @@
       <span id="deck-hint" class="zone-hint" style="color:#334155;flex-basis:100%"></span>
       <button id="deck-mode-outline" class="zone-btn deck-mode-btn" onclick="_deckSetMode('outline')">① 정거장 외곽</button>
       <button id="deck-mode-split" class="zone-btn deck-mode-btn" onclick="_deckSetMode('split')">② 단계 나누기</button>
+      <button id="deck-mode-work" class="zone-btn deck-mode-btn" onclick="_deckSetMode('work')">③ 작업·점검루트</button>
+      <span id="deck-work-tools" style="display:none;gap:6px;align-items:center">
+        <button id="deck-tool-work" class="zone-btn deck-mode-btn" onclick="_deckSetTool('work')">작업 표시</button>
+        <select id="deck-work-icon" class="deck-input" title="작업 아이콘">
+          <option value="⛏️">⛏️ 터파기</option>
+          <option value="🏗️">🏗️ 장비</option>
+          <option value="🔩">🔩 복공설치</option>
+          <option value="👷">👷 인력</option>
+          <option value="🚧">🚧 기타</option>
+        </select>
+        <button id="deck-tool-route" class="zone-btn deck-mode-btn" onclick="_deckSetTool('route')">🧭 점검루트</button>
+        <button class="zone-btn" onclick="_deckClearRoute()">루트 지우기</button>
+      </span>
       <span id="deck-outline-tools" style="display:none;gap:6px">
         <button class="zone-btn" onclick="_deckUndoPoint()">↩ 되돌리기</button>
         <button class="zone-btn" onclick="_deckClearOutline()">🗑 외곽 다시 그리기</button>
@@ -156,6 +169,17 @@
         <option value="wip">🚧 작업중</option>
         <option value="plan">⬜ 예정</option>
       </select>
+      <span id="deck-prog-tools" style="display:none;gap:6px;align-items:center;font-size:12px;color:#334155">
+        복공 진행
+        <input type="range" id="deck-prog-input" min="0" max="100" step="5" value="0" oninput="_deckSetProgress(this.value)" style="width:100px;accent-color:#b8392a">
+        <span id="deck-prog-label" style="min-width:32px">0%</span>
+        <select id="deck-prog-dir" onchange="_deckSetField('progDir', this.value)" class="deck-input" title="복공이 덮여 나가는 방향">
+          <option value="right">왼쪽 → 오른쪽</option>
+          <option value="left">오른쪽 → 왼쪽</option>
+          <option value="down">위 → 아래</option>
+          <option value="up">아래 → 위</option>
+        </select>
+      </span>
       <input type="date" id="deck-date-input" onchange="_deckSetField('date', this.value)" class="deck-input">
       <input type="text" id="deck-memo-input" placeholder="메모" oninput="_deckSetField('memo', this.value)" class="deck-input" style="width:120px">
       <button class="zone-btn" onclick="_deckAddStage()">+ 단계</button>
@@ -929,7 +953,7 @@
 <script src="boring.js?v=8"></script>
 <script src="parking.js?v=7"></script>
 <script src="map.js?v=11"></script>
-<script src="deck.js?v=8"></script>
+<script src="deck.js?v=9"></script>
 <script src="pipe-editor.js?v=7"></script>
 <script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>

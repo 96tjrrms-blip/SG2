@@ -712,6 +712,10 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .deck-stage.deck-selected > polygon:last-child { stroke: #2563eb; }
 .deck-stage.deck-dim { opacity: 0.45; }
 .deck-label { pointer-events: none; }
+.deck-detail { opacity: 0.4; transition: opacity 0.2s ease; }
+.deck-detail.on { opacity: 1; }
+.deck-detail.on .deck-route { animation: deckRoute 0.8s linear infinite; }
+@keyframes deckRoute { to { stroke-dashoffset: calc(var(--deck-dash, 50px) * -1); } }
 .deck-mode-btn.deck-mode-on { background: #0f172a; color: #fff; border-color: #0f172a; }
 .deck-layer-svg {
   position: absolute; top: 0; left: 0; width: 100%;

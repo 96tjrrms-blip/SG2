@@ -1,6 +1,7 @@
 // ===== 복공 단계 현황 =====
 // pipe_settings key: '_deck_{siteId}', colors column =
-//   { outline:[[x,y]...], dir:'down'|'up'|'right'|'left', splits:[0.25,0.5,0.75], stages:[{id,name,status,date,memo}] }
+//   { outline:[[x,y]...], dir:'down'|'up'|'right'|'left', splits:[0.25,0.5,0.75],
+//     stages:[{id,name,status,date,memo, progress(작업중 복공%), progDir, works:[{x,y,icon,text}], route:[[x,y]...]}] }
 // 정거장 외곽(outline)을 한 번 그리고, dir 방향으로 splits 비율에서 잘라 단계별 구역을 만든다.
 // 표시 ON/OFF는 접속마다 기본 ON, 단계 데이터는 Supabase 공유
 
@@ -211,6 +212,60 @@ function _deckDefs(svg, p) {
   svg.appendChild(defs);
 }
 
+// 복공판(옆면 두께 + 판 + 가장자리)을 pts 모양으로 g에 그림
+function _deckDrawPlates(g, p, pts, key) {
+  const { W, H, depth, sw } = _deckGeom();
+  // 옆면 (두께) — 윗면이 뒤쪽 면을 덮음
+  pts.forEach((a, i) => {
+    const b = pts[(i + 1) % pts.length];
+    g.appendChild(_deckEl('polygon', {
+      points: _deckPts([a, b, [b[0], b[1] + depth], [a[0], a[1] + depth]]),
+      fill: `url(#${p}side)`,
+    }));
+  });
+
+  // 윗면: 복공판을 한 장씩 깔고 구역 모양으로 자름 (판마다 색조 약간 다르게)
+  const clipId = `${p}clip-${key}`;
+  const clip = _deckEl('clipPath', { id: clipId });
+  clip.appendChild(_deckEl('polygon', { points: _deckPts(pts) }));
+  g.appendChild(clip);
+  const top = _deckEl('g', { 'clip-path': `url(#${clipId})` });
+  const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+  const x0 = Math.floor(Math.min(...xs) / W) * W, x1 = Math.max(...xs);
+  const y0 = Math.floor(Math.min(...ys) / H) * H, y1 = Math.max(...ys);
+  const gap = W * 0.012;
+  top.appendChild(_deckEl('rect', { x: x0, y: y0, width: x1 - x0 + W, height: y1 - y0 + H, fill: '#4a120b' }));
+  for (let y = y0; y < y1; y += H) {
+    for (let x = x0; x < x1; x += W) {
+      const k = Math.abs(((x / W) * 73856093) ^ ((y / H) * 19349663)) % 3;
+      top.appendChild(_deckEl('rect', {
+        x: x + gap, y: y + gap, width: W - 2 * gap, height: H - 2 * gap, rx: gap, fill: `url(#${p}tone${k})`,
+      }));
+    }
+  }
+  top.appendChild(_deckEl('rect', { x: x0, y: y0, width: x1 - x0 + W, height: y1 - y0 + H, fill: `url(#${p}detail)` }));
+  g.appendChild(top);
+
+  // 가장자리 하이라이트 (어두운 테두리 대신 은은한 밝은 선)
+  g.appendChild(_deckEl('polygon', {
+    points: _deckPts(pts), fill: 'none', stroke: 'rgba(255,200,180,0.7)',
+    'stroke-width': sw * 0.6, 'stroke-linejoin': 'round',
+  }));
+}
+
+// 작업중 단계 안에서 복공이 덮인 부분 (진행 방향으로 progress% 만큼)
+function _deckCoverPts(st, pts) {
+  const pr = Math.max(0, Math.min(100, +st.progress || 0)) / 100;
+  if (!pr) return [];
+  const dir = st.progDir || 'right';
+  const axis = dir === 'right' || dir === 'left' ? 0 : 1;
+  const vals = pts.map(q => q[axis]);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  return dir === 'left' || dir === 'up'
+    ? _deckClip(pts, axis, max - pr * (max - min), true)
+    : _deckClip(pts, axis, min + pr * (max - min), false);
+}
+
 // 단계 구역 하나 그리기 → { shadow, g }
 function _deckDrawStrip(svg, p, { stage: st, pts }) {
   const { W, H, depth, sw } = _deckGeom();
@@ -226,47 +281,16 @@ function _deckDrawStrip(svg, p, { stage: st, pts }) {
     });
     svg.appendChild(shadow);
 
-    // 옆면 (두께) — 윗면이 뒤쪽 면을 덮음
-    pts.forEach((a, i) => {
-      const b = pts[(i + 1) % pts.length];
-      g.appendChild(_deckEl('polygon', {
-        points: _deckPts([a, b, [b[0], b[1] + depth], [a[0], a[1] + depth]]),
-        fill: `url(#${p}side)`,
-      }));
-    });
-
-    // 윗면: 복공판을 한 장씩 깔고 구역 모양으로 자름 (판마다 색조 약간 다르게)
-    const clipId = `${p}clip-${st.id}`;
-    const clip = _deckEl('clipPath', { id: clipId });
-    clip.appendChild(_deckEl('polygon', { points: _deckPts(pts) }));
-    g.appendChild(clip);
-    const top = _deckEl('g', { 'clip-path': `url(#${clipId})` });
-    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
-    const x0 = Math.floor(Math.min(...xs) / W) * W, x1 = Math.max(...xs);
-    const y0 = Math.floor(Math.min(...ys) / H) * H, y1 = Math.max(...ys);
-    const gap = W * 0.012;
-    top.appendChild(_deckEl('rect', { x: x0, y: y0, width: x1 - x0 + W, height: y1 - y0 + H, fill: '#4a120b' }));
-    for (let y = y0; y < y1; y += H) {
-      for (let x = x0; x < x1; x += W) {
-        const k = Math.abs(((x / W) * 73856093) ^ ((y / H) * 19349663)) % 3;
-        top.appendChild(_deckEl('rect', {
-          x: x + gap, y: y + gap, width: W - 2 * gap, height: H - 2 * gap, rx: gap, fill: `url(#${p}tone${k})`,
-        }));
-      }
-    }
-    top.appendChild(_deckEl('rect', { x: x0, y: y0, width: x1 - x0 + W, height: y1 - y0 + H, fill: `url(#${p}detail)` }));
-    g.appendChild(top);
-
-    // 가장자리 하이라이트 (어두운 테두리 대신 은은한 밝은 선)
-    g.appendChild(_deckEl('polygon', {
-      points: _deckPts(pts), fill: 'none', stroke: 'rgba(255,200,180,0.7)',
-      'stroke-width': sw * 0.6, 'stroke-linejoin': 'round',
-    }));
+    _deckDrawPlates(g, p, pts, st.id);
   } else if (st.status === 'wip') {
     // 작업중: 공사구역 표시처럼 항상 선명하게
     g.classList.add('deck-active');
+    g.appendChild(_deckEl('polygon', { points: _deckPts(pts), fill: 'rgba(251,146,60,0.22)' }));
+    // 이미 복공이 덮인 부분
+    const cov = _deckCoverPts(st, pts);
+    if (cov.length >= 3) _deckDrawPlates(g, p, cov, `${st.id}-cov`);
     g.appendChild(_deckEl('polygon', {
-      points: _deckPts(pts), fill: 'rgba(251,146,60,0.22)',
+      points: _deckPts(pts), fill: 'none',
       stroke: '#f97316', 'stroke-width': sw * 1.5, 'stroke-linejoin': 'round',
       'stroke-dasharray': `${_mapNatW / 80} ${_mapNatW / 120}`,
     }));
@@ -323,8 +347,73 @@ function renderDeckStages() {
     svg.appendChild(t);
   });
 
-  if (_deckEdit) { _renderDeckEditOverlay(svg, data, sw); _setDeckHover(null); }
+  if (_deckEdit) {
+    _renderDeckEditOverlay(svg, data, sw);
+    _deckArrowDefs(svg, 'deckb-');
+    data.stages.forEach(st => { const g = _deckDrawDetails(svg, 'deckb-', st); if (g) g.classList.add('on'); });
+    if (_deckMode === 'work') {
+      const r = Math.max(6, _mapNatW / 220);
+      (_deckSel()?.route || []).forEach(q => svg.appendChild(_deckEl('circle', { cx: q[0], cy: q[1], r, fill: '#fff', stroke: '#0891b2', 'stroke-width': sw })));
+    }
+    _setDeckHover(null);
+  }
   else { _renderDeckSummary(data); _applyDeckHover(); }
+}
+
+const DECK_WORK_ICONS = { '⛏️': '터파기 중', '🏗️': '장비 작업 중', '🔩': '복공 설치 중', '👷': '인력 작업 중', '🚧': '작업 중' };
+
+function _deckArrowDefs(svg, p) {
+  const { sw } = _deckGeom();
+  const defs = _deckEl('defs', {});
+  defs.innerHTML = `
+    <marker id="${p}arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="${sw * 1.1}" markerHeight="${sw * 1.1}"
+      markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1,1 L9,5 L1,9 z" fill="#0e7490" stroke="#fff" stroke-width="1"/>
+    </marker>`;
+  svg.appendChild(defs);
+}
+
+// 단계의 점검루트 + 작업 표시 그룹
+function _deckDrawDetails(svg, p, st) {
+  const route = st.route || [], works = st.works || [];
+  if (route.length < 2 && !works.length) return null;
+  const { sw } = _deckGeom();
+  const lw = sw * 1.3;
+  const fs = Math.max(16, _mapNatW / 120);
+  const g = _deckEl('g', { class: 'deck-detail' });
+  g.dataset.id = st.id;
+
+  if (route.length >= 2) {
+    const pts = _deckPts(route);
+    g.appendChild(_deckEl('polyline', { points: pts, fill: 'none', stroke: '#fff', 'stroke-width': lw * 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: '0.9' }));
+    const line = _deckEl('polyline', {
+      points: pts, fill: 'none', stroke: '#0891b2', 'stroke-width': lw, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+      'stroke-dasharray': `${lw * 3} ${lw * 2}`, class: 'deck-route',
+      'marker-mid': `url(#${p}arrow)`, 'marker-end': `url(#${p}arrow)`,
+    });
+    line.style.setProperty('--deck-dash', `${lw * 5}px`);
+    g.appendChild(line);
+    const [sx, sy] = route[0];
+    g.appendChild(_deckEl('circle', { cx: sx, cy: sy, r: lw * 1.4, fill: '#16a34a', stroke: '#fff', 'stroke-width': lw * 0.5 }));
+    const t = _deckEl('text', { x: sx, y: sy - lw * 2.2, 'text-anchor': 'middle', fill: '#0e7490', 'font-size': fs * 0.8, 'font-weight': '800', 'paint-order': 'stroke', stroke: '#fff', 'stroke-width': fs * 0.25 });
+    t.textContent = '🧭 점검 시작';
+    g.appendChild(t);
+  }
+
+  works.forEach(w => {
+    const label = `${w.icon || '🚧'} ${w.text || ''}`.trim();
+    const tw = label.length * fs * 0.62 + fs;
+    const th = fs * 1.6;
+    const by = w.y - th - fs * 0.8;
+    g.appendChild(_deckEl('line', { x1: w.x, y1: w.y, x2: w.x, y2: by + th, stroke: '#c2410c', 'stroke-width': lw * 0.5 }));
+    g.appendChild(_deckEl('circle', { cx: w.x, cy: w.y, r: lw * 0.9, fill: '#ea580c', stroke: '#fff', 'stroke-width': lw * 0.4 }));
+    g.appendChild(_deckEl('rect', { x: w.x - tw / 2, y: by, width: tw, height: th, rx: th / 2, fill: '#fff', stroke: '#ea580c', 'stroke-width': lw * 0.5 }));
+    const t = _deckEl('text', { x: w.x, y: by + th * 0.68, 'text-anchor': 'middle', fill: '#9a3412', 'font-size': fs, 'font-weight': '800' });
+    t.textContent = label;
+    g.appendChild(t);
+  });
+  svg.appendChild(g);
+  return g;
 }
 
 // 작업중 단계 상시 라벨 ("🚧 3단계 작업중") — 배관/밸브 위에 그림
@@ -337,6 +426,12 @@ function renderDeckLabels() {
   _syncDeckFrontTransform();
   if (_deckEdit || !_deckVisible()) return;
   const fs = Math.max(18, _mapNatW / 100);
+  // 점검루트·작업 표시: 평소 흐리게, 해당 단계 호버 시 선명하게
+  _deckArrowDefs(svg, 'deckl-');
+  _deckCurrentStrips().forEach(({ stage: st }) => {
+    const g = _deckDrawDetails(svg, 'deckl-', st);
+    if (g && st.id === _deckHoverId) g.classList.add('on');
+  });
   _deckCurrentStrips().filter(s => s.stage.status === 'wip').forEach(({ stage: st, pts }) => {
     const [cx, cy] = _deckCentroid(pts);
     const t = _deckEl('text', {
@@ -344,7 +439,7 @@ function renderDeckLabels() {
       fill: '#ea580c', 'font-size': fs, 'font-weight': '800',
       'paint-order': 'stroke', stroke: '#fff', 'stroke-width': fs * 0.3,
     });
-    t.textContent = `🚧 ${st.name} 작업중`;
+    t.textContent = `🚧 ${st.name} 작업중` + (+st.progress > 0 ? ` · 복공 ${st.progress}%` : '');
     svg.appendChild(t);
   });
 }
@@ -365,6 +460,8 @@ function _applyDeckHover() {
     g.classList.toggle('deck-hidden', on && g.dataset.status === 'done');
   });
   _renderDeckFront(strip && strip.stage.status === 'done' ? strip : null);
+  document.querySelectorAll('#deck-label-svg .deck-detail').forEach(g =>
+    g.classList.toggle('on', g.dataset.id === _deckHoverId));
   if (strip) { _showDeckTooltip(strip.stage); _deckTipShown = true; }
   else if (_deckTipShown) { _hidePipeTooltip(); _deckTipShown = false; }
 }
@@ -463,6 +560,7 @@ function _renderDeckEditOverlay(svg, data, sw) {
       'stroke-dasharray': `${_mapNatW / 80} ${_mapNatW / 120}`, 'pointer-events': 'none',
     }));
   }
+  if (_deckMode === 'work') return;
   // 외곽 꼭짓점 손잡이 (드래그로 이동)
   const isOutline = _deckMode === 'outline';
   o.forEach((p, i) => svg.appendChild(_deckEl('circle', {
@@ -517,7 +615,10 @@ function _showDeckTooltip(st, e) {
   const sub = [st.date, st.memo].filter(Boolean).map(_deckEsc).join(' · ');
   tt.innerHTML = `<strong style="color:#fff">${_deckEsc(st.name)}</strong> ` +
     `<span style="color:${st.status === 'wip' ? '#fdba74' : st.status === 'done' ? '#86efac' : '#cbd5e1'}">${meta.icon} ${meta.label}</span>` +
-    (sub ? `<br><span style="color:#cbd5e1">${sub}</span>` : '');
+    (st.status === 'wip' && +st.progress > 0 ? ` <span style="color:#fca5a5">· 복공 ${st.progress}%</span>` : '') +
+    (sub ? `<br><span style="color:#cbd5e1">${sub}</span>` : '') +
+    (st.works || []).map(w => `<br>${_deckEsc(`${w.icon || ''} ${w.text || ''}`)}`).join('') +
+    ((st.route || []).length >= 2 ? '<br><span style="color:#67e8f9">🧭 점검루트 표시 중</span>' : '');
   tt.style.display = 'block';
   if (e) { tt.style.left = (e.clientX + 14) + 'px'; tt.style.top = (e.clientY - 42) + 'px'; }
 }
@@ -583,17 +684,49 @@ function _renderDeckEditBar() {
   document.getElementById('deck-date-input').value = st?.date || '';
   document.getElementById('deck-memo-input').value = st?.memo || '';
   document.getElementById('deck-dir-sel').value = _deckDraft.dir;
-  const isOutline = _deckMode === 'outline';
+  const isOutline = _deckMode === 'outline', isWork = _deckMode === 'work';
   document.getElementById('deck-mode-outline').classList.toggle('deck-mode-on', isOutline);
-  document.getElementById('deck-mode-split').classList.toggle('deck-mode-on', !isOutline);
+  document.getElementById('deck-mode-split').classList.toggle('deck-mode-on', _deckMode === 'split');
+  document.getElementById('deck-mode-work').classList.toggle('deck-mode-on', isWork);
   document.getElementById('deck-outline-tools').style.display = isOutline ? 'flex' : 'none';
+  document.getElementById('deck-work-tools').style.display = isWork ? 'flex' : 'none';
+  document.getElementById('deck-tool-work').classList.toggle('deck-mode-on', _deckTool === 'work');
+  document.getElementById('deck-tool-route').classList.toggle('deck-mode-on', _deckTool === 'route');
+  const isWip = st?.status === 'wip';
+  document.getElementById('deck-prog-tools').style.display = isWip ? 'flex' : 'none';
+  document.getElementById('deck-prog-input').value = +st?.progress || 0;
+  document.getElementById('deck-prog-label').textContent = `${+st?.progress || 0}%`;
+  document.getElementById('deck-prog-dir').value = st?.progDir || 'right';
   document.getElementById('deck-hint').textContent = isOutline
     ? `① 빈 곳 클릭: 꼭짓점 추가 · 꼭짓점 드래그: 이동 · 꼭짓점 우클릭: 삭제 (현재 ${_deckDraft.outline.length}개)`
+    : isWork
+    ? (_deckTool === 'work'
+      ? `③ [${st?.name || ''}] 지도 클릭: 작업 표시 추가 · 드래그: 이동 · 우클릭: 삭제`
+      : `③ [${st?.name || ''}] 지도 클릭: 점검루트 지점 추가(순서대로) · 드래그: 이동 · 우클릭: 삭제`)
     : '② 파란 경계선 드래그: 단계 크기 조절 · 흰 꼭짓점 드래그: 외곽 수정 · 구역 클릭: 단계 선택';
 }
 
+let _deckTool = 'work'; // ③ 모드: 'work'(작업 표시) | 'route'(점검루트)
+
+window._deckSetTool = function(tool) { _deckTool = tool; _renderDeckEditBar(); renderAllPipes(); };
+
+window._deckClearRoute = function() {
+  const st = _deckSel();
+  if (!st || !(st.route || []).length || !confirm(`${st.name} 점검루트를 지울까요?`)) return;
+  st.route = [];
+  renderAllPipes();
+};
+
+window._deckSetProgress = function(v) {
+  const st = _deckSel();
+  if (!st) return;
+  st.progress = Math.round(+v);
+  document.getElementById('deck-prog-label').textContent = `${st.progress}%`;
+  renderAllPipes();
+};
+
 window._deckSetMode = function(mode) {
-  if (mode === 'split' && _deckDraft.outline.length < 3) { alert('먼저 정거장 외곽을 꼭짓점 3개 이상으로 그려주세요.'); return; }
+  if (mode !== 'outline' && _deckDraft.outline.length < 3) { alert('먼저 정거장 외곽을 꼭짓점 3개 이상으로 그려주세요.'); return; }
   _deckMode = mode;
   _renderDeckEditBar();
   renderAllPipes();
@@ -605,6 +738,7 @@ window._deckSetField = function(field, value) {
   const st = _deckSel();
   if (!st) return;
   st[field] = value;
+  if (field === 'status') _renderDeckEditBar();
   renderAllPipes();
 };
 
@@ -662,6 +796,17 @@ function _deckInsertVertex(x, y) {
   o.splice(best + 1, 0, [x, y]);
 }
 
+// 선택 단계의 작업 표시 / 루트 지점 근처 → { type:'w'|'r', k }
+function _deckNearDetail(x, y) {
+  const st = _deckSel();
+  if (!st) return null;
+  const thr = Math.max(14, _mapNatW / 90);
+  let hit = null, bestD = thr;
+  (st.works || []).forEach((w, k) => { const d = Math.hypot(w.x - x, w.y - y); if (d < bestD) { bestD = d; hit = { type: 'w', k }; } });
+  (st.route || []).forEach((q, k) => { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bestD) { bestD = d; hit = { type: 'r', k }; } });
+  return hit;
+}
+
 function _deckNearVertex(x, y) {
   const thr = Math.max(14, _mapNatW / 90);
   let best = -1, bestD = thr;
@@ -685,6 +830,17 @@ function _onDeckMapClick(x, y) {
     if (_deckNearVertex(x, y) >= 0) return true;
     _deckSnapshot();
     _deckInsertVertex(x, y);
+  } else if (_deckMode === 'work') {
+    const st = _deckSel();
+    if (!st || _deckNearDetail(x, y)) return true;
+    if (_deckTool === 'route') {
+      (st.route = st.route || []).push([Math.round(x), Math.round(y)]);
+    } else {
+      const icon = document.getElementById('deck-work-icon').value;
+      const text = (prompt('작업 내용', DECK_WORK_ICONS[icon] || '작업 중') || '').trim();
+      if (!text) return true;
+      (st.works = st.works || []).push({ x: Math.round(x), y: Math.round(y), icon, text });
+    }
   } else {
     const hit = _deckStrips(_deckDraft).find(s => _deckPointIn(s.pts, x, y));
     if (hit) _deckSelId = hit.stage.id;
@@ -703,6 +859,13 @@ function _onDeckMapClick(x, y) {
     if (!_deckEdit || e.button === 2) return;
     const [x, y] = _deckEvtXY(e);
     let target = null;
+    if (_deckMode === 'work') {
+      target = _deckNearDetail(x, y);
+      if (!target) return;
+      _deckDrag = target; _deckDragged = false;
+      ov.setPointerCapture(e.pointerId); e.preventDefault();
+      return;
+    }
     // 단계 나누기 모드: 경계선 우선
     if (_deckMode === 'split' && _deckDraft.outline.length >= 3) {
       const ax = _deckAxis(_deckDraft);
@@ -725,6 +888,10 @@ function _onDeckMapClick(x, y) {
     const [x, y] = _deckEvtXY(e);
     if (_deckDrag.type === 'v') {
       _deckDraft.outline[_deckDrag.k] = [Math.round(x), Math.round(y)];
+    } else if (_deckDrag.type === 'w') {
+      Object.assign(_deckSel().works[_deckDrag.k], { x: Math.round(x), y: Math.round(y) });
+    } else if (_deckDrag.type === 'r') {
+      _deckSel().route[_deckDrag.k] = [Math.round(x), Math.round(y)];
     } else {
       const ax = _deckAxis(_deckDraft);
       const sp = _deckDraft.splits, k = _deckDrag.k;
@@ -744,7 +911,18 @@ function _onDeckMapClick(x, y) {
   ov.addEventListener('pointercancel', end);
   // 외곽 모드: 꼭짓점 우클릭 삭제
   ov.addEventListener('contextmenu', e => {
-    if (!_deckEdit || _deckMode !== 'outline') return;
+    if (!_deckEdit) return;
+    if (_deckMode === 'work') {
+      e.preventDefault();
+      const [wx, wy] = _deckEvtXY(e);
+      const hit = _deckNearDetail(wx, wy);
+      if (!hit) return;
+      const st = _deckSel();
+      if (hit.type === 'w') st.works.splice(hit.k, 1); else st.route.splice(hit.k, 1);
+      renderAllPipes();
+      return;
+    }
+    if (_deckMode !== 'outline') return;
     e.preventDefault();
     const [x, y] = _deckEvtXY(e);
     const v = _deckNearVertex(x, y);
