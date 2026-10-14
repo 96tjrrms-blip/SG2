@@ -439,7 +439,7 @@ function _renderEmergRadial() {
   });
 
   el.innerHTML = `
-    <div style="position:relative;width:100%;aspect-ratio:1;margin:0 auto">
+    <div style="position:relative;width:min(100%, 55vh);aspect-ratio:1;margin:0 auto">
       <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
         ${lines}
       </svg>
