@@ -87,7 +87,7 @@ let currentDashSite = '115st';
 let currentPhotosSite = '115st';
 
 // 115 정거장 전용 ON/OFF 버튼
-const _115_ONOFF = ['dir-toggle-btn', 'boring-toggle-btn'];
+const _115_ONOFF = ['boring-toggle-btn'];
 // 115 정거장 전용 편집 버튼
 const _115_EDIT  = ['boring-edit-btn', 'boring-marker-sub'];
 

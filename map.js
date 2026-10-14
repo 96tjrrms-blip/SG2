@@ -1022,14 +1022,6 @@ function toggleCtrlGroup(id) {
   if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
 }
 
-function toggleDirBadges() {
-  const els = document.querySelectorAll('.map-dir');
-  const isVisible = els[0] && els[0].style.display !== 'none';
-  const next = isVisible ? 'none' : '';
-  els.forEach(el => el.style.display = next);
-  const btn = document.getElementById('dir-toggle-btn');
-  if (btn) btn.textContent = isVisible ? '◀▶ 방향 표시' : '◀▶ 방향 숨기기';
-}
 
 function startZoneEdit() {
   if (typeof mapZoomReset === 'function') mapZoomReset();

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -96,7 +96,6 @@
       </button>
       <div id="onoff-group" class="ctrl-group-items" style="display:none">
         <button id="deck-toggle-btn" class="zone-btn" onclick="toggleDeckVisible()">🟫 복공현황 숨기기</button>
-        <button id="dir-toggle-btn" class="zone-btn" onclick="toggleDirBadges()">◀▶ 방향 표시</button>
         <button id="boring-toggle-btn" class="zone-btn" onclick="toggleBoringVisible()">⊕ 천공위치 표시</button>
         <button id="parking-toggle-btn" class="zone-btn" onclick="toggleParkingVisible()">🅿 주차위치 표시</button>
         <button id="map-draw-toggle-btn" class="zone-btn" onclick="_toggleMapDraw()">✏️ 그림판</button>
@@ -310,15 +309,6 @@
           <div id="gas-exposure-list" style="font-size:15px;color:#f1f5f9;line-height:1.7">
             <span style="color:rgba(255,255,255,0.4);font-size:13px;line-height:normal">-</span>
           </div>
-        </div>
-        <!-- 방향 표시 -->
-        <div class="map-dir map-dir-left">
-          <div class="map-dir-arrow">◀</div>
-          <div class="map-dir-label">114정거장</div>
-        </div>
-        <div class="map-dir map-dir-right">
-          <div class="map-dir-label">116정거장</div>
-          <div class="map-dir-arrow">▶</div>
         </div>
       </div>
       <div id="map-no-image" class="map-no-image">
@@ -952,13 +942,13 @@
 <script src="boring-data.js?v=7"></script>
 <script src="boring.js?v=8"></script>
 <script src="parking.js?v=7"></script>
-<script src="map.js?v=11"></script>
+<script src="map.js?v=12"></script>
 <script src="deck.js?v=9"></script>
 <script src="pipe-editor.js?v=7"></script>
 <script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>
 <script src="docs.js?v=7"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 
 <!-- 지도 줌/패닝 -->
 <script>
