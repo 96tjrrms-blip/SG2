@@ -392,6 +392,15 @@ window.saveDeckEdit = async function() {
   cancelDeckEdit();
 };
 
+window.deleteDeckAll = async function() {
+  if (!confirm('이 현장의 복공 현황(외곽·단계·상태)을 모두 삭제할까요?\n삭제 후에는 되돌릴 수 없습니다.')) return;
+  const siteId = _deckSite();
+  try {
+    await _saveDeckData(siteId, _deckDefault());
+  } catch (e) { alert('복공 현황 삭제 실패: ' + e.message); return; }
+  cancelDeckEdit();
+};
+
 function _deckSel() { return _deckDraft?.stages.find(s => s.id === _deckSelId); }
 
 function _renderDeckEditBar() {

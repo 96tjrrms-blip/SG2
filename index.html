@@ -164,6 +164,7 @@
       <input type="text" id="deck-memo-input" placeholder="메모" oninput="_deckSetField('memo', this.value)" class="deck-input" style="width:120px">
       <button class="zone-btn" onclick="_deckAddStage()">+ 단계</button>
       <button class="zone-btn" onclick="_deckDeleteStage()" style="color:#dc2626">단계 삭제</button>
+      <button class="zone-btn" onclick="deleteDeckAll()" style="color:#fff;background:#dc2626;border-color:#dc2626">🗑 복공 전체 삭제</button>
       <button class="zone-btn zone-btn-save" onclick="saveDeckEdit()">✓ 저장</button>
       <button class="zone-btn zone-btn-cancel" onclick="cancelDeckEdit()">✕ 취소</button>
     </div>
@@ -932,7 +933,7 @@
 <script src="boring.js?v=7"></script>
 <script src="parking.js?v=7"></script>
 <script src="map.js?v=9"></script>
-<script src="deck.js?v=3"></script>
+<script src="deck.js?v=4"></script>
 <script src="pipe-editor.js?v=7"></script>
 <script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>
