@@ -726,7 +726,7 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 @keyframes deckPop { from { transform: translateY(0); opacity: 0.6; } to { transform: translateY(var(--deck-lift, -8px)); opacity: 1; } }
 @keyframes deckShadow { from { opacity: 0; } to { opacity: 0.45; } }
 .deck-summary {
-  position: absolute; top: 54px; left: 10px; z-index: 25;
+  position: absolute; top: 12px; left: 12px; z-index: 25;
   background: rgba(15,23,42,0.78); backdrop-filter: blur(4px);
   color: #fff; border-radius: 8px; padding: 5px 10px;
   font-size: 12px; font-weight: 600; pointer-events: none;

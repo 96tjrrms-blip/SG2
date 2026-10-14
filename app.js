@@ -111,11 +111,9 @@ function _updateDashControls() {
   const regGroup = document.getElementById('regulator-edit-group');
   if (regGroup) regGroup.style.display = currentDashSite === 'S016' ? 'flex' : 'none';
   // map-svg는 항상 표시 유지 (환기구에서도 구역·입구 표시용으로 필요)
-  // zone-toggle-bar / 주소칩 / 가스카드 복원 (overview에서 숨겼을 수 있음)
+  // zone-toggle-bar / 가스카드 복원 (overview에서 숨겼을 수 있음)
   const ztb = document.getElementById('zone-toggle-bar');
   if (ztb) ztb.style.display = 'flex';
-  const addrChip = document.getElementById('map-address-chip');
-  if (addrChip) addrChip.style.display = '';
   const gasCard = document.getElementById('gas-exposure-card');
   if (gasCard) gasCard.style.display = '';
   _updateSiteInfoOverlay();
@@ -329,7 +327,7 @@ window.showExcavView = function() {
   document.getElementById('excav-view').style.display = '';
 
   ['zone-toggle-bar','pipe-edit-group','regulator-edit-group',
-   'map-address-chip','gas-exposure-card'].forEach(id => {
+   'gas-exposure-card'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -380,7 +378,7 @@ window.showOverviewMap = function() {
 
   // 편집 컨트롤 전체 숨김
   ['zone-toggle-bar','pipe-edit-group','regulator-edit-group',
-   'map-address-chip','gas-exposure-card'].forEach(id => {
+   'gas-exposure-card'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -404,43 +402,7 @@ window.showOverviewMap = function() {
   }
 };
 
-// ===== 현장 주소 / 도시가스 노출현황 =====
-const _SITE_DEFAULT_ADDR = {
-  '115st': '화성시 병점구 능동 464-4',
-  'S015': '화성시 병점구 기산동 35-1',
-  'S016': '화성시 동탄구 반송동 59'
-};
-// S015/S016은 주소 고정 (편집 불필요)
-const _SITE_ADDR_EDITABLE = { '115st': true, 'S015': true, 'S016': true };
-
-function _getSiteAddress(siteId) {
-  return localStorage.getItem(`_site_address_${siteId}`) || _SITE_DEFAULT_ADDR[siteId] || '';
-}
-
-window.openAddressModal = function() {
-  if (!_SITE_ADDR_EDITABLE[currentDashSite]) return;
-  const input = document.getElementById('address-input');
-  if (input) input.value = _getSiteAddress(currentDashSite);
-  const modal = document.getElementById('address-modal');
-  if (modal) modal.style.display = 'flex';
-  setTimeout(() => { if (input) input.focus(); }, 50);
-};
-
-window.closeAddressModal = function() {
-  const modal = document.getElementById('address-modal');
-  if (modal) modal.style.display = 'none';
-};
-
-window.saveAddress = function() {
-  const input = document.getElementById('address-input');
-  if (!input) return;
-  const val = input.value.trim();
-  localStorage.setItem(`_site_address_${currentDashSite}`, val);
-  const chip = document.getElementById('map-address-text');
-  if (chip) chip.textContent = val || '-';
-  closeAddressModal();
-};
-
+// ===== 도시가스 노출현황 =====
 let _gasExposureCache = {};
 
 function _renderGasExposureList(siteId) {
@@ -459,14 +421,6 @@ function _renderGasExposureList(siteId) {
 }
 
 function _updateSiteInfoOverlay() {
-  const addrText = document.getElementById('map-address-text');
-  if (addrText) addrText.textContent = _getSiteAddress(currentDashSite) || '-';
-  // 편집 아이콘: 115st만 표시
-  const editIcon = document.getElementById('address-edit-icon');
-  const chip = document.getElementById('map-address-chip');
-  const editable = _SITE_ADDR_EDITABLE[currentDashSite];
-  if (editIcon) editIcon.style.display = editable ? 'inline' : 'none';
-  if (chip) chip.style.cursor = editable ? 'pointer' : 'default';
   const siteId = currentDashSite;
   try { _gasExposureCache[siteId] = JSON.parse(localStorage.getItem(`_gasexposure_${siteId}`) || '[]'); }
   catch { _gasExposureCache[siteId] = []; }

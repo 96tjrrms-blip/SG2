@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -282,20 +282,6 @@
         <!-- 배관 그리기 오버레이 -->
         <div id="pipe-draw-overlay" onclick="_onPipeOverlayClick(event)"
           style="display:none;position:absolute;inset:0;z-index:21;cursor:crosshair;background:rgba(29,78,216,0.05)"></div>
-        <!-- 주소 칩 (좌상단) -->
-        <div id="map-address-chip" onclick="openAddressModal()"
-          style="position:absolute;top:12px;left:12px;z-index:35;
-                 display:flex;align-items:center;gap:7px;line-height:normal;
-                 background:rgba(15,23,42,0.72);border:1px solid rgba(255,255,255,0.18);border-radius:24px;
-                 padding:7px 16px 7px 12px;font-size:15px;font-weight:600;color:#f8fafc;
-                 backdrop-filter:blur(6px);cursor:pointer;user-select:none;
-                 box-shadow:0 2px 10px rgba(0,0,0,0.35)">
-          <svg width="13" height="17" viewBox="0 0 10 13" fill="#f87171" style="flex-shrink:0">
-            <path d="M5 0C2.52 0 .5 2.02.5 4.5c0 3.38 4.5 8.5 4.5 8.5s4.5-5.12 4.5-8.5C9.5 2.02 7.48 0 5 0zm0 6c-.83 0-1.5-.67-1.5-1.5S4.17 3 5 3s1.5.67 1.5 1.5S5.83 6 5 6z"/>
-          </svg>
-          <span id="map-address-text" style="line-height:normal">-</span>
-          <span id="address-edit-icon" style="font-size:13px;color:rgba(255,255,255,0.5);margin-left:2px;line-height:normal">✏</span>
-        </div>
         <!-- 도시가스 노출현황 카드 (우상단) -->
         <div id="gas-exposure-card"
           style="position:absolute;top:12px;right:12px;z-index:35;
@@ -386,21 +372,6 @@
   </div>
 
   <!-- 배관 구간 저장 모달 -->
-  <!-- 주소 편집 모달 -->
-  <div id="address-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.45);align-items:center;justify-content:center"
-    onclick="if(event.target===this)closeAddressModal()">
-    <div style="background:#fff;border-radius:12px;padding:20px 22px;width:290px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
-      <div style="font-weight:700;font-size:15px;margin-bottom:10px;color:#1e293b">📍 현장 주소 편집</div>
-      <input id="address-input" type="text" placeholder="예: 안양시 동안구 기산동 35-1"
-        onkeydown="if(event.key==='Enter')saveAddress()"
-        style="width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:8px;padding:9px 11px;font-size:14px;outline:none;font-family:inherit">
-      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-        <button onclick="closeAddressModal()" style="padding:7px 16px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;font-size:13px;cursor:pointer;color:#475569">취소</button>
-        <button onclick="saveAddress()" style="padding:7px 16px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;font-size:13px;cursor:pointer;font-weight:600">저장</button>
-      </div>
-    </div>
-  </div>
-
   <!-- 도시가스 노출현황 편집 모달 -->
   <div id="gas-exposure-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.45);align-items:center;justify-content:center"
     onclick="if(event.target===this)closeGasExposureModal()">
@@ -949,7 +920,7 @@
 <script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>
 <script src="docs.js?v=7"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 
 <!-- 지도 줌/패닝 -->
 <script>
