@@ -322,6 +322,7 @@ let _emergRadialChart    = null;
 let _emergRadialEditMode = false;
 
 const _RADIAL_DEFAULT = () => ({
+  size: 55,
   center: { name: '현장사무실', tel: 'Tel : 031)613-3410', fax: 'Fax : 031)613-3411' },
   slots: [
     { id:'rs0', angle:0,   name:'화성시청\n환경사업소 신재생에너지과', tel:'Tel 031) 5189-6179', parent:{ name:'경기소방재난본부', tel:'Tel 031) 230-6623' } },
@@ -439,7 +440,16 @@ function _renderEmergRadial() {
   });
 
   el.innerHTML = `
-    <div style="position:relative;width:min(100%, 55vh);aspect-ratio:1;margin:0 auto">
+    ${em ? `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:0 4px">
+      <span style="font-size:12px;color:#64748b;white-space:nowrap">크기</span>
+      <input type="range" min="20" max="100" value="${data.size??55}"
+        style="flex:1;accent-color:#0d2b5e"
+        oninput="window._radialSizeInput(this.value)"
+        onchange="window._radialSizeChange(this.value)">
+      <span id="radial-size-label" style="font-size:12px;color:#0d2b5e;font-weight:600;min-width:32px">${data.size??55}vh</span>
+    </div>` : ''}
+    <div id="radial-diagram" style="position:relative;width:min(100%, ${data.size??55}vh);aspect-ratio:1;margin:0 auto">
       <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
         ${lines}
       </svg>
@@ -455,6 +465,20 @@ window.saveEmergRadialNow = function() {
   _saveEmergRadial();
   const toast = document.getElementById('emerg-radial-save-toast');
   if (toast) { toast.style.display = 'inline'; setTimeout(() => { toast.style.display = 'none'; }, 2000); }
+};
+
+window._radialSizeInput = function(val) {
+  const label = document.getElementById('radial-size-label');
+  if (label) label.textContent = val + 'vh';
+  const diagram = document.getElementById('radial-diagram');
+  if (diagram) diagram.style.width = `min(100%, ${val}vh)`;
+};
+
+window._radialSizeChange = function(val) {
+  const data = _emergRadialChart || _RADIAL_DEFAULT();
+  data.size = Number(val);
+  _emergRadialChart = data;
+  _saveEmergRadial();
 };
 
 window.toggleEmergRadialEdit = function() {
