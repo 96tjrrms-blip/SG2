@@ -894,12 +894,31 @@ window._clearMapDrawing = function() {
 // ── 드론 순서 ─────────────────────────────────────────────────
 let _droneReorderMode = false;
 
+// 순서는 pipe_settings(`_drone_order_{siteId}`, colors 컬럼)에 저장해 기기 간 동기화, localStorage는 폴백
+const _droneOrderCache = {};
+
 function _getDroneOrder(siteId) {
+  if (Array.isArray(_droneOrderCache[siteId])) return _droneOrderCache[siteId];
   try { return JSON.parse(localStorage.getItem(`drone_order_v1_${siteId}`) || '[]'); } catch { return []; }
 }
 
+async function _loadDroneOrder(siteId) {
+  try {
+    const rows = await fetchAllPipeSettings();
+    const raw = rows[`_drone_order_${siteId}`]?.colors;
+    if (Array.isArray(raw)) _droneOrderCache[siteId] = raw;
+  } catch (e) { console.error('드론 순서 로드 오류:', e); }
+}
+
+function _setDroneOrder(siteId, order) {
+  _droneOrderCache[siteId] = order;
+  try { localStorage.setItem(`drone_order_v1_${siteId}`, JSON.stringify(order)); } catch {}
+  upsertPipeSettings(`_drone_order_${siteId}`, { colors: order })
+    .catch(e => alert('순서 저장 실패: ' + e.message));
+}
+
 function _saveDroneOrder(siteId) {
-  localStorage.setItem(`drone_order_v1_${siteId}`, JSON.stringify(_dronePhotos.map(p => p.path)));
+  _setDroneOrder(siteId, _dronePhotos.map(p => p.path));
 }
 
 function _applyDroneOrder(photos, siteId) {
@@ -1287,8 +1306,7 @@ window._moveCurrDroneToConstr = async function() {
   if (btn) btn.textContent = '이동 중...';
   try {
     await moveDroneToConstr(p.path, currentPhotosSite);
-    const remaining = _getDroneOrder(currentPhotosSite).filter(op => op !== p.path);
-    localStorage.setItem(`drone_order_v1_${currentPhotosSite}`, JSON.stringify(remaining));
+    _setDroneOrder(currentPhotosSite, _getDroneOrder(currentPhotosSite).filter(op => op !== p.path));
     [_dronePhotos, _constrPhotos] = await Promise.all([
       listDronePhotos(currentPhotosSite).catch(() => []),
       listConstrPhotos(currentPhotosSite).catch(() => []),
@@ -1355,6 +1373,7 @@ async function initDroneView() {
     [_dronePhotos, _constrPhotos] = await Promise.all([
       listDronePhotos(currentPhotosSite).catch(() => []),
       listConstrPhotos(currentPhotosSite).catch(() => []),
+      _loadDroneOrder(currentPhotosSite),
     ]);
   } catch(e) { _dronePhotos = []; _constrPhotos = []; }
   _dronePhotos = _applyDroneOrder(_dronePhotos, currentPhotosSite);
@@ -1385,8 +1404,7 @@ window.deleteDronePhoto = async function(path) {
   if (!confirm('이 드론사진을 삭제할까요?')) return;
   try {
     await deleteDronePhotoStorage(path);
-    const remaining = _getDroneOrder(currentPhotosSite).filter(p => p !== path);
-    localStorage.setItem(`drone_order_v1_${currentPhotosSite}`, JSON.stringify(remaining));
+    _setDroneOrder(currentPhotosSite, _getDroneOrder(currentPhotosSite).filter(p => p !== path));
     _dronePhotos = _applyDroneOrder(await listDronePhotos(currentPhotosSite), currentPhotosSite);
     if (_droneSlideIndex >= _dronePhotos.length) _droneSlideIndex = Math.max(0, _dronePhotos.length - 1);
     _renderDroneList();
