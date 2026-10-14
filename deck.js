@@ -148,45 +148,12 @@ function _deckPointIn(pts, x, y) {
 }
 
 // ── 렌더 ──────────────────────────────────────────────────────
-function _deckDefs(svg) {
-  // 복공판 1장 = 2000×750 비율, 줄 맞춰 깔림. 각 판에 윗면/앞쪽 두께면/하이라이트로 입체감
-  const W = Math.max(24, _mapNatW / 32), H = W * 0.375, g = W * 0.012;
-  const e = H * 0.16;   // 판 앞쪽 두께면
-  const t = W * 0.03;   // 체크 무늬 간격
-  const blur = Math.max(3, _mapNatW / 400);
-  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-  defs.innerHTML = `
-    <linearGradient id="deck-grad" x1="0" y1="0" x2="0.3" y2="1">
-      <stop offset="0" stop-color="#e2604a"/>
-      <stop offset="0.5" stop-color="#cc4433"/>
-      <stop offset="1" stop-color="#b8392a"/>
-    </linearGradient>
-    <linearGradient id="deck-edge" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#9c2f22"/>
-      <stop offset="1" stop-color="#7a2219"/>
-    </linearGradient>
-    <pattern id="deck-tex" width="${t}" height="${t}" patternUnits="userSpaceOnUse">
-      <line x1="${t * 0.15}" y1="${t * 0.45}" x2="${t * 0.45}" y2="${t * 0.15}" stroke="#a3301f" stroke-width="${t * 0.14}" stroke-linecap="round"/>
-      <line x1="${t * 0.55}" y1="${t * 0.55}" x2="${t * 0.85}" y2="${t * 0.85}" stroke="#a3301f" stroke-width="${t * 0.14}" stroke-linecap="round"/>
-    </pattern>
-    <pattern id="deck-pat-done" width="${W}" height="${H}" patternUnits="userSpaceOnUse">
-      <rect width="${W}" height="${H}" fill="#6b1d14"/>
-      <rect x="${g}" y="${g}" width="${W - 2 * g}" height="${H - 2 * g - e}" rx="${g}" fill="url(#deck-grad)"/>
-      <rect x="${g * 2}" y="${g * 2}" width="${W - 4 * g}" height="${H - 4 * g - e}" fill="url(#deck-tex)" opacity="0.6"/>
-      <rect x="${g}" y="${H - g - e}" width="${W - 2 * g}" height="${e}" fill="url(#deck-edge)"/>
-      <line x1="${g * 2}" y1="${g * 1.6}" x2="${W - g * 2}" y2="${g * 1.6}" stroke="#ffb59f" stroke-width="${g * 1.2}" opacity="0.8"/>
-      <line x1="${g * 1.6}" y1="${g * 2}" x2="${g * 1.6}" y2="${H - g - e}" stroke="#f59a83" stroke-width="${g}" opacity="0.6"/>
-      <circle cx="${W * 0.06}" cy="${(H - e) / 2}" r="${W * 0.016}" fill="#5a160e"/>
-      <circle cx="${W * 0.94}" cy="${(H - e) / 2}" r="${W * 0.016}" fill="#5a160e"/>
-    </pattern>
-    <pattern id="deck-pat-wip" width="${W / 3}" height="${W / 3}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="${W / 3}" height="${W / 3}" fill="#fed7aa"/>
-      <rect width="${W / 6}" height="${W / 3}" fill="#f97316"/>
-    </pattern>
-    <filter id="deck-shadow" x="-20%" y="-20%" width="140%" height="160%">
-      <feGaussianBlur stdDeviation="${blur}"/>
-    </filter>`;
-  svg.appendChild(defs);
+let _deckHoverId = null;
+let _deckTipShown = false;
+
+function _deckGeom() {
+  const W = Math.max(24, _mapNatW / 32); // 복공판 1장 = 2000×750 비율
+  return { W, H: W * 0.375, depth: Math.max(10, _mapNatW / 110), sw: Math.max(3, _mapNatW / 350) };
 }
 
 function _deckEl(tag, attrs) {
@@ -196,7 +163,117 @@ function _deckEl(tag, attrs) {
 }
 function _deckPts(pts) { return pts.map(p => p.join(',')).join(' '); }
 
-// renderAllPipes()에서 배관보다 먼저 호출 (배관이 위에 오도록)
+// p: id 접두사 (기본층/맨앞층이 같은 문서에 있어 id 충돌 방지)
+function _deckDefs(svg, p) {
+  const { W, H } = _deckGeom();
+  const g = W * 0.012, e = H * 0.16, t = W * 0.03;
+  const blur = Math.max(4, _mapNatW / 260);
+  const tones = [['#e8664f', '#c94332'], ['#de5a44', '#bd3b2b'], ['#ef7058', '#cf4a37']];
+  const defs = _deckEl('defs', {});
+  defs.innerHTML = `
+    ${tones.map(([a, b], i) => `
+    <linearGradient id="${p}tone${i}" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/>
+    </linearGradient>`).join('')}
+    <linearGradient id="${p}side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8f2b1e"/><stop offset="1" stop-color="#3a0d08"/>
+    </linearGradient>
+    <pattern id="${p}tex" width="${t}" height="${t}" patternUnits="userSpaceOnUse">
+      <line x1="${t * 0.15}" y1="${t * 0.45}" x2="${t * 0.45}" y2="${t * 0.15}" stroke="#a83322" stroke-width="${t * 0.14}" stroke-linecap="round"/>
+      <line x1="${t * 0.55}" y1="${t * 0.55}" x2="${t * 0.85}" y2="${t * 0.85}" stroke="#a83322" stroke-width="${t * 0.14}" stroke-linecap="round"/>
+    </pattern>
+    <pattern id="${p}detail" width="${W}" height="${H}" patternUnits="userSpaceOnUse">
+      <rect x="${g * 2}" y="${g * 2}" width="${W - 4 * g}" height="${H - 4 * g - e}" fill="url(#${p}tex)" opacity="0.55"/>
+      <rect x="${g}" y="${H - g - e}" width="${W - 2 * g}" height="${e}" fill="#8a2619"/>
+      <line x1="${g * 2}" y1="${g * 1.6}" x2="${W - g * 2}" y2="${g * 1.6}" stroke="#ffc2ae" stroke-width="${g * 1.2}" opacity="0.85"/>
+      <line x1="${g * 1.6}" y1="${g * 2}" x2="${g * 1.6}" y2="${H - g - e}" stroke="#ffab94" stroke-width="${g}" opacity="0.6"/>
+      <circle cx="${W * 0.06}" cy="${(H - e) / 2}" r="${W * 0.016}" fill="#5a160e"/>
+      <circle cx="${W * 0.94}" cy="${(H - e) / 2}" r="${W * 0.016}" fill="#5a160e"/>
+    </pattern>
+    <pattern id="${p}wip" width="${W / 3}" height="${W / 3}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="${W / 3}" height="${W / 3}" fill="#fdba74"/>
+      <rect width="${W / 6}" height="${W / 3}" fill="#f97316"/>
+    </pattern>
+    <pattern id="${p}plan" width="${W / 4}" height="${W / 4}" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <rect width="${W / 4}" height="${W / 4}" fill="#64748b"/>
+      <rect width="${W / 16}" height="${W / 4}" fill="#e2e8f0"/>
+    </pattern>
+    <filter id="${p}shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur stdDeviation="${blur}"/>
+    </filter>`;
+  svg.appendChild(defs);
+}
+
+// 단계 구역 하나 그리기 → { shadow, g }
+function _deckDrawStrip(svg, p, { stage: st, pts }) {
+  const { W, H, depth, sw } = _deckGeom();
+  const g = _deckEl('g', { class: 'deck-stage' });
+  g.dataset.id = st.id;
+  g.dataset.status = st.status;
+  let shadow = null;
+
+  if (st.status === 'done') {
+    shadow = _deckEl('polygon', {
+      points: _deckPts(pts.map(q => [q[0] + depth * 0.7, q[1] + depth * 1.6])),
+      fill: '#000', opacity: '0.45', filter: `url(#${p}shadow)`, class: 'deck-shadow',
+    });
+    svg.appendChild(shadow);
+
+    // 옆면 (두께) — 윗면이 뒤쪽 면을 덮음
+    pts.forEach((a, i) => {
+      const b = pts[(i + 1) % pts.length];
+      g.appendChild(_deckEl('polygon', {
+        points: _deckPts([a, b, [b[0], b[1] + depth], [a[0], a[1] + depth]]),
+        fill: `url(#${p}side)`,
+      }));
+    });
+
+    // 윗면: 복공판을 한 장씩 깔고 구역 모양으로 자름 (판마다 색조 약간 다르게)
+    const clipId = `${p}clip-${st.id}`;
+    const clip = _deckEl('clipPath', { id: clipId });
+    clip.appendChild(_deckEl('polygon', { points: _deckPts(pts) }));
+    g.appendChild(clip);
+    const top = _deckEl('g', { 'clip-path': `url(#${clipId})` });
+    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+    const x0 = Math.floor(Math.min(...xs) / W) * W, x1 = Math.max(...xs);
+    const y0 = Math.floor(Math.min(...ys) / H) * H, y1 = Math.max(...ys);
+    const gap = W * 0.012;
+    top.appendChild(_deckEl('rect', { x: x0, y: y0, width: x1 - x0 + W, height: y1 - y0 + H, fill: '#4a120b' }));
+    for (let y = y0; y < y1; y += H) {
+      for (let x = x0; x < x1; x += W) {
+        const k = Math.abs(((x / W) * 73856093) ^ ((y / H) * 19349663)) % 3;
+        top.appendChild(_deckEl('rect', {
+          x: x + gap, y: y + gap, width: W - 2 * gap, height: H - 2 * gap, rx: gap, fill: `url(#${p}tone${k})`,
+        }));
+      }
+    }
+    top.appendChild(_deckEl('rect', { x: x0, y: y0, width: x1 - x0 + W, height: y1 - y0 + H, fill: `url(#${p}detail)` }));
+    g.appendChild(top);
+
+    // 가장자리 하이라이트 (어두운 테두리 대신 은은한 밝은 선)
+    g.appendChild(_deckEl('polygon', {
+      points: _deckPts(pts), fill: 'none', stroke: 'rgba(255,200,180,0.7)',
+      'stroke-width': sw * 0.6, 'stroke-linejoin': 'round',
+    }));
+  } else {
+    const isWip = st.status === 'wip';
+    g.appendChild(_deckEl('polygon', {
+      points: _deckPts(pts),
+      fill: `url(#${p}${isWip ? 'wip' : 'plan'})`,
+      stroke: isWip ? '#ea580c' : '#f8fafc',
+      'stroke-width': sw * 0.8, 'stroke-linejoin': 'round',
+      ...(isWip ? {} : { 'stroke-dasharray': `${_mapNatW / 90} ${_mapNatW / 140}` }),
+    }));
+  }
+  svg.appendChild(g);
+  return { shadow, g };
+}
+
+function _deckCurrentStrips() {
+  return _deckStrips(_deckEdit ? _deckDraft : _getDeckData(_deckSite()));
+}
+
+// renderAllPipes()에서 배관보다 먼저 호출
 function renderDeckStages() {
   const svg = document.getElementById('map-svg');
   const siteId = _deckSite();
@@ -204,88 +281,126 @@ function renderDeckStages() {
   _updateDeckBtn();
   if (!svg) return;
   if (!_deckLoaded[siteId]) _loadDeckForSite(siteId);
-  if (!_deckEdit && !_deckVisible()) return;
+  if (!_deckEdit && !_deckVisible()) { _setDeckHover(null); return; }
 
   const data = _deckEdit ? _deckDraft : _getDeckData(siteId);
   const strips = _deckStrips(data);
-  if (!strips.length && !_deckEdit) return;
+  if (!strips.length && !_deckEdit) { _setDeckHover(null); return; }
 
-  _deckDefs(svg);
-  const sw = Math.max(3, _mapNatW / 350);
+  _deckDefs(svg, 'deckb-');
+  const { sw } = _deckGeom();
   const fs = Math.max(16, _mapNatW / 110);
-  const depth = Math.max(6, _mapNatW / 200);
 
   // 아래쪽(앞쪽) 구역이 뒤쪽 구역의 옆면을 덮도록 y 순으로 그림
   const ordered = [...strips].sort((a, b) =>
-    Math.max(...a.pts.map(p => p[1])) - Math.max(...b.pts.map(p => p[1])));
+    Math.max(...a.pts.map(q => q[1])) - Math.max(...b.pts.map(q => q[1])));
 
-  ordered.forEach(({ stage: st, pts }) => {
-    const meta = DECK_STATUS[st.status] || DECK_STATUS.plan;
-    const is3d = st.status === 'done';
-
-    // 바닥 그림자 (고정)
-    if (is3d && !_deckEdit) {
-      svg.appendChild(_deckEl('polygon', {
-        points: _deckPts(pts.map(p => [p[0] + depth * 0.6, p[1] + depth * 1.8])),
-        fill: '#000', opacity: '0.35', filter: 'url(#deck-shadow)', class: 'deck-shadow',
-      }));
-    }
-
-    const g = _deckEl('g', { class: 'deck-stage' });
-    if (_deckEdit) g.classList.add(st.id === _deckSelId ? 'deck-selected' : 'deck-dim');
-    if (!_deckEdit && st.id === _deckPinnedId) g.classList.add('deck-pinned');
-    g.dataset.id = st.id;
-    g.style.setProperty('--deck-lift', `${-depth}px`);
-
-    // 옆면 (두께): 각 변을 아래로 depth만큼 내린 사각형, 윗면이 뒤쪽 면을 덮음
-    if (is3d) {
-      pts.forEach((a, i) => {
-        const b = pts[(i + 1) % pts.length];
-        g.appendChild(_deckEl('polygon', {
-          points: _deckPts([a, b, [b[0], b[1] + depth], [a[0], a[1] + depth]]),
-          fill: '#6b1d14', stroke: '#4d140d', 'stroke-width': sw * 0.4, 'stroke-linejoin': 'round',
-        }));
-      });
-    }
-
-    // 윗면
-    g.appendChild(_deckEl('polygon', {
-      points: _deckPts(pts),
-      fill: st.status === 'done' ? 'url(#deck-pat-done)'
-          : st.status === 'wip'  ? 'url(#deck-pat-wip)'
-          : 'rgba(148,163,184,0.3)',
-      stroke: meta.stroke,
-      'stroke-width': st.status === 'wip' ? sw * 1.6 : sw,
-      'stroke-linejoin': 'round',
-      ...(st.status === 'plan' ? { 'stroke-dasharray': `${_mapNatW / 90} ${_mapNatW / 140}` } : {}),
-    }));
-
-    if (!_deckEdit) {
-      g.addEventListener('mouseenter', () => _showDeckTooltip(st));
-      g.addEventListener('mouseleave', _hidePipeTooltip);
-      g.addEventListener('click', e => {
-        e.stopPropagation();
-        _deckPinnedId = _deckPinnedId === st.id ? null : st.id;
-        renderAllPipes();
-        if (_deckPinnedId) _showDeckTooltip(st, e); else _hidePipeTooltip();
-      });
-    }
-    svg.appendChild(g);
-
-    // 라벨 (호버 대상 아님)
-    const [cx, cy] = _deckCentroid(pts);
+  ordered.forEach(strip => {
+    const { g } = _deckDrawStrip(svg, 'deckb-', strip);
+    if (!_deckEdit) return;
+    g.classList.add(strip.stage.id === _deckSelId ? 'deck-selected' : 'deck-dim');
+    // 편집 중에만 단계 이름 표시
+    const meta = DECK_STATUS[strip.stage.status] || DECK_STATUS.plan;
+    const [cx, cy] = _deckCentroid(strip.pts);
     const t = _deckEl('text', {
       class: 'deck-label', x: cx, y: cy + fs * 0.35, 'text-anchor': 'middle',
       fill: meta.stroke, 'font-size': fs, 'font-weight': '800',
       'paint-order': 'stroke', stroke: '#fff', 'stroke-width': fs * 0.28,
     });
-    t.textContent = `${st.name} ${meta.label}`;
+    t.textContent = `${strip.stage.name} ${meta.label}`;
     svg.appendChild(t);
   });
 
-  if (_deckEdit) _renderDeckEditOverlay(svg, data, sw);
-  else _renderDeckSummary(data);
+  if (_deckEdit) { _renderDeckEditOverlay(svg, data, sw); _setDeckHover(null); }
+  else { _renderDeckSummary(data); _applyDeckHover(); }
 }
+
+// ── 호버: 좌표로 판정 (마커/배관 위에서도 동작) ─────────────────
+function _setDeckHover(id) {
+  if (id === _deckHoverId) return;
+  _deckHoverId = id;
+  _applyDeckHover();
+}
+
+function _applyDeckHover() {
+  const strip = _deckHoverId ? _deckCurrentStrips().find(s => s.stage.id === _deckHoverId) : null;
+  if (_deckHoverId && !strip) _deckHoverId = null;
+  document.querySelectorAll('#map-svg .deck-stage').forEach(g => {
+    const on = g.dataset.id === _deckHoverId;
+    g.classList.toggle('deck-hover', on && g.dataset.status !== 'done');
+    g.classList.toggle('deck-hidden', on && g.dataset.status === 'done');
+  });
+  _renderDeckFront(strip && strip.stage.status === 'done' ? strip : null);
+  if (strip) { _showDeckTooltip(strip.stage); _deckTipShown = true; }
+  else if (_deckTipShown) { _hidePipeTooltip(); _deckTipShown = false; }
+}
+
+// 복공완료 구역을 배관·천공 마커보다 위(맨 앞)에 띄우는 층
+function _deckFrontSvg() {
+  let fsvg = document.getElementById('deck-front-svg');
+  if (!fsvg) {
+    const mc = document.getElementById('map-container');
+    if (!mc) return null;
+    fsvg = _deckEl('svg', { id: 'deck-front-svg' });
+    mc.appendChild(fsvg);
+  }
+  return fsvg;
+}
+
+function _syncDeckFrontTransform() {
+  const fsvg = document.getElementById('deck-front-svg');
+  const z = document.getElementById('map-zoomable');
+  if (!fsvg || !z) return;
+  fsvg.style.height = z.offsetHeight + 'px';
+  fsvg.style.transform = z.style.transform || '';
+}
+
+function _renderDeckFront(strip) {
+  const fsvg = _deckFrontSvg();
+  if (!fsvg) return;
+  fsvg.innerHTML = '';
+  if (!strip) { fsvg.style.display = 'none'; return; }
+  fsvg.setAttribute('viewBox', `0 0 ${_mapNatW} ${_mapNatH}`);
+  fsvg.style.display = '';
+  _syncDeckFrontTransform();
+  _deckDefs(fsvg, 'deckf-');
+  const { shadow, g } = _deckDrawStrip(fsvg, 'deckf-', strip);
+  g.classList.add('deck-front');
+  g.style.setProperty('--deck-lift', `${-_deckGeom().depth * 0.8}px`);
+  if (shadow) shadow.classList.add('deck-front-shadow');
+}
+
+function _deckHitAt(e) {
+  const img = document.getElementById('map-img');
+  if (!img || !img.clientWidth) return null;
+  const r = img.getBoundingClientRect(); // 줌 변환 포함
+  const x = (e.clientX - r.left) * (_mapNatW / r.width);
+  const y = (e.clientY - r.top)  * (_mapNatH / r.height);
+  return _deckCurrentStrips().find(s => _deckPointIn(s.pts, x, y)) || null;
+}
+
+(function _bindDeckHover() {
+  const mc = document.getElementById('map-container');
+  if (!mc) return;
+  mc.addEventListener('mousemove', e => {
+    if (_deckEdit || !_deckVisible()) return;
+    const hit = _deckHitAt(e);
+    const id = hit ? hit.stage.id : _deckPinnedId;
+    if (id !== _deckHoverId) _setDeckHover(id);
+    // 복공완료 구역 위에선 배관 툴팁 대신 복공 툴팁 유지
+    else if (hit && hit.stage.status === 'done') _showDeckTooltip(hit.stage);
+  }, { passive: true });
+  mc.addEventListener('mouseleave', () => { if (!_deckEdit) _setDeckHover(_deckPinnedId); });
+  // 터치 기기: 탭으로 고정/해제
+  mc.addEventListener('click', e => {
+    if (_deckEdit || !_deckVisible()) return;
+    if (e.target.closest('.pipe-group,.custom-valve-group,.boring-marker,.parking-marker,button,#pipe-popup')) return;
+    const hit = _deckHitAt(e);
+    _deckPinnedId = hit && hit.stage.id !== _deckPinnedId ? hit.stage.id : null;
+    _setDeckHover(_deckPinnedId);
+  });
+  document.addEventListener('map-zoom-changed', _syncDeckFrontTransform);
+})();
 
 function _renderDeckEditOverlay(svg, data, sw) {
   const o = data.outline;
@@ -362,6 +477,7 @@ window.startDeckEdit = function() {
   _deckMode = _deckDraft.outline.length >= 3 ? 'split' : 'outline';
   _deckEdit = true;
   _deckPinnedId = null;
+  _setDeckHover(null);
   document.getElementById('zone-toggle-bar').style.display = 'none';
   document.getElementById('deck-edit-bar').style.display  = 'flex';
   document.getElementById('zone-click-overlay').style.display = 'block';
@@ -528,12 +644,3 @@ function _onDeckMapClick(x, y) {
   ov.addEventListener('pointerup', end);
   ov.addEventListener('pointercancel', end);
 })();
-
-// 고정 해제: 지도 빈 곳 클릭
-document.addEventListener('click', e => {
-  if (_deckPinnedId && !e.target.closest('.deck-stage')) {
-    _deckPinnedId = null;
-    _hidePipeTooltip();
-    if (typeof renderAllPipes === 'function') renderAllPipes();
-  }
-});
