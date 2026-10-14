@@ -702,3 +702,21 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .reg-edit-btn:hover { opacity: 0.85; }
 .reg-save-btn { background: #16a34a; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer; margin-right:3px; }
 .reg-edit-inp { width:100%; border:1px solid #93c5fd; border-radius:4px; padding:3px 6px; font-size:13px; text-align:center; background:#fff; }
+
+/* ── 복공 단계 (호버 불투명도) ── */
+.deck-stage { opacity: 0.35; transition: opacity 0.2s ease; cursor: pointer; }
+.deck-stage:hover, .deck-stage.deck-pinned { opacity: 0.95; }
+.deck-stage.deck-selected { opacity: 0.9; cursor: crosshair; }
+.deck-stage.deck-dim { opacity: 0.25; }
+.deck-label { pointer-events: none; opacity: 0.85; }
+.deck-summary {
+  position: absolute; top: 54px; left: 10px; z-index: 25;
+  background: rgba(15,23,42,0.78); backdrop-filter: blur(4px);
+  color: #fff; border-radius: 8px; padding: 5px 10px;
+  font-size: 12px; font-weight: 600; pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.15); white-space: nowrap;
+}
+.deck-input {
+  padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px;
+  font-size: 12px; background: #fff;
+}

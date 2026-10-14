@@ -104,6 +104,9 @@ function renderAllPipes() {
   if (!svg || !_mapReady) return;
   svg.innerHTML = '';
 
+  // 복공 단계는 맨 아래 (배관/밸브가 위에서 호버되도록)
+  if (typeof renderDeckStages === 'function') renderDeckStages();
+
   const siteSegs = _filterBySite(PIPELINE_SEGMENTS);
   if (siteSegs.length) {
     // 글로우 필터 정의
@@ -1068,6 +1071,8 @@ function _onZoneOverlayClick(e) {
   const rect = img.getBoundingClientRect();
   const x = Math.round((e.clientX - rect.left) * (_mapNatW / img.clientWidth));
   const y = Math.round((e.clientY - rect.top)  * (_mapNatH / img.clientHeight));
+
+  if (typeof _onDeckMapClick === 'function' && _onDeckMapClick(x, y)) return;
 
   if (_labelMoveMode) {
     const d = _loadZoneData();

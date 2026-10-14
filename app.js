@@ -29,6 +29,7 @@ function _applyEditMode() {
   if (emergContactsBtns) emergContactsBtns.style.display = em ? 'flex' : 'none';
   const emergRadialBtns = document.getElementById('emerg-radial-edit-btns');
   if (emergRadialBtns) emergRadialBtns.style.display = em ? 'flex' : 'none';
+  if (!em && typeof window.cancelDeckEdit === 'function') window.cancelDeckEdit();
   if (!em && typeof window.exitEmergOrgEditMode === 'function') window.exitEmergOrgEditMode();
   if (!em && typeof window.exitEmergRadialEditMode === 'function') window.exitEmergRadialEditMode();
   const protToolbar = document.getElementById('prot-toolbar');
