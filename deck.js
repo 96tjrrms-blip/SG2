@@ -436,36 +436,51 @@ function renderDeckLabels() {
     if (g && st.id === _deckHoverId) g.classList.add('on');
   });
   // 라벨은 구역 가운데를 가리지 않도록 정거장 외곽 왼쪽 바깥에 두고 화살표로 가리킴
+  // 공간이 부족하면 두 줄로 줄바꿈 → 그래도 부족하면 글씨 축소, 지도 밖으로는 안 나가게
   const outline = _getDeckData(_deckSite()).outline;
   const oMinX = Math.min(...outline.map(q => q[0]));
-  const oMaxX = Math.max(...outline.map(q => q[0]));
   _deckCurrentStrips().filter(s => s.stage.status === 'wip').forEach(({ stage: st, pts }) => {
     const cy = _deckCentroid(pts)[1];
-    const label = `🚧 ${st.name} 작업중` + (+st.progress > 0 ? ` · 복공 ${st.progress}%` : '');
-    const tw = label.length * fs * 0.62 + fs;
-    const th = fs * 1.7;
-    const gap = fs * 3;
-    // 왼쪽 공간이 부족하면 오른쪽 바깥으로
-    const left = oMinX - gap - tw >= 0;
-    const [ex0, ex1] = _deckEdgeXAt(pts, cy);
-    const tipX = left ? ex0 : ex1;
-    const boxX = left ? oMinX - gap - tw : oMaxX + gap;
-    const tailX = left ? boxX + tw : boxX;
+    const l1 = `🚧 ${st.name} 작업중`;
+    const l2 = +st.progress > 0 ? `복공 ${st.progress}%` : '';
+    const margin = fs * 0.4;
+    let gap = fs * 2.5;
+    const widthOf = (lines, f) => Math.max(...lines.map(l => l.length)) * f * 0.62 + f;
+    const avail = () => oMinX - gap - margin;
+
+    let f = fs;
+    let lines = [l2 ? `${l1} · ${l2}` : l1];
+    if (widthOf(lines, f) > avail() && l2) lines = [l1, l2];
+    if (widthOf(lines, f) > avail()) gap = fs * 1.2;
+    if (widthOf(lines, f) > avail()) f = Math.max(fs * 0.6, fs * avail() / widthOf(lines, fs));
+
+    const tw = widthOf(lines, f);
+    const lh = f * 1.25;
+    const th = lines.length * lh + f * 0.5;
+    const boxX = Math.max(margin, oMinX - gap - tw);
+    const tailX = boxX + tw;
+    const tipX = _deckEdgeXAt(pts, cy)[0];
 
     const g = _deckEl('g', { class: 'deck-callout' });
-    g.appendChild(_deckEl('line', {
-      x1: tailX, y1: cy, x2: tipX + (left ? -fs * 0.2 : fs * 0.2), y2: cy,
-      stroke: '#ea580c', 'stroke-width': fs * 0.18, 'marker-end': 'url(#deckl-callout-arrow)',
-    }));
+    if (tipX - tailX > f * 0.5) {
+      g.appendChild(_deckEl('line', {
+        x1: tailX, y1: cy, x2: tipX - f * 0.2, y2: cy,
+        stroke: '#ea580c', 'stroke-width': f * 0.18, 'marker-end': 'url(#deckl-callout-arrow)',
+      }));
+    }
     g.appendChild(_deckEl('rect', {
-      x: boxX, y: cy - th / 2, width: tw, height: th, rx: th / 2,
-      fill: '#fff7ed', stroke: '#ea580c', 'stroke-width': fs * 0.12,
+      x: boxX, y: cy - th / 2, width: tw, height: th, rx: Math.min(th / 2, f * 0.8),
+      fill: '#fff7ed', stroke: '#ea580c', 'stroke-width': f * 0.12,
     }));
     const t = _deckEl('text', {
-      class: 'deck-label', x: boxX + tw / 2, y: cy + fs * 0.35, 'text-anchor': 'middle',
-      fill: '#c2410c', 'font-size': fs, 'font-weight': '800',
+      class: 'deck-label', 'text-anchor': 'middle',
+      fill: '#c2410c', 'font-size': f, 'font-weight': '800',
     });
-    t.textContent = label;
+    lines.forEach((line, i) => {
+      const ts = _deckEl('tspan', { x: boxX + tw / 2, y: cy - th / 2 + f * 0.25 + lh * i + f * 0.95 });
+      ts.textContent = line;
+      t.appendChild(ts);
+    });
     g.appendChild(t);
     svg.appendChild(g);
   });
