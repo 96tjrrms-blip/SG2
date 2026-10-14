@@ -392,10 +392,33 @@ function _deckDrawDetails(svg, p, st) {
     const line = _deckEl('polyline', {
       points: pts, fill: 'none', stroke: '#0891b2', 'stroke-width': lw, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
       'stroke-dasharray': `${lw * 3} ${lw * 2}`, class: 'deck-route',
-      'marker-mid': `url(#${p}arrow)`, 'marker-end': `url(#${p}arrow)`,
     });
     line.style.setProperty('--deck-dash', `${lw * 5}px`);
     g.appendChild(line);
+
+    // 진행 방향 화살표: 경로를 따라 일정 간격으로 배치 (마지막 지점에도 하나)
+    const a = lw * 1.8; // 화살표 크기
+    const step = lw * 14;
+    const arrow = (x, y, ang) => {
+      const pa = _deckEl('path', {
+        d: `M${a},0 L${-a * 0.8},${-a * 0.9} L${-a * 0.35},0 L${-a * 0.8},${a * 0.9} Z`,
+        fill: '#0e7490', stroke: '#fff', 'stroke-width': lw * 0.35, 'stroke-linejoin': 'round',
+        transform: `translate(${x},${y}) rotate(${ang})`, class: 'deck-route-arrow',
+      });
+      g.appendChild(pa);
+    };
+    let carry = step / 2;
+    for (let i = 0; i < route.length - 1; i++) {
+      const [x1, y1] = route[i], [x2, y2] = route[i + 1];
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      if (!len) continue;
+      const ang = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+      let d = carry;
+      for (; d < len - a; d += step) arrow(x1 + (x2 - x1) * d / len, y1 + (y2 - y1) * d / len, ang);
+      carry = Math.max(0, d - len);
+    }
+    const [ex1, ey1] = route[route.length - 2], [ex2, ey2] = route[route.length - 1];
+    arrow(ex2, ey2, Math.atan2(ey2 - ey1, ex2 - ex1) * 180 / Math.PI);
     const [sx, sy] = route[0];
     g.appendChild(_deckEl('circle', { cx: sx, cy: sy, r: lw * 1.4, fill: '#16a34a', stroke: '#fff', 'stroke-width': lw * 0.5 }));
     const t = _deckEl('text', { x: sx, y: sy - lw * 2.2, 'text-anchor': 'middle', fill: '#0e7490', 'font-size': fs * 0.8, 'font-weight': '800', 'paint-order': 'stroke', stroke: '#fff', 'stroke-width': fs * 0.25 });
