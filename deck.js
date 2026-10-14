@@ -18,8 +18,9 @@ let _deckMode     = 'split'; // 'outline' | 'split'
 let _deckDraft    = null;    // 편집 중 사본
 let _deckSelId    = null;
 let _deckPinnedId = null;
-let _deckDrag     = null;    // 드래그 중인 경계 index
+let _deckDrag     = null;    // 드래그 대상 { type: 's'(경계) | 'v'(외곽 꼭짓점), k }
 let _deckDragged  = false;
+let _deckHistory  = [];      // 외곽 수정 되돌리기용 스냅샷
 
 function _deckSite() { return window.currentDashSite || '115st'; }
 
@@ -79,10 +80,17 @@ async function _saveDeckData(siteId, data) {
 let _deckShown = true;
 function _deckVisible() { return _deckShown; }
 
-window.toggleDeckVisible = function() {
-  _deckShown = !_deckShown;
+// 복공현황과 천공위치 표시는 동시에 켜지지 않음 (boring.js setBoringShown과 연동)
+window.setDeckShown = function(on, fromBoring) {
+  _deckShown = on;
+  if (on && !fromBoring && window._boringShown && typeof setBoringShown === 'function') {
+    setBoringShown(false); // → setDeckShown(true, true)로 다시 들어와 렌더
+    return;
+  }
   renderAllPipes();
 };
+
+window.toggleDeckVisible = function() { setDeckShown(!_deckShown); };
 
 function _updateDeckBtn() {
   const btn = document.getElementById('deck-toggle-btn');
@@ -455,12 +463,14 @@ function _renderDeckEditOverlay(svg, data, sw) {
       'stroke-dasharray': `${_mapNatW / 80} ${_mapNatW / 120}`, 'pointer-events': 'none',
     }));
   }
-  if (_deckMode === 'outline') {
-    o.forEach((p, i) => svg.appendChild(_deckEl('circle', {
-      cx: p[0], cy: p[1], r, fill: i === 0 ? '#0f172a' : '#fff', stroke: '#0f172a', 'stroke-width': sw,
-    })));
-    return;
-  }
+  // 외곽 꼭짓점 손잡이 (드래그로 이동)
+  const isOutline = _deckMode === 'outline';
+  o.forEach((p, i) => svg.appendChild(_deckEl('circle', {
+    cx: p[0], cy: p[1], r: isOutline ? r : r * 0.8,
+    fill: _deckDrag?.type === 'v' && _deckDrag.k === i ? '#2563eb' : '#fff',
+    stroke: '#0f172a', 'stroke-width': sw,
+  })));
+  if (isOutline) return;
   // 경계선 + 드래그 손잡이
   if (o.length < 3) return;
   const ax = _deckAxis(data);
@@ -473,7 +483,7 @@ function _renderDeckEditOverlay(svg, data, sw) {
     const p2 = ax.axis === 1 ? [hi, v] : [v, hi];
     svg.appendChild(_deckEl('line', {
       x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1],
-      stroke: _deckDrag === k ? '#2563eb' : '#0f172a', 'stroke-width': sw * 1.4,
+      stroke: _deckDrag?.type === 's' && _deckDrag.k === k ? '#2563eb' : '#0f172a', 'stroke-width': sw * 1.4,
       'stroke-dasharray': `${sw * 4} ${sw * 2}`,
     }));
     [p1, p2].forEach(p => svg.appendChild(_deckEl('circle', {
@@ -518,6 +528,7 @@ window.startDeckEdit = function() {
   _deckDraft = JSON.parse(JSON.stringify(_getDeckData(_deckSite())));
   _deckSelId = _deckDraft.stages[0]?.id || null;
   _deckMode = _deckDraft.outline.length >= 3 ? 'split' : 'outline';
+  _deckHistory = [];
   _deckEdit = true;
   _deckPinnedId = null;
   _setDeckHover(null);
@@ -547,8 +558,8 @@ window.saveDeckEdit = async function() {
   try {
     await _saveDeckData(siteId, _deckNormalize(_deckDraft));
   } catch (e) { alert('복공 단계 저장 실패: ' + e.message); return; }
-  _deckShown = true;
   cancelDeckEdit();
+  setDeckShown(true);
 };
 
 window.deleteDeckAll = async function() {
@@ -577,8 +588,8 @@ function _renderDeckEditBar() {
   document.getElementById('deck-mode-split').classList.toggle('deck-mode-on', !isOutline);
   document.getElementById('deck-outline-tools').style.display = isOutline ? 'flex' : 'none';
   document.getElementById('deck-hint').textContent = isOutline
-    ? `① 지도 클릭으로 정거장 외곽 꼭짓점 추가 (현재 ${_deckDraft.outline.length}개, 3개 이상)`
-    : '② 파란 경계선을 드래그해 단계 크기 조절 · 구역 클릭으로 단계 선택 후 상태 입력';
+    ? `① 빈 곳 클릭: 꼭짓점 추가 · 꼭짓점 드래그: 이동 · 꼭짓점 우클릭: 삭제 (현재 ${_deckDraft.outline.length}개)`
+    : '② 파란 경계선 드래그: 단계 크기 조절 · 흰 꼭짓점 드래그: 외곽 수정 · 구역 클릭: 단계 선택';
 }
 
 window._deckSetMode = function(mode) {
@@ -628,8 +639,35 @@ window._deckEvenOut = function() {
   renderAllPipes();
 };
 
-window._deckUndoPoint   = function() { _deckDraft.outline.pop(); _renderDeckEditBar(); renderAllPipes(); };
-window._deckClearOutline = function() { _deckDraft.outline = []; _renderDeckEditBar(); renderAllPipes(); };
+function _deckSnapshot() { _deckHistory.push(JSON.stringify(_deckDraft.outline)); }
+
+window._deckUndoPoint = function() {
+  if (_deckHistory.length) _deckDraft.outline = JSON.parse(_deckHistory.pop());
+  else _deckDraft.outline.pop();
+  _renderDeckEditBar(); renderAllPipes();
+};
+window._deckClearOutline = function() { _deckSnapshot(); _deckDraft.outline = []; _renderDeckEditBar(); renderAllPipes(); };
+
+// 새 꼭짓점을 둘레가 가장 적게 늘어나는 변 사이에 끼워 넣음 (외곽 3개 미만이면 끝에 추가)
+function _deckInsertVertex(x, y) {
+  const o = _deckDraft.outline;
+  if (o.length < 3) { o.push([x, y]); return; }
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  let best = 0, bestCost = Infinity;
+  o.forEach((a, i) => {
+    const b = o[(i + 1) % o.length];
+    const cost = d(a, [x, y]) + d([x, y], b) - d(a, b);
+    if (cost < bestCost) { bestCost = cost; best = i; }
+  });
+  o.splice(best + 1, 0, [x, y]);
+}
+
+function _deckNearVertex(x, y) {
+  const thr = Math.max(14, _mapNatW / 90);
+  let best = -1, bestD = thr;
+  _deckDraft.outline.forEach((p, i) => { const d = Math.hypot(p[0] - x, p[1] - y); if (d < bestD) { bestD = d; best = i; } });
+  return best;
+}
 
 // 화면 좌표 → 지도 원본 좌표 (편집 시작 때 줌 초기화됨)
 function _deckEvtXY(e) {
@@ -644,7 +682,9 @@ function _onDeckMapClick(x, y) {
   if (!_deckEdit) return false;
   if (_deckDragged) { _deckDragged = false; return true; }
   if (_deckMode === 'outline') {
-    _deckDraft.outline.push([x, y]);
+    if (_deckNearVertex(x, y) >= 0) return true;
+    _deckSnapshot();
+    _deckInsertVertex(x, y);
   } else {
     const hit = _deckStrips(_deckDraft).find(s => _deckPointIn(s.pts, x, y));
     if (hit) _deckSelId = hit.stage.id;
@@ -654,36 +694,64 @@ function _onDeckMapClick(x, y) {
   return true;
 }
 
-// 경계선 드래그
+// 경계선 / 외곽 꼭짓점 드래그
 (function _bindDeckDrag() {
   const ov = document.getElementById('zone-click-overlay');
   if (!ov) return;
   let raf = 0;
   ov.addEventListener('pointerdown', e => {
-    if (!_deckEdit || _deckMode !== 'split' || _deckDraft.outline.length < 3) return;
+    if (!_deckEdit || e.button === 2) return;
     const [x, y] = _deckEvtXY(e);
-    const ax = _deckAxis(_deckDraft);
-    const t = _deckVtoT(ax, ax.axis === 1 ? y : x);
-    const thr = Math.max(14, _mapNatW / 90) / ax.span;
-    let best = -1, bestD = thr;
-    _deckDraft.splits.forEach((s, k) => { const d = Math.abs(s - t); if (d < bestD) { bestD = d; best = k; } });
-    if (best < 0) return;
-    _deckDrag = best;
+    let target = null;
+    // 단계 나누기 모드: 경계선 우선
+    if (_deckMode === 'split' && _deckDraft.outline.length >= 3) {
+      const ax = _deckAxis(_deckDraft);
+      const t = _deckVtoT(ax, ax.axis === 1 ? y : x);
+      let bestD = Math.max(14, _mapNatW / 90) / ax.span;
+      _deckDraft.splits.forEach((s, k) => { const d = Math.abs(s - t); if (d < bestD) { bestD = d; target = { type: 's', k }; } });
+    }
+    if (!target) {
+      const v = _deckNearVertex(x, y);
+      if (v >= 0) { _deckSnapshot(); target = { type: 'v', k: v }; }
+    }
+    if (!target) return;
+    _deckDrag = target;
     _deckDragged = false;
     ov.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
   ov.addEventListener('pointermove', e => {
-    if (_deckDrag === null) return;
+    if (!_deckDrag) return;
     const [x, y] = _deckEvtXY(e);
-    const ax = _deckAxis(_deckDraft);
-    const sp = _deckDraft.splits;
-    const min = (sp[_deckDrag - 1] ?? 0) + 0.03, max = (sp[_deckDrag + 1] ?? 1) - 0.03;
-    sp[_deckDrag] = Math.min(max, Math.max(min, _deckVtoT(ax, ax.axis === 1 ? y : x)));
+    if (_deckDrag.type === 'v') {
+      _deckDraft.outline[_deckDrag.k] = [Math.round(x), Math.round(y)];
+    } else {
+      const ax = _deckAxis(_deckDraft);
+      const sp = _deckDraft.splits, k = _deckDrag.k;
+      const min = (sp[k - 1] ?? 0) + 0.03, max = (sp[k + 1] ?? 1) - 0.03;
+      sp[k] = Math.min(max, Math.max(min, _deckVtoT(ax, ax.axis === 1 ? y : x)));
+    }
     _deckDragged = true;
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderAllPipes(); });
   });
-  const end = () => { if (_deckDrag !== null) { _deckDrag = null; renderAllPipes(); } };
+  const end = () => {
+    if (!_deckDrag) return;
+    if (_deckDrag.type === 'v' && !_deckDragged) _deckHistory.pop(); // 클릭만 했으면 스냅샷 취소
+    _deckDrag = null;
+    renderAllPipes();
+  };
   ov.addEventListener('pointerup', end);
   ov.addEventListener('pointercancel', end);
+  // 외곽 모드: 꼭짓점 우클릭 삭제
+  ov.addEventListener('contextmenu', e => {
+    if (!_deckEdit || _deckMode !== 'outline') return;
+    e.preventDefault();
+    const [x, y] = _deckEvtXY(e);
+    const v = _deckNearVertex(x, y);
+    if (v < 0) return;
+    _deckSnapshot();
+    _deckDraft.outline.splice(v, 1);
+    _renderDeckEditBar();
+    renderAllPipes();
+  });
 })();

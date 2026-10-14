@@ -1187,45 +1187,7 @@ function _renderConstructionZone() {
     return;
   }
 
-  const d = _loadZoneData();
-  // 공사구역 다각형/라벨 표시는 복공 단계(작업중) 표시로 대체됨 — 입구 마커만 표시
-
-  // 입구 마커 (깃발 스타일)
-  const entrances = d.entrances || [];
-  const er = Math.max(10, _mapNatW / 140);
-  const eColor = _entranceEdit ? '#16a34a' : '#22c55e';
-  entrances.forEach(en => {
-    // 깃대
-    const pole = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    pole.setAttribute('x1', en.x); pole.setAttribute('y1', en.y);
-    pole.setAttribute('x2', en.x); pole.setAttribute('y2', en.y - er * 3.5);
-    pole.setAttribute('stroke', eColor); pole.setAttribute('stroke-width', sw);
-    svg.appendChild(pole);
-    // 깃발 삼각형
-    const flag = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    flag.setAttribute('points',
-      `${en.x},${en.y - er * 3.5} ${en.x + er * 2},${en.y - er * 2.7} ${en.x},${en.y - er * 1.9}`);
-    flag.setAttribute('fill', eColor); flag.setAttribute('stroke', 'none');
-    svg.appendChild(flag);
-    // "입구" 텍스트
-    const et = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    et.setAttribute('x', en.x + er * 2.2); et.setAttribute('y', en.y - er * 2.5);
-    et.setAttribute('fill', eColor); et.setAttribute('font-size', er * 1.2);
-    et.setAttribute('font-weight', '800');
-    et.setAttribute('paint-order', 'stroke');
-    et.setAttribute('stroke', '#fff'); et.setAttribute('stroke-width', er * 0.4);
-    et.textContent = en.note ? `입구 (${en.note})` : '입구';
-    svg.appendChild(et);
-    // 편집 중엔 삭제 안내 원
-    if (_entranceEdit) {
-      const hint = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      hint.setAttribute('cx', en.x); hint.setAttribute('cy', en.y);
-      hint.setAttribute('r', er * 0.8);
-      hint.setAttribute('fill', '#fff'); hint.setAttribute('fill-opacity', '0.5');
-      hint.setAttribute('stroke', eColor); hint.setAttribute('stroke-width', sw);
-      svg.appendChild(hint);
-    }
-  });
+  // 공사구역 다각형·라벨·입구 표시는 복공 단계(작업중) 표시로 대체되어 더 이상 그리지 않음
 }
 
 function _renderValves() {

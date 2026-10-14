@@ -115,6 +115,7 @@ window.toggleBoringMarkerEdit = function() {
   if (window._boringMarkerMode !== null) {
     _exitBoringMarkerEdit();
   } else {
+    if (!window._boringShown) setBoringShown(true); // 마커 편집은 천공위치가 보여야 함
     const sub = document.getElementById('boring-marker-sub');
     const btn = document.getElementById('boring-edit-btn');
     if (sub) sub.style.display = 'flex';
@@ -239,8 +240,7 @@ function renderBoringPoints() {
 
   if (window.currentDashSite && window.currentDashSite !== '115st') return;
 
-  const visible = localStorage.getItem('boring_visible') !== 'false';
-  if (!visible || typeof BORING_POINTS === 'undefined' || !BORING_POINTS.length) return;
+  if (!window._boringShown || typeof BORING_POINTS === 'undefined' || !BORING_POINTS.length) return;
 
   const container = document.getElementById('map-container');
   if (!container) return;
@@ -367,15 +367,19 @@ function renderBoringPoints() {
 }
 
 // === 표시 토글 ===
-function toggleBoringVisible() {
-  const cur = localStorage.getItem('boring_visible') !== 'false';
-  localStorage.setItem('boring_visible', cur ? 'false' : 'true');
+// 천공위치는 접속마다 기본 숨김. 복공현황과 동시에 켜지지 않음 (켜면 복공 숨김, 끄면 복공 다시 표시)
+window._boringShown = false;
+function setBoringShown(on) {
+  window._boringShown = on;
   _updateBoringBtn();
   renderBoringPoints();
+  if (typeof setDeckShown === 'function') setDeckShown(!on, true);
 }
 
+function toggleBoringVisible() { setBoringShown(!window._boringShown); }
+
 function _updateBoringBtn() {
-  const visible = localStorage.getItem('boring_visible') !== 'false';
+  const visible = window._boringShown;
   const btn = document.getElementById('boring-toggle-btn');
   if (btn) btn.textContent = visible ? '⊕ 천공위치 숨기기' : '⊕ 천공위치 표시';
 }
