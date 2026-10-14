@@ -751,15 +751,16 @@ function _renderDeckEditBar() {
   document.getElementById('deck-prog-label').textContent = `${+st?.progress || 0}%`;
   document.getElementById('deck-prog-dir').value = st?.progDir || 'right';
   const list = document.getElementById('deck-work-list');
-  list.innerHTML = (st?.works || []).map((w, k) =>
-    `<span class="deck-work-chip">${_deckEsc(`${w.icon || ''} ${w.text || ''}`)}` +
-    `<button onclick="_deckDeleteWork(${k})" title="삭제">✕</button></span>`).join('') ||
+  // 모든 단계의 작업 표시 (선택 단계와 상관없이 삭제 가능)
+  list.innerHTML = _deckDraft.stages.flatMap(s => (s.works || []).map((w, k) =>
+    `<span class="deck-work-chip">${_deckEsc(`[${s.name}] ${w.icon || ''} ${w.text || ''}`)}` +
+    `<button onclick="_deckDeleteWork('${s.id}', ${k})" title="삭제">✕</button></span>`)).join('') ||
     '<span style="font-size:11px;color:#94a3b8">작업 표시 없음</span>';
   document.getElementById('deck-hint').textContent = isOutline
     ? `① 빈 곳 클릭: 꼭짓점 추가 · 꼭짓점 드래그: 이동 · 꼭짓점 우클릭: 삭제 (현재 ${_deckDraft.outline.length}개)`
     : isWork
     ? (_deckTool === 'work'
-      ? `③ [${st?.name || ''}] 지도 클릭: 작업 표시 추가 · 드래그: 이동 · 우클릭: 삭제`
+      ? `③ [${st?.name || ''}] 지도 클릭: 작업 표시 추가 · 드래그: 이동 · ✕ 또는 우클릭: 바로 삭제`
       : `③ [${st?.name || ''}] 지도 클릭: 점검루트 지점 추가(순서대로) · 드래그: 이동 · 우클릭: 삭제`)
     : '② 파란 경계선 드래그: 단계 크기 조절 · 흰 꼭짓점 드래그: 외곽 수정 · 구역 클릭: 단계 선택';
 }
@@ -768,14 +769,25 @@ let _deckTool = 'work'; // ③ 모드: 'work'(작업 표시) | 'route'(점검루
 
 window._deckSetTool = function(tool) { _deckTool = tool; _renderDeckEditBar(); renderAllPipes(); };
 
-window._deckDeleteWork = function(k) {
-  const st = _deckSel();
+// 작업 표시 삭제는 저장 버튼을 기다리지 않고 바로 DB에 반영 (다른 편집 중인 내용은 건드리지 않음)
+async function _deckRemoveWork(sid, k, ask) {
+  const st = _deckDraft?.stages.find(s => s.id === sid);
   const w = st?.works?.[k];
-  if (!w || !confirm(`'${w.icon || ''} ${w.text || ''}' 작업 표시를 삭제할까요?`)) return;
+  if (!w) return;
+  if (ask && !confirm(`[${st.name}] '${w.icon || ''} ${w.text || ''}' 작업 표시를 삭제할까요?`)) return;
   st.works.splice(k, 1);
   _renderDeckEditBar();
   renderAllPipes();
-};
+  const siteId = _deckSite();
+  const saved = JSON.parse(JSON.stringify(_getDeckData(siteId)));
+  const ss = saved.stages.find(s => s.id === sid);
+  if (!ss) return;
+  ss.works = (ss.works || []).filter(o => !(o.x === w.x && o.y === w.y && o.text === w.text && o.icon === w.icon));
+  try { await _saveDeckData(siteId, saved); }
+  catch (e) { alert('작업 표시 삭제 저장 실패: ' + e.message); }
+}
+
+window._deckDeleteWork = function(sid, k) { _deckRemoveWork(sid, k, true); };
 
 window._deckClearRoute = function() {
   const st = _deckSel();
@@ -795,6 +807,10 @@ window._deckSetProgress = function(v) {
 window._deckSetMode = function(mode) {
   if (mode !== 'outline' && _deckDraft.outline.length < 3) { alert('먼저 정거장 외곽을 꼭짓점 3개 이상으로 그려주세요.'); return; }
   _deckMode = mode;
+  if (mode === 'work' && _deckSel()?.status !== 'wip') {
+    const wip = _deckDraft.stages.find(s => s.status === 'wip');
+    if (wip) _deckSelId = wip.id;
+  }
   _renderDeckEditBar();
   renderAllPipes();
 };
@@ -863,16 +879,23 @@ function _deckInsertVertex(x, y) {
   o.splice(best + 1, 0, [x, y]);
 }
 
-// 선택 단계의 작업 표시 / 루트 지점 근처 → { type:'w'|'r', k }
+// 작업 표시(모든 단계) / 루트 지점(선택 단계) 근처 → { type:'w'|'r', k, sid }
 function _deckNearDetail(x, y) {
-  const st = _deckSel();
-  if (!st) return null;
+  if (!_deckDraft) return null;
   const thr = Math.max(14, _mapNatW / 90);
   let hit = null, bestD = thr;
-  (st.works || []).forEach((w, k) => { const d = Math.hypot(w.x - x, w.y - y); if (d < bestD) { bestD = d; hit = { type: 'w', k }; } });
-  (st.route || []).forEach((q, k) => { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bestD) { bestD = d; hit = { type: 'r', k }; } });
+  _deckDraft.stages.forEach(s => (s.works || []).forEach((w, k) => {
+    const d = Math.hypot(w.x - x, w.y - y);
+    if (d < bestD) { bestD = d; hit = { type: 'w', k, sid: s.id }; }
+  }));
+  const st = _deckSel();
+  (st?.route || []).forEach((q, k) => {
+    const d = Math.hypot(q[0] - x, q[1] - y);
+    if (d < bestD) { bestD = d; hit = { type: 'r', k, sid: st.id }; }
+  });
   return hit;
 }
+function _deckStageById(sid) { return _deckDraft.stages.find(s => s.id === sid); }
 
 function _deckNearVertex(x, y) {
   const thr = Math.max(14, _mapNatW / 90);
@@ -956,9 +979,9 @@ function _onDeckMapClick(x, y) {
     if (_deckDrag.type === 'v') {
       _deckDraft.outline[_deckDrag.k] = [Math.round(x), Math.round(y)];
     } else if (_deckDrag.type === 'w') {
-      Object.assign(_deckSel().works[_deckDrag.k], { x: Math.round(x), y: Math.round(y) });
+      Object.assign(_deckStageById(_deckDrag.sid).works[_deckDrag.k], { x: Math.round(x), y: Math.round(y) });
     } else if (_deckDrag.type === 'r') {
-      _deckSel().route[_deckDrag.k] = [Math.round(x), Math.round(y)];
+      _deckStageById(_deckDrag.sid).route[_deckDrag.k] = [Math.round(x), Math.round(y)];
     } else {
       const ax = _deckAxis(_deckDraft);
       const sp = _deckDraft.splits, k = _deckDrag.k;
@@ -984,8 +1007,8 @@ function _onDeckMapClick(x, y) {
       const [wx, wy] = _deckEvtXY(e);
       const hit = _deckNearDetail(wx, wy);
       if (!hit) return;
-      const st = _deckSel();
-      if (hit.type === 'w') st.works.splice(hit.k, 1); else st.route.splice(hit.k, 1);
+      if (hit.type === 'w') { _deckRemoveWork(hit.sid, hit.k, true); return; }
+      _deckStageById(hit.sid).route.splice(hit.k, 1);
       _renderDeckEditBar();
       renderAllPipes();
       return;
