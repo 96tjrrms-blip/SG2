@@ -817,6 +817,25 @@
       <div class="card" style="padding:0;overflow:hidden">
         <div id="emerg-contacts-table"></div>
       </div>
+
+      <!-- 유관기관 연락망 (방사형) -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 12px">
+        <span style="font-size:13px;color:#64748b">유관기관 연락망</span>
+        <div id="emerg-radial-edit-btns" style="display:none;gap:6px;align-items:center">
+          <span id="emerg-radial-save-toast" style="display:none;font-size:12px;color:#16a34a;font-weight:600">저장됨 ✓</span>
+          <button onclick="saveEmergRadialNow()"
+            style="padding:6px 14px;border-radius:7px;border:1px solid #16a34a;background:#16a34a;color:#fff;font-size:12px;font-weight:600;cursor:pointer">
+            저장
+          </button>
+          <button id="emerg-radial-edit-btn" onclick="toggleEmergRadialEdit()"
+            style="padding:6px 14px;border-radius:7px;border:1px solid #0d2b5e;background:#fff;color:#0d2b5e;font-size:12px;font-weight:600;cursor:pointer">
+            편집
+          </button>
+        </div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div id="emerg-radial-wrap"></div>
+      </div>
     </div>
   </div>
 
@@ -882,7 +901,7 @@
 <script src="parking.js?v=7"></script>
 <script src="map.js?v=8"></script>
 <script src="pipe-editor.js?v=7"></script>
-<script src="emergency.js?v=9"></script>
+<script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>
 <script src="docs.js?v=7"></script>
 <script src="app.js?v=8"></script>

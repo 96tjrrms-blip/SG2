@@ -33,7 +33,7 @@ window.showEmergSubTab = function(tab) {
     btnContacts.style.fontWeight = isPlan ? '600' : '700';
     btnContacts.style.borderBottomColor = isPlan ? 'transparent' : '#0d2b5e';
   }
-  if (tab === 'contacts') _renderEmergContacts();
+  if (tab === 'contacts') { _renderEmergContacts(); _renderEmergRadial(); }
 };
 
 // ===== 사이트 전환 =====
@@ -45,7 +45,10 @@ window.switchEmergSite = function(siteId) {
   if (img) img.src = _EMERG_IMGS[siteId] || 'map.png';
   _loadEmergData(siteId);
   _renderEmergPipes();
-  if (_emergSubTab === 'contacts') _loadEmergContacts(siteId).then(_renderEmergContacts);
+  if (_emergSubTab === 'contacts') {
+    _loadEmergContacts(siteId).then(_renderEmergContacts);
+    _loadEmergRadial(siteId).then(_renderEmergRadial);
+  }
 };
 
 // ===== 데이터 로드/저장 =====
@@ -54,12 +57,14 @@ async function _loadEmergData(siteId) {
     const rows = await fetchAllPipeSettings();
     _emergValves    = rows[`_emerg_valves_${siteId}`]?.colors    ?? [];
     _emergScenarios = rows[`_emerg_scenarios_${siteId}`]?.colors ?? [];
-    _emergOrgChart  = rows[`_emerg_contacts_${siteId}`]?.colors ?? _ORG_DEFAULT();
+    _emergOrgChart    = rows[`_emerg_contacts_${siteId}`]?.colors ?? _ORG_DEFAULT();
+    _emergRadialChart = rows[`_emerg_radial_${siteId}`]?.colors  ?? _RADIAL_DEFAULT();
   } catch {
-    _emergValves = []; _emergScenarios = []; _emergOrgChart = _ORG_DEFAULT();
+    _emergValves = []; _emergScenarios = [];
+    _emergOrgChart = _ORG_DEFAULT(); _emergRadialChart = _RADIAL_DEFAULT();
   }
   _renderEmergMarkers();
-  if (_emergSubTab === 'contacts') _renderEmergContacts();
+  if (_emergSubTab === 'contacts') { _renderEmergContacts(); _renderEmergRadial(); }
 }
 
 function _saveEmergValves() {
@@ -310,6 +315,286 @@ window._clearOrgCell = function(rowId, side) {
   if (row) row[side] = null;
   _saveEmergContacts(); _renderEmergContacts();
   document.getElementById('emerg-modal').style.display = 'none';
+};
+
+// ===== 유관기관 연락망 (방사형) =====
+let _emergRadialChart    = null;
+let _emergRadialEditMode = false;
+
+const _RADIAL_DEFAULT = () => ({
+  center: { name: '현장사무실', tel: 'Tel : 031)613-3410', fax: 'Fax : 031)613-3411' },
+  slots: [
+    { id:'rs0', angle:0,   name:'화성시청\n환경사업소 신재생에너지과', tel:'Tel 031) 5189-6179', parent:{ name:'경기소방재난본부', tel:'Tel 031) 230-6623' } },
+    { id:'rs1', angle:45,  name:'감리단',                              tel:'Tel 010-3663-5447', parent:null },
+    { id:'rs2', angle:90,  name:'(주)삼천리\n서남안전관리팀',          tel:'Tel 031-218-3002',  parent:null },
+    { id:'rs3', angle:135, name:'화성 소방서',                         tel:'Tel 031-8012-6119', parent:null },
+    { id:'rs4', angle:180, name:'동탄시티병원',                        tel:'Tel 031-8015-3333', parent:null },
+    { id:'rs5', angle:225, name:'화성 동탄 경찰서',                    tel:'Tel 031-639-1192',  parent:null },
+    { id:'rs6', angle:270, name:'한국가스안전공사\n본사',               tel:'Tel 1544-4500',     parent:null },
+    { id:'rs7', angle:315, name:'발주처\n국가철도공단',                 tel:'Tel 010-7119-7305', parent:null },
+  ]
+});
+
+async function _loadEmergRadial(siteId) {
+  try {
+    const rows = await fetchAllPipeSettings();
+    _emergRadialChart = rows[`_emerg_radial_${siteId}`]?.colors ?? _RADIAL_DEFAULT();
+  } catch { _emergRadialChart = _RADIAL_DEFAULT(); }
+}
+
+function _saveEmergRadial() {
+  upsertPipeSettings(`_emerg_radial_${_emergSite}`, { colors: _emergRadialChart })
+    .catch(e => console.warn('emerg radial save:', e));
+}
+
+function _renderEmergRadial() {
+  const el = document.getElementById('emerg-radial-wrap');
+  if (!el) return;
+  const data = _emergRadialChart || _RADIAL_DEFAULT();
+  const em   = _emergRadialEditMode;
+
+  // 좌표계: SVG viewBox "0 0 100 100" + CSS left/top % → 동일 기준 (정사각형 컨테이너)
+  const CX = 50, CY = 52;
+  const R_INNER  = 9.5; // 중심원 반경 (%)
+  const R_ORBIT  = 33;  // 직접 연결 노드 궤도 반경
+  const R_PARENT = 45;  // 체인 상위 노드 궤도 반경
+
+  // SVG 선 생성
+  let lines = '';
+  (data.slots || []).forEach(slot => {
+    if (!slot.name && !slot.tel) return;
+    const rad = (slot.angle - 90) * Math.PI / 180;
+    const nx  = CX + R_ORBIT  * Math.cos(rad);
+    const ny  = CY + R_ORBIT  * Math.sin(rad);
+    const dx  = nx - CX, dy = ny - CY;
+    const d   = Math.sqrt(dx*dx + dy*dy);
+    const sx  = CX + R_INNER * dx/d;
+    const sy  = CY + R_INNER * dy/d;
+    lines += `<line x1="${sx.toFixed(2)}" y1="${sy.toFixed(2)}" x2="${nx.toFixed(2)}" y2="${ny.toFixed(2)}" stroke="#6b7280" stroke-width="0.45"/>`;
+    if (slot.parent?.name || slot.parent?.tel) {
+      const px = CX + R_PARENT * Math.cos(rad);
+      const py = CY + R_PARENT * Math.sin(rad);
+      lines += `<line x1="${nx.toFixed(2)}" y1="${ny.toFixed(2)}" x2="${px.toFixed(2)}" y2="${py.toFixed(2)}" stroke="#6b7280" stroke-width="0.45"/>`;
+    }
+  });
+
+  // 중심원
+  const c = data.center || {};
+  const FS = 'clamp(7px,1.6vw,10px)';
+  const FS_SM = 'clamp(6px,1.3vw,8px)';
+  const centerHtml = `
+    <div style="position:absolute;left:${CX}%;top:${CY}%;transform:translate(-50%,-50%);
+      width:${R_INNER*2}%;aspect-ratio:1;border-radius:50%;
+      border:1.5px solid #0d2b5e;background:#fff;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:1%;box-sizing:border-box;z-index:3;
+      cursor:${em?'pointer':'default'};overflow:hidden"
+      onclick="${em?'window._editRadialCenter()':''}">
+      <span style="font-size:${FS};font-weight:700;color:#0d2b5e;line-height:1.3">${_esc(c.name||'현장사무실')}</span>
+      ${c.tel?`<span style="font-size:${FS_SM};color:#374151;line-height:1.4">${_esc(c.tel)}</span>`:''}
+      ${c.fax?`<span style="font-size:${FS_SM};color:#374151;line-height:1.4">${_esc(c.fax)}</span>`:''}
+    </div>`;
+
+  // 슬롯 노드
+  let nodes = '';
+  (data.slots || []).forEach((slot, i) => {
+    const rad = (slot.angle - 90) * Math.PI / 180;
+    const nx  = CX + R_ORBIT  * Math.cos(rad);
+    const ny  = CY + R_ORBIT  * Math.sin(rad);
+    const hasContent = slot.name || slot.tel;
+
+    const BOX = (left, top, name, tel, onclick) => `
+      <div style="position:absolute;left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;
+        transform:translate(-50%,-50%);width:18%;min-height:7%;
+        border:1px solid #1e3a5f;border-radius:4px;background:#f8fafc;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        padding:1.5% 1%;text-align:center;z-index:3;box-sizing:border-box;
+        cursor:${em?'pointer':'default'}"
+        onclick="${em?onclick:''}">
+        <span style="font-size:${FS};font-weight:600;color:#1e3a5f;line-height:1.35;white-space:pre-line">${_esc(name||'')}</span>
+        ${tel?`<span style="font-size:${FS_SM};color:#475569;line-height:1.4;margin-top:1px">${_esc(tel)}</span>`:''}
+      </div>`;
+
+    const EMPTY_BOX = `
+      <div style="position:absolute;left:${nx.toFixed(2)}%;top:${ny.toFixed(2)}%;
+        transform:translate(-50%,-50%);width:18%;min-height:7%;
+        border:1px dashed #cbd5e1;border-radius:4px;background:rgba(248,250,252,0.7);
+        display:flex;align-items:center;justify-content:center;
+        z-index:3;cursor:pointer"
+        onclick="window._editRadialSlot(${i})">
+        <span style="font-size:${FS};color:#cbd5e1">＋</span>
+      </div>`;
+
+    if (hasContent) {
+      nodes += BOX(nx, ny, slot.name, slot.tel, `window._editRadialSlot(${i})`);
+    } else if (em) {
+      nodes += EMPTY_BOX;
+    }
+
+    if (slot.parent?.name || slot.parent?.tel) {
+      const px = CX + R_PARENT * Math.cos(rad);
+      const py = CY + R_PARENT * Math.sin(rad);
+      nodes += BOX(px, py, slot.parent.name, slot.parent.tel, `window._editRadialParent(${i})`);
+    }
+  });
+
+  el.innerHTML = `
+    <div style="position:relative;width:100%;aspect-ratio:1;max-width:480px;margin:0 auto">
+      <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+        ${lines}
+      </svg>
+      ${centerHtml}
+      ${nodes}
+    </div>`;
+}
+
+// ── 방사형 편집 함수 ─────────────────────────────────────────
+
+window.saveEmergRadialNow = function() {
+  if (!_emergRadialChart) return;
+  _saveEmergRadial();
+  const toast = document.getElementById('emerg-radial-save-toast');
+  if (toast) { toast.style.display = 'inline'; setTimeout(() => { toast.style.display = 'none'; }, 2000); }
+};
+
+window.toggleEmergRadialEdit = function() {
+  _emergRadialEditMode = !_emergRadialEditMode;
+  const btn = document.getElementById('emerg-radial-edit-btn');
+  if (btn) {
+    btn.textContent = _emergRadialEditMode ? '✓ 편집 완료' : '편집';
+    btn.style.background = _emergRadialEditMode ? '#0d2b5e' : '#fff';
+    btn.style.color = _emergRadialEditMode ? '#fff' : '#0d2b5e';
+  }
+  _renderEmergRadial();
+};
+
+window.exitEmergRadialEditMode = function() {
+  if (!_emergRadialEditMode) return;
+  _emergRadialEditMode = false;
+  const btn = document.getElementById('emerg-radial-edit-btn');
+  if (btn) { btn.textContent = '편집'; btn.style.background = '#fff'; btn.style.color = '#0d2b5e'; }
+  _renderEmergRadial();
+};
+
+function _openRadialModal(title, nameDef, telDef, onSave, onClear) {
+  const modal = document.getElementById('emerg-modal');
+  const body  = document.getElementById('emerg-modal-body');
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;font-size:15px;color:#0d2b5e">${_esc(title)}</h3>
+      <button onclick="document.getElementById('emerg-modal').style.display='none'"
+        style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">기관명 / 이름</label>
+        <textarea id="rm-name" rows="2" placeholder="기관명"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px;resize:vertical">${_esc(nameDef)}</textarea>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">전화번호</label>
+        <input id="rm-tel" value="${_esc(telDef)}" placeholder="Tel 031-000-0000" type="tel"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:20px">
+      <button id="rm-clear-btn"
+        style="padding:8px 14px;border-radius:7px;border:1px solid #fca5a5;background:#fff;color:#ef4444;font-size:12px;cursor:pointer">칸 비우기</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('emerg-modal').style.display='none'"
+          style="padding:8px 16px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#374151;font-size:13px;cursor:pointer">취소</button>
+        <button id="rm-save-btn"
+          style="padding:8px 18px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+      </div>
+    </div>`;
+  document.getElementById('rm-save-btn').onclick  = onSave;
+  document.getElementById('rm-clear-btn').onclick = onClear;
+  modal.style.display = 'flex';
+}
+
+window._editRadialCenter = function() {
+  if (!_emergRadialEditMode) return;
+  const data = _emergRadialChart || _RADIAL_DEFAULT();
+  const c = data.center || {};
+  const modal = document.getElementById('emerg-modal');
+  const body  = document.getElementById('emerg-modal-body');
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;font-size:15px;color:#0d2b5e">중심 편집</h3>
+      <button onclick="document.getElementById('emerg-modal').style.display='none'"
+        style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">이름</label>
+        <input id="rc-name" value="${_esc(c.name||'')}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px"></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">전화</label>
+        <input id="rc-tel" value="${_esc(c.tel||'')}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px"></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">팩스</label>
+        <input id="rc-fax" value="${_esc(c.fax||'')}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button onclick="document.getElementById('emerg-modal').style.display='none'"
+        style="padding:8px 16px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#374151;font-size:13px;cursor:pointer">취소</button>
+      <button onclick="window._saveRadialCenter()"
+        style="padding:8px 18px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+    </div>`;
+  modal.style.display = 'flex';
+};
+
+window._saveRadialCenter = function() {
+  const data = _emergRadialChart || _RADIAL_DEFAULT();
+  data.center = {
+    name: document.getElementById('rc-name').value.trim(),
+    tel:  document.getElementById('rc-tel').value.trim(),
+    fax:  document.getElementById('rc-fax').value.trim(),
+  };
+  _emergRadialChart = data;
+  _saveEmergRadial(); _renderEmergRadial();
+  document.getElementById('emerg-modal').style.display = 'none';
+};
+
+window._editRadialSlot = function(i) {
+  if (!_emergRadialEditMode) return;
+  const data = _emergRadialChart || _RADIAL_DEFAULT();
+  const slot = data.slots[i];
+  if (!slot) return;
+  _openRadialModal(
+    '기관 편집', slot.name || '', slot.tel || '',
+    () => {
+      slot.name = document.getElementById('rm-name').value.trim();
+      slot.tel  = document.getElementById('rm-tel').value.trim();
+      _saveEmergRadial(); _renderEmergRadial();
+      document.getElementById('emerg-modal').style.display = 'none';
+    },
+    () => {
+      slot.name = ''; slot.tel = '';
+      _saveEmergRadial(); _renderEmergRadial();
+      document.getElementById('emerg-modal').style.display = 'none';
+    }
+  );
+};
+
+window._editRadialParent = function(i) {
+  if (!_emergRadialEditMode) return;
+  const data = _emergRadialChart || _RADIAL_DEFAULT();
+  const slot = data.slots[i];
+  if (!slot) return;
+  const p = slot.parent || { name: '', tel: '' };
+  _openRadialModal(
+    '상위 기관 편집', p.name || '', p.tel || '',
+    () => {
+      const name = document.getElementById('rm-name').value.trim();
+      const tel  = document.getElementById('rm-tel').value.trim();
+      slot.parent = (name || tel) ? { name, tel } : null;
+      _saveEmergRadial(); _renderEmergRadial();
+      document.getElementById('emerg-modal').style.display = 'none';
+    },
+    () => {
+      slot.parent = null;
+      _saveEmergRadial(); _renderEmergRadial();
+      document.getElementById('emerg-modal').style.display = 'none';
+    }
+  );
 };
 
 // ===== 마커 좌표 계산 (줌 없음, 퍼센트 기반) =====

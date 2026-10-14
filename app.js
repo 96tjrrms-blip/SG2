@@ -27,7 +27,10 @@ function _applyEditMode() {
   if (emergEdit) emergEdit.style.display = em ? 'flex' : 'none';
   const emergContactsBtns = document.getElementById('emerg-contacts-edit-btns');
   if (emergContactsBtns) emergContactsBtns.style.display = em ? 'flex' : 'none';
+  const emergRadialBtns = document.getElementById('emerg-radial-edit-btns');
+  if (emergRadialBtns) emergRadialBtns.style.display = em ? 'flex' : 'none';
   if (!em && typeof window.exitEmergOrgEditMode === 'function') window.exitEmergOrgEditMode();
+  if (!em && typeof window.exitEmergRadialEditMode === 'function') window.exitEmergRadialEditMode();
   const protToolbar = document.getElementById('prot-toolbar');
   if (protToolbar) protToolbar.style.display = em ? 'flex' : 'none';
   if (typeof _renderProtTable === 'function') _renderProtTable();
