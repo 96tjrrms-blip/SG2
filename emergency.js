@@ -205,6 +205,14 @@ window.toggleEmergOrgEdit = function() {
   _renderEmergContacts();
 };
 
+window.exitEmergOrgEditMode = function() {
+  if (!_emergOrgEditMode) return;
+  _emergOrgEditMode = false;
+  const btn = document.getElementById('emerg-org-edit-btn');
+  if (btn) { btn.textContent = '편집'; btn.style.background = '#fff'; btn.style.color = '#0d2b5e'; }
+  _renderEmergContacts();
+};
+
 window._editOrgTitle = function() {
   const val = prompt('조직표 제목', _emergOrgChart.title);
   if (val === null) return;

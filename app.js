@@ -25,6 +25,9 @@ function _applyEditMode() {
   _renderConstrGrid();
   const emergEdit = document.getElementById('emerg-edit-controls');
   if (emergEdit) emergEdit.style.display = em ? 'flex' : 'none';
+  const emergContactsBtns = document.getElementById('emerg-contacts-edit-btns');
+  if (emergContactsBtns) emergContactsBtns.style.display = em ? 'flex' : 'none';
+  if (!em && typeof window.exitEmergOrgEditMode === 'function') window.exitEmergOrgEditMode();
   const protToolbar = document.getElementById('prot-toolbar');
   if (protToolbar) protToolbar.style.display = em ? 'flex' : 'none';
   if (typeof _renderProtTable === 'function') _renderProtTable();
