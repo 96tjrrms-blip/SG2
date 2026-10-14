@@ -355,9 +355,9 @@ function _renderEmergRadial() {
 
   // 좌표계: SVG viewBox "0 0 100 100" + CSS left/top % → 동일 기준 (정사각형 컨테이너)
   const CX = 50, CY = 52;
-  const R_INNER  = 9.5; // 중심원 반경 (%)
-  const R_ORBIT  = 33;  // 직접 연결 노드 궤도 반경
-  const R_PARENT = 45;  // 체인 상위 노드 궤도 반경
+  const R_INNER  = 11;  // 중심원 반경 (%)
+  const R_ORBIT  = 36;  // 직접 연결 노드 궤도 반경
+  const R_PARENT = 48;  // 체인 상위 노드 궤도 반경
 
   // SVG 선 생성
   let lines = '';
@@ -380,8 +380,8 @@ function _renderEmergRadial() {
 
   // 중심원
   const c = data.center || {};
-  const FS = 'clamp(7px,1.6vw,10px)';
-  const FS_SM = 'clamp(6px,1.3vw,8px)';
+  const FS = 'clamp(8px,1.8vw,11px)';
+  const FS_SM = 'clamp(7px,1.5vw,9px)';
   const centerHtml = `
     <div style="position:absolute;left:${CX}%;top:${CY}%;transform:translate(-50%,-50%);
       width:${R_INNER*2}%;aspect-ratio:1;border-radius:50%;
@@ -408,7 +408,7 @@ function _renderEmergRadial() {
         transform:translate(-50%,-50%);width:18%;min-height:7%;
         border:1px solid #1e3a5f;border-radius:4px;background:#f8fafc;
         display:flex;flex-direction:column;align-items:center;justify-content:center;
-        padding:1.5% 1%;text-align:center;z-index:3;box-sizing:border-box;
+        padding:1.5% 1.5%;text-align:center;z-index:3;box-sizing:border-box;
         cursor:${em?'pointer':'default'}"
         onclick="${em?onclick:''}">
         <span style="font-size:${FS};font-weight:600;color:#1e3a5f;line-height:1.35;white-space:pre-line">${_esc(name||'')}</span>
@@ -439,7 +439,7 @@ function _renderEmergRadial() {
   });
 
   el.innerHTML = `
-    <div style="position:relative;width:100%;aspect-ratio:1;max-width:480px;margin:0 auto">
+    <div style="position:relative;width:100%;aspect-ratio:1;margin:0 auto">
       <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
         ${lines}
       </svg>
