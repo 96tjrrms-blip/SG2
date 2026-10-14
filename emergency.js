@@ -381,8 +381,8 @@ function _renderEmergRadial() {
 
   // 중심원
   const c = data.center || {};
-  const FS = 'clamp(8px,1.8vw,11px)';
-  const FS_SM = 'clamp(7px,1.5vw,9px)';
+  const FS = 'clamp(10px,2.2vw,14px)';
+  const FS_SM = 'clamp(9px,1.9vw,12px)';
   const centerHtml = `
     <div style="position:absolute;left:${CX}%;top:${CY}%;transform:translate(-50%,-50%);
       width:${R_INNER*2}%;aspect-ratio:1;border-radius:50%;
