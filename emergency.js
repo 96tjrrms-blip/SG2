@@ -11,7 +11,7 @@ let _emergValves    = [];   // [{ id, x, y, label }]
 let _emergScenarios = [];   // [{ id, x, y, label, desc, procedure, internalValves:[], externalValves:[{name,location,note}] }]
 let _emergMode      = 'view';   // 'view' | 'addValve' | 'addScenario'
 let _emergActive    = null;     // 활성 시나리오 id
-let _emergSubTab    = 'plan';   // 'plan' | 'contacts'
+let _emergSubTab    = 'contacts';   // 'plan' | 'contacts'
 
 // ===== 서브탭 전환 =====
 window.showEmergSubTab = function(tab) {
