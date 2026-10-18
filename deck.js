@@ -737,8 +737,9 @@ setInterval(() => {
   document.querySelectorAll('.deck-today').forEach(el => { if (el.textContent !== t) el.textContent = t; });
 }, 60 * 1000);
 
-// 공정 현황 고정(핀): 이 화면을 연 동안에만 유지 (저장하지 않음 → 다른 사용자·다음 접속에 영향 없음)
-let _deckSummaryPinned = false;
+// 공정 현황 고정(핀): 접속할 때마다 고정 상태로 시작, 해제는 이 화면을 연 동안에만 유지
+// (저장하지 않음 → 다른 사용자·다음 접속에 영향 없음)
+let _deckSummaryPinned = true;
 window._deckToggleSummaryPin = function() {
   _deckSummaryPinned = !_deckSummaryPinned;
   const el = document.getElementById('deck-summary');
@@ -748,7 +749,7 @@ window._deckToggleSummaryPin = function() {
   const btn = el.querySelector('.deck-pin');
   if (btn) {
     btn.classList.toggle('on', _deckSummaryPinned);
-    btn.title = _deckSummaryPinned ? '고정 해제' : '펼친 상태로 고정';
+    btn.title = _deckSummaryPinned ? '고정 해제 (지도에 커서를 올리면 접혀요)' : '펼친 상태로 고정';
   }
 };
 
@@ -760,7 +761,7 @@ function _renderDeckSummary(data) {
   if (!el) {
     el = document.createElement('div');
     el.id = 'deck-summary';
-    el.className = 'deck-summary open'; // 처음 들어왔을 때 기능이 눈에 띄도록 펼친 상태로 시작
+    el.className = 'deck-summary open' + (_deckSummaryPinned ? ' pinned' : '');
     mc.appendChild(el);
   }
   // A. 전체 공사 흐름: 노면복공 ▶ 본굴착·구조물 ▶ 2차 공사
@@ -792,7 +793,7 @@ function _renderDeckSummary(data) {
     <div class="deck-matrix-legend">✓ 완료 · ◐ 진행중 · ○ 예정 &nbsp;|&nbsp; 점검: 🟢 이상없음 · ⚠️ 확인필요 · 🔴 기준미달<br>칸을 누르면 점검 항목을 보고 입력할 수 있어요</div>
   </div>`;
 
-  const pin = `<button class="deck-pin${_deckSummaryPinned ? ' on' : ''}" title="${_deckSummaryPinned ? '고정 해제' : '펼친 상태로 고정'}"` +
+  const pin = `<button class="deck-pin${_deckSummaryPinned ? ' on' : ''}" title="${_deckSummaryPinned ? '고정 해제 (지도에 커서를 올리면 접혀요)' : '펼친 상태로 고정'}"` +
     ` onclick="event.stopPropagation(); _deckToggleSummaryPin()">📌</button>`;
   el.innerHTML = `<div class="deck-phase-bar" onclick="this.parentNode.classList.toggle('open')">${bar}${pin}</div>${matrix}`;
   el.style.display = '';
