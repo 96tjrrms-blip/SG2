@@ -662,7 +662,7 @@ function _deckPointAt(e) {
     if (_deckEdit || !_deckVisible()) return;
     if (e.target.closest('#deck-summary')) { if (_deckHoverId !== _deckPinnedId) _setDeckHover(_deckPinnedId); return; }
     // 지도 안으로 커서가 들어오면 펼쳐둔 공정 현황을 접음 (진행바에 다시 올리면 :hover로 펼쳐짐)
-    document.getElementById('deck-summary')?.classList.remove('open');
+    if (!_deckSummaryPinned) document.getElementById('deck-summary')?.classList.remove('open');
     const pt = _deckPointAt(e);
     if (pt) { _deckShowPointTooltip(pt); _deckTipShown = true; mc.style.cursor = 'pointer'; return; }
     if (mc.style.cursor === 'pointer') { mc.style.cursor = ''; if (_deckTipShown) _applyDeckHover(); }
@@ -726,6 +726,21 @@ function _renderDeckEditOverlay(svg, data, sw) {
   });
 }
 
+// 공정 현황 고정(핀): 이 화면을 연 동안에만 유지 (저장하지 않음 → 다른 사용자·다음 접속에 영향 없음)
+let _deckSummaryPinned = false;
+window._deckToggleSummaryPin = function() {
+  _deckSummaryPinned = !_deckSummaryPinned;
+  const el = document.getElementById('deck-summary');
+  if (!el) return;
+  el.classList.toggle('pinned', _deckSummaryPinned);
+  el.classList.toggle('open', _deckSummaryPinned);
+  const btn = el.querySelector('.deck-pin');
+  if (btn) {
+    btn.classList.toggle('on', _deckSummaryPinned);
+    btn.title = _deckSummaryPinned ? '고정 해제' : '펼친 상태로 고정';
+  }
+};
+
 function _renderDeckSummary(data) {
   const mc = document.getElementById('map-container');
   if (!mc) return;
@@ -766,7 +781,9 @@ function _renderDeckSummary(data) {
     <div class="deck-matrix-legend">✓ 완료 · ◐ 진행중 · ○ 예정 &nbsp;|&nbsp; 점검: 🟢 이상없음 · ⚠️ 확인필요 · 🔴 기준미달<br>칸을 누르면 점검 항목을 보고 입력할 수 있어요</div>
   </div>`;
 
-  el.innerHTML = `<div class="deck-phase-bar" onclick="this.parentNode.classList.toggle('open')">${bar}</div>${matrix}`;
+  const pin = `<button class="deck-pin${_deckSummaryPinned ? ' on' : ''}" title="${_deckSummaryPinned ? '고정 해제' : '펼친 상태로 고정'}"` +
+    ` onclick="event.stopPropagation(); _deckToggleSummaryPin()">📌</button>`;
+  el.innerHTML = `<div class="deck-phase-bar" onclick="this.parentNode.classList.toggle('open')">${bar}${pin}</div>${matrix}`;
   el.style.display = '';
 }
 

@@ -740,6 +740,13 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .deck-phase.is-now b { color: #fff7ed; margin-left: 2px; }
 .deck-phase.is-todo { color: #94a3b8; }
 .deck-phase-sep { color: #64748b; font-size: 10px; }
+.deck-pin {
+  margin-left: 4px; border: 1px solid rgba(255,255,255,0.2); background: transparent; border-radius: 6px;
+  font-size: 12px; line-height: 1; padding: 3px 5px; cursor: pointer; opacity: 0.45; filter: grayscale(1);
+  transition: opacity 0.15s, filter 0.15s, background 0.15s;
+}
+.deck-pin:hover { opacity: 0.85; }
+.deck-pin.on { opacity: 1; filter: none; background: rgba(234,88,12,0.35); border-color: #ea580c; }
 .deck-matrix {
   max-height: 0; overflow: hidden; opacity: 0;
   transition: max-height 0.3s ease, opacity 0.25s ease, margin-top 0.3s ease, padding-top 0.3s ease;
