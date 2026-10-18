@@ -10,6 +10,16 @@ const DECK_STATUS = {
   wip:  { label: '작업중',   icon: '🚧', stroke: '#c2410c' },
   plan: { label: '예정',     icon: '⬜', stroke: '#64748b' },
 };
+// 노면복공 1사이클 공종 (단계마다 ①→④ 순서로 진행)
+const DECK_STEPS = [
+  { short: '줄파기',      full: '줄파기 (지장물 확인)' },
+  { short: 'H-Pile',      full: 'H-Pile 천공 및 항타' },
+  { short: '복공작업',    full: '복공작업 (주형보·매달기전용보·브레이싱)' },
+  { short: '차수공사',    full: '차수공 천공 · 차수약액 주입' },
+];
+const DECK_CIRCLED = ['①', '②', '③', '④'];
+// 전체 공사 흐름
+const DECK_PHASES = ['노면복공', '본굴착·구조물', '2차 공사'];
 const DECK_DIRS = { down: '위 → 아래', up: '아래 → 위', right: '왼쪽 → 오른쪽', left: '오른쪽 → 왼쪽' };
 
 const _deckData   = {};   // siteId → data
@@ -42,9 +52,28 @@ function _deckDefault() {
 function _deckNormalize(d) {
   if (!d || !Array.isArray(d.stages) || !d.stages.length) return _deckDefault();
   if (!Array.isArray(d.outline)) d.outline = [];
+  if (!Array.isArray(d.points)) d.points = [];
   if (!DECK_DIRS[d.dir]) d.dir = 'down';
   if (!Array.isArray(d.splits) || d.splits.length !== d.stages.length - 1) d.splits = _deckEvenSplits(d.stages.length);
+  if (![1, 2, 3].includes(d.phase)) d.phase = 1;
   return d;
+}
+
+// 단계 s의 k번째 공종(0~3) 상태: 'done' | 'now' | 'todo'
+function _deckStepState(st, k) {
+  if (st.status === 'done') return 'done';
+  if (st.status !== 'wip') return 'todo';
+  const cur = (+st.step || 1) - 1;
+  return k < cur ? 'done' : k === cur ? 'now' : 'todo';
+}
+function _deckStepLabel(st) {
+  const k = (+st.step || 1) - 1;
+  return `${DECK_CIRCLED[k]} ${DECK_STEPS[k].short}`;
+}
+// "③ 복공작업중(45%)" — %는 복공작업일 때만
+function _deckStepText(st) {
+  const pct = +st.step === 3 && +st.progress > 0 ? `(${st.progress}%)` : '';
+  return `${_deckStepLabel(st)}중${pct}`;
 }
 
 function _getDeckData(siteId) {
@@ -351,6 +380,7 @@ function renderDeckStages() {
     _renderDeckEditOverlay(svg, data, sw);
     _deckArrowDefs(svg, 'deckb-');
     data.stages.forEach(st => _deckDrawDetails(svg, 'deckb-', st));
+    if (typeof _deckDrawPoints === 'function') _deckDrawPoints(svg, data);
     if (_deckMode === 'work') {
       const r = Math.max(6, _mapNatW / 220);
       (_deckSel()?.route || []).forEach(q => svg.appendChild(_deckEl('circle', { cx: q[0], cy: q[1], r, fill: '#fff', stroke: '#0891b2', 'stroke-width': sw })));
@@ -458,21 +488,33 @@ function renderDeckLabels() {
     const g = _deckDrawDetails(svg, 'deckl-', st);
     if (g && _deckHoverId && st.id !== _deckHoverId) g.classList.add('off');
   });
+  if (typeof _deckDrawPoints === 'function') _deckDrawPoints(svg, _getDeckData(_deckSite()));
   // 라벨은 구역 가운데를 가리지 않도록 정거장 외곽 왼쪽 바깥에 두고 화살표로 가리킴
   // 공간이 부족하면 두 줄로 줄바꿈 → 그래도 부족하면 글씨 축소, 지도 밖으로는 안 나가게
   const outline = _getDeckData(_deckSite()).outline;
   const oMinX = Math.min(...outline.map(q => q[0]));
   _deckCurrentStrips().filter(s => s.stage.status === 'wip').forEach(({ stage: st, pts }) => {
     const cy = _deckCentroid(pts)[1];
-    const l1 = `🚧 ${st.name} 작업중`;
-    const l2 = +st.progress > 0 ? `복공 ${st.progress}%` : '';
+    // 한 줄: "🚧 3단계 ③ 복공작업중(45%)", 공간이 부족하면 "🚧 3단계" / "③ 복공작업중(45%)" 두 줄
+    const l1 = `🚧 ${st.name}`;
+    const badge = typeof _deckCheckBadge === 'function' ? _deckCheckBadge(_getDeckData(_deckSite()), st, +st.step || 1) : '';
+    const l2 = _deckStepText(st) + (badge && badge !== DECK_LV_ICON.ok ? ` ${badge}` : '');
     const margin = fs * 0.4;
     let gap = fs * 2.5;
-    const widthOf = (lines, f) => Math.max(...lines.map(l => l.length)) * f * 0.62 + f;
+    // 실제 글자 폭으로 박스 크기 계산 (한글은 폭이 넓어 글자 수 어림값이 맞지 않음)
+    const measure = (str, f) => {
+      const m = _deckEl('text', { 'font-size': f, 'font-weight': '800', visibility: 'hidden' });
+      m.textContent = str;
+      svg.appendChild(m);
+      const w = m.getComputedTextLength();
+      m.remove();
+      return w;
+    };
+    const widthOf = (lines, f) => Math.max(...lines.map(l => measure(l, f))) + f * 1.2;
     const avail = () => oMinX - gap - margin;
 
     let f = fs;
-    let lines = [l2 ? `${l1} · ${l2}` : l1];
+    let lines = [`${l1} ${l2}`];
     if (widthOf(lines, f) > avail() && l2) lines = [l1, l2];
     if (widthOf(lines, f) > avail()) gap = fs * 1.2;
     if (widthOf(lines, f) > avail()) f = Math.max(fs * 0.6, fs * avail() / widthOf(lines, fs));
@@ -594,13 +636,23 @@ function _renderDeckFront(strip) {
   fsvg.appendChild(pipes);
 }
 
-function _deckHitAt(e) {
+// 화면 좌표 → 지도 원본 좌표 (줌 변환 포함)
+function _deckEvtNat(e) {
   const img = document.getElementById('map-img');
   if (!img || !img.clientWidth) return null;
-  const r = img.getBoundingClientRect(); // 줌 변환 포함
-  const x = (e.clientX - r.left) * (_mapNatW / r.width);
-  const y = (e.clientY - r.top)  * (_mapNatH / r.height);
-  return _deckCurrentStrips().find(s => _deckPointIn(s.pts, x, y)) || null;
+  const r = img.getBoundingClientRect();
+  return [(e.clientX - r.left) * (_mapNatW / r.width), (e.clientY - r.top) * (_mapNatH / r.height)];
+}
+
+function _deckHitAt(e) {
+  const xy = _deckEvtNat(e);
+  if (!xy) return null;
+  return _deckCurrentStrips().find(s => _deckPointIn(s.pts, xy[0], xy[1])) || null;
+}
+
+function _deckPointAt(e) {
+  const xy = _deckEvtNat(e);
+  return xy && typeof _deckNearPoint === 'function' ? _deckNearPoint(xy[0], xy[1]) : null;
 }
 
 (function _bindDeckHover() {
@@ -608,6 +660,12 @@ function _deckHitAt(e) {
   if (!mc) return;
   mc.addEventListener('mousemove', e => {
     if (_deckEdit || !_deckVisible()) return;
+    if (e.target.closest('#deck-summary')) { if (_deckHoverId !== _deckPinnedId) _setDeckHover(_deckPinnedId); return; }
+    // 지도 안으로 커서가 들어오면 펼쳐둔 공정 현황을 접음 (진행바에 다시 올리면 :hover로 펼쳐짐)
+    document.getElementById('deck-summary')?.classList.remove('open');
+    const pt = _deckPointAt(e);
+    if (pt) { _deckShowPointTooltip(pt); _deckTipShown = true; mc.style.cursor = 'pointer'; return; }
+    if (mc.style.cursor === 'pointer') { mc.style.cursor = ''; if (_deckTipShown) _applyDeckHover(); }
     const hit = _deckHitAt(e);
     const id = hit ? hit.stage.id : _deckPinnedId;
     if (id !== _deckHoverId) _setDeckHover(id);
@@ -618,7 +676,9 @@ function _deckHitAt(e) {
   // 터치 기기: 탭으로 고정/해제
   mc.addEventListener('click', e => {
     if (_deckEdit || !_deckVisible()) return;
-    if (e.target.closest('.pipe-group,.custom-valve-group,.boring-marker,.parking-marker,button,#pipe-popup')) return;
+    if (e.target.closest('.pipe-group,.custom-valve-group,.boring-marker,.parking-marker,button,#pipe-popup,#deck-summary')) return;
+    const pt = _deckPointAt(e);
+    if (pt) { _deckOpenPoint(pt.id); return; }
     const hit = _deckHitAt(e);
     _deckPinnedId = hit && hit.stage.id !== _deckPinnedId ? hit.stage.id : null;
     _setDeckHover(_deckPinnedId);
@@ -674,13 +734,39 @@ function _renderDeckSummary(data) {
   if (!el) {
     el = document.createElement('div');
     el.id = 'deck-summary';
-    el.className = 'deck-summary';
+    el.className = 'deck-summary open'; // 처음 들어왔을 때 기능이 눈에 띄도록 펼친 상태로 시작
     mc.appendChild(el);
   }
+  // A. 전체 공사 흐름: 노면복공 ▶ 본굴착·구조물 ▶ 2차 공사
   const done = data.stages.filter(s => s.status === 'done').length;
-  const wip  = data.stages.filter(s => s.status === 'wip').map(s => s.name);
-  el.innerHTML = `🟫 복공 <strong>${done}/${data.stages.length}</strong> 완료` +
-    (wip.length ? ` · <span style="color:#fdba74">${_deckEsc(wip.join(', '))} 작업중</span>` : '');
+  const phase = data.phase || 1;
+  const bar = DECK_PHASES.map((name, i) => {
+    const n = i + 1;
+    const cls = n < phase ? 'is-done' : n === phase ? 'is-now' : 'is-todo';
+    const sub = n === 1 && n === phase ? ` <b>${done}/${data.stages.length}단계</b>` : '';
+    return `<span class="deck-phase ${cls}">${n < phase ? '✓' : n === phase ? '●' : '○'} ${name}${sub}</span>`;
+  }).join('<span class="deck-phase-sep">▶</span>');
+
+  // C. 단계 × 공종 진행 매트릭스 (호버 시 표시)
+  const mark = { done: '<span class="m-done">✓</span>', now: '<span class="m-now">◐</span>', todo: '<span class="m-todo">○</span>' };
+  const rows = data.stages.map(st =>
+    `<tr><th>${_deckEsc(st.name)}</th>${DECK_STEPS.map((_, k) => {
+      const ss = _deckStepState(st, k);
+      const pct = ss === 'now' && k === 2 && +st.progress > 0 ? `<small>${st.progress}%</small>` : '';
+      const badge = typeof _deckCheckBadge === 'function' ? _deckCheckBadge(data, st, k + 1) : '';
+      const cs = st.pipes?.length && typeof _deckCheckSummary === 'function' ? _deckCheckSummary(data, st, k + 1) : null;
+      const cnt = cs ? `<small class="deck-cnt${cs.complete ? ' all' : ''}">점검 ${cs.done}/${cs.total}</small>` : '';
+      return `<td class="deck-cell" onclick="_deckOpenCheck('${st.id}', ${k + 1})" title="${_deckEsc(st.name)} ${DECK_STEPS[k].short} 점검">` +
+        `${mark[ss]}${badge ? `<i class="deck-badge">${badge}</i>` : ''}${pct}${cnt}</td>`;
+    }).join('')}</tr>`).join('');
+  const matrix = `<div class="deck-matrix">
+    <div class="deck-matrix-title">노면복공 공정 현황</div>
+    <table><thead><tr><th></th>${DECK_STEPS.map((s, k) => `<th title="${_deckEsc(s.full)}">${DECK_CIRCLED[k]}<br>${s.short}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="deck-matrix-legend">✓ 완료 · ◐ 진행중 · ○ 예정 &nbsp;|&nbsp; 점검: 🟢 이상없음 · ⚠️ 확인필요 · 🔴 기준미달<br>칸을 누르면 점검 항목을 보고 입력할 수 있어요</div>
+  </div>`;
+
+  el.innerHTML = `<div class="deck-phase-bar" onclick="this.parentNode.classList.toggle('open')">${bar}</div>${matrix}`;
   el.style.display = '';
 }
 
@@ -690,8 +776,9 @@ function _showDeckTooltip(st, e) {
   const meta = DECK_STATUS[st.status] || DECK_STATUS.plan;
   const sub = [st.date, st.memo].filter(Boolean).map(_deckEsc).join(' · ');
   tt.innerHTML = `<strong style="color:#fff">${_deckEsc(st.name)}</strong> ` +
-    `<span style="color:${st.status === 'wip' ? '#fdba74' : st.status === 'done' ? '#86efac' : '#cbd5e1'}">${meta.icon} ${meta.label}</span>` +
-    (st.status === 'wip' && +st.progress > 0 ? ` <span style="color:#fca5a5">· 복공 ${st.progress}%</span>` : '') +
+    (st.status === 'wip'
+      ? `<span style="color:#fdba74">${meta.icon} ${_deckStepText(st)}</span>`
+      : `<span style="color:${st.status === 'done' ? '#86efac' : '#cbd5e1'}">${meta.icon} ${meta.label}</span>`) +
     (sub ? `<br><span style="color:#cbd5e1">${sub}</span>` : '') +
     (st.works || []).map(w => `<br>${_deckEsc(`${w.icon || ''} ${w.text || ''}`)}`).join('') +
     ((st.route || []).length >= 2 ? '<br><span style="color:#67e8f9">🧭 점검루트 표시 중</span>' : '');
@@ -768,8 +855,11 @@ function _renderDeckEditBar() {
   document.getElementById('deck-work-tools').style.display = isWork ? 'flex' : 'none';
   document.getElementById('deck-tool-work').classList.toggle('deck-mode-on', _deckTool === 'work');
   document.getElementById('deck-tool-route').classList.toggle('deck-mode-on', _deckTool === 'route');
+  document.getElementById('deck-tool-point').classList.toggle('deck-mode-on', _deckTool === 'point');
   const isWip = st?.status === 'wip';
   document.getElementById('deck-prog-tools').style.display = isWip ? 'flex' : 'none';
+  document.getElementById('deck-step-sel').value = String(+st?.step || 1);
+  document.getElementById('deck-phase-sel').value = String(_deckDraft.phase || 1);
   document.getElementById('deck-prog-input').value = +st?.progress || 0;
   document.getElementById('deck-prog-label').textContent = `${+st?.progress || 0}%`;
   document.getElementById('deck-prog-dir').value = st?.progDir || 'right';
@@ -784,6 +874,8 @@ function _renderDeckEditBar() {
     : isWork
     ? (_deckTool === 'work'
       ? `③ [${st?.name || ''}] 지도 클릭: 작업 표시 추가 · 드래그: 이동 · ✕ 또는 우클릭: 바로 삭제`
+      : _deckTool === 'point'
+      ? '③ 지도 클릭: 점검 포인트 기록(이격거리·케이싱·점검자) · 기존 포인트 클릭: 수정/삭제'
       : `③ [${st?.name || ''}] 지도 클릭: 점검루트 지점 추가(순서대로) · 드래그: 이동 · 우클릭: 삭제`)
     : '② 파란 경계선 드래그: 단계 크기 조절 · 흰 꼭짓점 드래그: 외곽 수정 · 구역 클릭: 단계 선택';
 }
@@ -843,10 +935,12 @@ window._deckSelectStage = function(id) { _deckSelId = id; _renderDeckEditBar(); 
 window._deckSetField = function(field, value) {
   const st = _deckSel();
   if (!st) return;
-  st[field] = value;
+  st[field] = field === 'step' ? +value : value;
   if (field === 'status') _renderDeckEditBar();
   renderAllPipes();
 };
+
+window._deckSetPhase = function(v) { _deckDraft.phase = +v; renderAllPipes(); };
 
 window._deckSetDir = function(dir) { _deckDraft.dir = dir; renderAllPipes(); };
 
@@ -943,6 +1037,10 @@ function _onDeckMapClick(x, y) {
     if (_deckNearVertex(x, y) >= 0) return true;
     _deckSnapshot();
     _deckInsertVertex(x, y);
+  } else if (_deckMode === 'work' && _deckTool === 'point') {
+    const near = _deckNearPoint(x, y);
+    _deckOpenPoint(near ? near.id : null, x, y);
+    return true;
   } else if (_deckMode === 'work') {
     const st = _deckSel();
     if (!st || _deckNearDetail(x, y)) return true;

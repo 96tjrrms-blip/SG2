@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼천리 서남안전관리팀 | 인동선 11공구</title>
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=31">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -149,6 +149,7 @@
         </select>
         <button id="deck-tool-route" class="zone-btn deck-mode-btn" onclick="_deckSetTool('route')">🧭 점검루트</button>
         <button class="zone-btn" onclick="_deckClearRoute()">루트 지우기</button>
+        <button id="deck-tool-point" class="zone-btn deck-mode-btn" onclick="_deckSetTool('point')">📍 점검포인트</button>
         <span id="deck-work-list" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></span>
       </span>
       <span id="deck-outline-tools" style="display:none;gap:6px">
@@ -163,6 +164,11 @@
         <option value="left">오른쪽 → 왼쪽</option>
       </select>
       <button class="zone-btn" onclick="_deckEvenOut()">⇔ 균등 분할</button>
+      <select id="deck-phase-sel" onchange="_deckSetPhase(this.value)" class="deck-input" title="전체 공사 진행 단계">
+        <option value="1">공정: 노면복공</option>
+        <option value="2">공정: 본굴착·구조물</option>
+        <option value="3">공정: 2차 공사</option>
+      </select>
       <select id="deck-stage-sel" onchange="_deckSelectStage(this.value)" class="deck-input"></select>
       <select id="deck-status-sel" onchange="_deckSetField('status', this.value)" class="deck-input">
         <option value="done">✅ 복공완료</option>
@@ -170,6 +176,13 @@
         <option value="plan">⬜ 예정</option>
       </select>
       <span id="deck-prog-tools" style="display:none;gap:6px;align-items:center;font-size:12px;color:#334155">
+        현재 공종
+        <select id="deck-step-sel" onchange="_deckSetField('step', this.value)" class="deck-input">
+          <option value="1">① 줄파기(지장물 확인)</option>
+          <option value="2">② H-Pile 천공·항타</option>
+          <option value="3">③ 복공작업</option>
+          <option value="4">④ 차수공사(천공·약액주입)</option>
+        </select>
         복공 진행
         <input type="range" id="deck-prog-input" min="0" max="100" step="5" value="0" oninput="_deckSetProgress(this.value)" style="width:100px;accent-color:#b8392a">
         <span id="deck-prog-label" style="min-width:32px">0%</span>
@@ -915,7 +928,8 @@
 <script src="boring.js?v=8"></script>
 <script src="parking.js?v=7"></script>
 <script src="map.js?v=12"></script>
-<script src="deck.js?v=14"></script>
+<script src="deck.js?v=20"></script>
+<script src="deck-check.js?v=2"></script>
 <script src="pipe-editor.js?v=7"></script>
 <script src="emergency.js?v=10"></script>
 <script src="protection.js?v=9"></script>
