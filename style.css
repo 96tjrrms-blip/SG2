@@ -755,7 +755,8 @@ thead .prot-col-pipe, thead .prot-col-measure, thead .prot-col-total { z-index: 
 .deck-summary:hover .deck-matrix, .deck-summary.open .deck-matrix {
   max-height: 420px; opacity: 1; margin-top: 8px; padding-top: 8px; border-top-color: rgba(255,255,255,0.15);
 }
-.deck-matrix-title { font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+.deck-matrix-title { font-size: 12px; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.deck-today-wrap { font-size: 11px; font-weight: 600; color: #cbd5e1; }
 .deck-matrix table { border-collapse: collapse; width: 100%; }
 .deck-matrix th, .deck-matrix td { padding: 3px 8px; text-align: center; font-size: 11px; background: transparent; border: none; }
 .deck-matrix thead th { color: #cbd5e1; font-weight: 700; line-height: 1.25; }

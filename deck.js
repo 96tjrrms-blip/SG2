@@ -726,6 +726,17 @@ function _renderDeckEditOverlay(svg, data, sw) {
   });
 }
 
+// 오늘 날짜 "2026.10.18(일)" — 매트릭스 제목 옆에 표시, 날짜가 바뀌면 자동 갱신
+function _deckTodayText() {
+  const d = new Date();
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` +
+    `(${'일월화수목금토'[d.getDay()]})`;
+}
+setInterval(() => {
+  const t = _deckTodayText();
+  document.querySelectorAll('.deck-today').forEach(el => { if (el.textContent !== t) el.textContent = t; });
+}, 60 * 1000);
+
 // 공정 현황 고정(핀): 이 화면을 연 동안에만 유지 (저장하지 않음 → 다른 사용자·다음 접속에 영향 없음)
 let _deckSummaryPinned = false;
 window._deckToggleSummaryPin = function() {
@@ -775,7 +786,7 @@ function _renderDeckSummary(data) {
         `${mark[ss]}${badge ? `<i class="deck-badge">${badge}</i>` : ''}${pct}${cnt}</td>`;
     }).join('')}</tr>`).join('');
   const matrix = `<div class="deck-matrix">
-    <div class="deck-matrix-title">노면복공 공정 현황</div>
+    <div class="deck-matrix-title">노면복공 공정 현황<span class="deck-today-wrap">📅 <span class="deck-today">${_deckTodayText()}</span> 기준</span></div>
     <table><thead><tr><th></th>${DECK_STEPS.map((s, k) => `<th title="${_deckEsc(s.full)}">${DECK_CIRCLED[k]}<br>${s.short}</th>`).join('')}</tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="deck-matrix-legend">✓ 완료 · ◐ 진행중 · ○ 예정 &nbsp;|&nbsp; 점검: 🟢 이상없음 · ⚠️ 확인필요 · 🔴 기준미달<br>칸을 누르면 점검 항목을 보고 입력할 수 있어요</div>
