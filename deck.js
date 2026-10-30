@@ -41,10 +41,10 @@ function _deckDefault() {
   return {
     outline: [], dir: 'down', splits: _deckEvenSplits(4),
     stages: [
-      { id: 'd1', name: '1단계', status: 'done', date: '', memo: '' },
-      { id: 'd2', name: '2단계', status: 'done', date: '', memo: '' },
-      { id: 'd3', name: '3단계', status: 'wip',  date: '', memo: '' },
-      { id: 'd4', name: '4단계', status: 'plan', date: '', memo: '' },
+      { id: 'd1', name: '1단계', status: 'done', date: '', memo: '', photos: [] },
+      { id: 'd2', name: '2단계', status: 'done', date: '', memo: '', photos: [] },
+      { id: 'd3', name: '3단계', status: 'wip',  date: '', memo: '', photos: [] },
+      { id: 'd4', name: '4단계', status: 'plan', date: '', memo: '', photos: [] },
     ],
   };
 }
@@ -56,6 +56,7 @@ function _deckNormalize(d) {
   if (!DECK_DIRS[d.dir]) d.dir = 'down';
   if (!Array.isArray(d.splits) || d.splits.length !== d.stages.length - 1) d.splits = _deckEvenSplits(d.stages.length);
   if (![1, 2, 3].includes(d.phase)) d.phase = 1;
+  d.stages.forEach(s => { if (!Array.isArray(s.photos)) s.photos = []; });
   return d;
 }
 
@@ -580,8 +581,8 @@ function _applyDeckHover() {
   _renderDeckFront(strip && strip.stage.status === 'done' ? strip : null);
   document.querySelectorAll('#deck-label-svg .deck-detail').forEach(g =>
     g.classList.toggle('off', !!_deckHoverId && g.dataset.id !== _deckHoverId));
-  if (strip) { _showDeckTooltip(strip.stage); _deckTipShown = true; }
-  else if (_deckTipShown) { _hidePipeTooltip(); _deckTipShown = false; }
+  if (strip) { _showDeckTooltip(strip.stage); _showDeckPhotoPanel(strip.stage); _deckTipShown = true; }
+  else if (_deckTipShown) { _hidePipeTooltip(); _hideDeckPhotoPanel(); _deckTipShown = false; }
 }
 
 // 복공완료 구역을 배관·천공 마커보다 위(맨 앞)에 띄우는 층
@@ -672,7 +673,13 @@ function _deckPointAt(e) {
     // 복공완료 구역 위에선 배관 툴팁 대신 복공 툴팁 유지
     else if (hit && hit.stage.status === 'done') _showDeckTooltip(hit.stage);
   }, { passive: true });
-  mc.addEventListener('mouseleave', () => { if (!_deckEdit) _setDeckHover(_deckPinnedId); });
+  mc.addEventListener('mouseleave', e => {
+    if (_deckEdit) return;
+    const panel = document.getElementById('deck-photo-panel');
+    if (panel && panel.style.display !== 'none' &&
+        (panel === e.relatedTarget || panel.contains(e.relatedTarget))) return;
+    _setDeckHover(_deckPinnedId);
+  });
   // 터치 기기: 탭으로 고정/해제
   mc.addEventListener('click', e => {
     if (_deckEdit || !_deckVisible()) return;
@@ -684,6 +691,16 @@ function _deckPointAt(e) {
     _setDeckHover(_deckPinnedId);
   });
   document.addEventListener('map-zoom-changed', _syncDeckFrontTransform);
+
+  // 사진 패널: 패널→지도 복귀는 지도 mousemove가 처리; 패널→외부면 패널 숨김
+  document.addEventListener('mouseover', e => {
+    const panel = document.getElementById('deck-photo-panel');
+    if (!panel || panel.style.display === 'none') return;
+    if (!panel.contains(e.target) && !mc.contains(e.target)) {
+      _hideDeckPhotoPanel();
+      _setDeckHover(_deckPinnedId);
+    }
+  }, { passive: true });
 })();
 
 function _renderDeckEditOverlay(svg, data, sw) {
@@ -803,17 +820,170 @@ function _showDeckTooltip(st, e) {
   const tt = document.getElementById('map-pipe-tooltip');
   if (!tt) return;
   const meta = DECK_STATUS[st.status] || DECK_STATUS.plan;
-  const sub = [st.date, st.memo].filter(Boolean).map(_deckEsc).join(' · ');
   tt.innerHTML = `<strong style="color:#fff">${_deckEsc(st.name)}</strong> ` +
     (st.status === 'wip'
       ? `<span style="color:#fdba74">${meta.icon} ${_deckStepText(st)}</span>`
       : `<span style="color:${st.status === 'done' ? '#86efac' : '#cbd5e1'}">${meta.icon} ${meta.label}</span>`) +
-    (sub ? `<br><span style="color:#cbd5e1">${sub}</span>` : '') +
-    (st.works || []).map(w => `<br>${_deckEsc(`${w.icon || ''} ${w.text || ''}`)}`).join('') +
-    ((st.route || []).length >= 2 ? '<br><span style="color:#67e8f9">🧭 점검루트 표시 중</span>' : '');
+    (st.status === 'done' && st.date ? `<br><span style="color:#cbd5e1">${_deckEsc(st.date)}</span>` : '');
   tt.style.display = 'block';
   if (e) { tt.style.left = (e.clientX + 14) + 'px'; tt.style.top = (e.clientY - 42) + 'px'; }
 }
+
+// ── 복공 사진 패널 ─────────────────────────────────────────────
+function _showDeckPhotoPanel(st) {
+  const panel = document.getElementById('deck-photo-panel');
+  const inner = document.getElementById('deck-photo-panel-inner');
+  if (!panel || !inner) return;
+
+  const mc = document.getElementById('map-container');
+  if (mc) {
+    const r = mc.getBoundingClientRect();
+    panel.style.top   = (r.top  + 8) + 'px';
+    panel.style.right = (window.innerWidth - r.right + 8) + 'px';
+  }
+
+  const em     = window._editMode;
+  const meta   = DECK_STATUS[st.status] || DECK_STATUS.plan;
+  const photos = st.photos || [];
+
+  const titleHtml = `
+    <div style="padding:10px 12px 8px;border-bottom:1px solid #e2e8f0">
+      <div style="font-size:13px;font-weight:700;color:#0d2b5e">${_deckEsc(st.name)}</div>
+      <div style="font-size:11px;margin-top:2px;color:${st.status==='done'?'#16a34a':st.status==='wip'?'#c2410c':'#64748b'}">
+        ${meta.icon} ${st.status==='wip' ? _deckStepText(st) : meta.label}${st.date?' · '+_deckEsc(st.date):''}
+      </div>
+    </div>`;
+
+  let photosHtml = '';
+  if (photos.length) {
+    photosHtml = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:8px">`;
+    photos.forEach((p, i) => {
+      const url = typeof p === 'string' ? p : p.url;
+      photosHtml += `
+        <div style="position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:#f1f5f9">
+          <img src="${_deckEsc(url)}" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer"
+            onclick="openLightbox('${_deckEsc(url)}')">
+          ${em ? `<button onclick="event.stopPropagation();window._deckUnlinkPhoto('${_deckEsc(st.id)}',${i})"
+            style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;
+            background:rgba(239,68,68,0.88);color:#fff;font-size:11px;cursor:pointer;line-height:1;padding:0">✕</button>` : ''}
+        </div>`;
+    });
+    photosHtml += '</div>';
+  } else {
+    photosHtml = `<div style="padding:14px;text-align:center;color:#94a3b8;font-size:12px">사진 없음</div>`;
+  }
+
+  const addBtn = em ? `
+    <div style="padding:0 8px 8px">
+      <button onclick="window._deckOpenPhotoPicker('${_deckEsc(st.id)}')"
+        style="width:100%;padding:7px;border-radius:6px;border:1.5px dashed #94a3b8;background:#f8fafc;
+        color:#64748b;font-size:12px;cursor:pointer;box-sizing:border-box">
+        📷 현장사진에서 추가
+      </button>
+    </div>` : '';
+
+  inner.innerHTML = titleHtml + photosHtml + addBtn;
+  panel.style.display = 'block';
+}
+
+function _hideDeckPhotoPanel() {
+  const panel = document.getElementById('deck-photo-panel');
+  if (panel) panel.style.display = 'none';
+}
+
+window._deckOpenPhotoPicker = async function(stageId) {
+  const siteId = _deckSite();
+  const data   = _getDeckData(siteId);
+  const stage  = data.stages.find(s => s.id === stageId);
+  if (!stage) return;
+
+  const modal = document.getElementById('deck-pick-modal');
+  const inner = document.getElementById('deck-pick-modal-inner');
+  if (!modal || !inner) return;
+
+  inner.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b">사진 로딩 중…</div>';
+  modal.style.display = 'flex';
+
+  const allPhotos  = await listConstrPhotos(siteId).catch(() => []);
+  const linkedUrls = new Set((stage.photos || []).map(p => typeof p === 'string' ? p : p.url));
+
+  if (!allPhotos.length) {
+    inner.innerHTML = `<div style="text-align:center;padding:24px;color:#94a3b8">
+      현장사진 탭에 사진을 먼저 업로드해주세요.</div>`;
+    return;
+  }
+
+  const gridItems = allPhotos.map(p => {
+    const sel = linkedUrls.has(p.url);
+    return `<div data-path="${_deckEsc(p.path)}" data-url="${_deckEsc(p.url)}" data-sel="${sel?'1':'0'}"
+      onclick="window._deckPickToggle(this)"
+      style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;
+        border:3px solid ${sel?'#0d2b5e':'transparent'};box-sizing:border-box">
+      <img src="${_deckEsc(p.url)}" style="width:100%;height:100%;object-fit:cover;display:block">
+      ${sel?`<div style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;
+        background:#0d2b5e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px">✓</div>`:''}
+    </div>`;
+  }).join('');
+
+  inner.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0;font-size:15px;color:#0d2b5e">현장사진에서 선택</h3>
+      <button onclick="document.getElementById('deck-pick-modal').style.display='none'"
+        style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1">✕</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin:0 0 12px">클릭하여 선택·해제 — 선택한 사진이 복공 호버에 표시됩니다</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      ${gridItems}
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="document.getElementById('deck-pick-modal').style.display='none'"
+        style="padding:8px 16px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#374151;font-size:13px;cursor:pointer">취소</button>
+      <button onclick="window._deckSavePickedPhotos('${_deckEsc(stageId)}')"
+        style="padding:8px 18px;border-radius:7px;border:none;background:#0d2b5e;color:#fff;font-size:13px;font-weight:600;cursor:pointer">확인</button>
+    </div>`;
+};
+
+window._deckPickToggle = function(el) {
+  const sel = el.dataset.sel === '1';
+  el.dataset.sel = sel ? '0' : '1';
+  el.style.border = sel ? '3px solid transparent' : '3px solid #0d2b5e';
+  const check = el.querySelector('div');
+  if (sel && check) { check.remove(); }
+  else if (!sel) {
+    const c = document.createElement('div');
+    c.style.cssText = 'position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;' +
+      'background:#0d2b5e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px';
+    c.textContent = '✓';
+    el.appendChild(c);
+  }
+};
+
+window._deckSavePickedPhotos = async function(stageId) {
+  const siteId = _deckSite();
+  const data   = _getDeckData(siteId);
+  const stage  = data.stages.find(s => s.id === stageId);
+  if (!stage) return;
+
+  const selected = [];
+  document.querySelectorAll('#deck-pick-modal-inner [data-path]').forEach(el => {
+    if (el.dataset.sel === '1') selected.push({ path: el.dataset.path, url: el.dataset.url });
+  });
+  stage.photos = selected;
+
+  await _saveDeckData(siteId, data);
+  document.getElementById('deck-pick-modal').style.display = 'none';
+  _showDeckPhotoPanel(stage);
+};
+
+window._deckUnlinkPhoto = async function(stageId, idx) {
+  const siteId = _deckSite();
+  const data   = _getDeckData(siteId);
+  const stage  = data.stages.find(s => s.id === stageId);
+  if (!stage || !stage.photos) return;
+  stage.photos.splice(idx, 1);
+  await _saveDeckData(siteId, data);
+  _showDeckPhotoPanel(stage);
+};
 
 // ── 편집 ──────────────────────────────────────────────────────
 window.startDeckEdit = function() {
